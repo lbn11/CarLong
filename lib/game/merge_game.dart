@@ -1455,8 +1455,8 @@ class FloatText extends PositionComponent {
     required Vector2 position,
     this.color = const Color(0xFFFFFFFF),
     this.fontSize = 20,
-    this._life = 0.9,
-  }) {
+    double life = 0.9,
+  }) : _life = life {
     super.position = position;
   }
 
@@ -1503,9 +1503,9 @@ class BurstParticles extends PositionComponent {
     Color color, {
     double speed = 70,
     int count = 12,
-    this._life = 0.35,
+    double life = 0.35,
     double size = 3,
-  }) {
+  }) : _life = life {
     super.position = position;
     final rnd = Random();
     for (var i = 0; i < count; i++) {
@@ -1628,8 +1628,8 @@ class Shockwave extends PositionComponent {
     Vector2 position, {
     required this.color,
     this.maxRadius = 60,
-    this._life = 0.45,
-  }) : super(position: position);
+    double life = 0.45,
+  }) : _life = life, super(position: position);
 
   @override
   void update(double dt) {
