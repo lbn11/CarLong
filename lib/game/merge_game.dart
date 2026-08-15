@@ -120,6 +120,9 @@ class MergeGame extends FlameGame {
   bool hammerArmed = false;
   void Function()? onHammerUsed;
 
+  /// 玩家操作回调(教程用): action = draw / move / merge / hammer
+  void Function(String action, CarTier? tier)? onPlayerAction;
+
   static const int _maxUndo = 30;
 
   int _combo = 0;
@@ -373,6 +376,7 @@ class MergeGame extends FlameGame {
       feedback.tap();
       _consumeMove();
       _refreshGoal();
+      onPlayerAction?.call('draw', tier);
     }
   }
 
@@ -458,6 +462,7 @@ class MergeGame extends FlameGame {
     feedback.tap();
     _refreshGoal();
     onHammerUsed?.call();
+    onPlayerAction?.call('hammer', null);
   }
 
   /// 锤子清除锁链障碍（点在空格的锁上时）。
@@ -683,6 +688,7 @@ class MergeGame extends FlameGame {
       _bonusScore += 50 + comboBonus;
       final producedTier = board.at(tc, tr)?.tier;
       if (producedTier != null) onTierProduced?.call(producedTier);
+      onPlayerAction?.call('merge', producedTier);
       _spawnJuice(
         tc,
         tr,

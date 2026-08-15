@@ -5,8 +5,10 @@ import '../analytics/analytics.dart';
 import '../game/daily_challenge.dart';
 import '../game/merge_game.dart';
 import '../game/vehicle_icons.dart';
+import '../models/car.dart';
 import '../models/level.dart';
 import '../save/save_repository.dart';
+import '../widgets/tutorial_overlay.dart';
 
 class GameScreen extends StatefulWidget {
   final LevelDefinition level;
@@ -33,6 +35,11 @@ class _GameScreenState extends State<GameScreen> {
   /// 双倍卡生效中：本关通关金币 ×2。
   bool _doubleCoin = false;
 
+  /// 教程状态
+  bool _tutorialActive = false;
+  List<TutorialStep> _tutorialSteps = [];
+  int _tutorialStepIndex = 0;
+
   static const int _hammerCost = 20;
   static const int _undoCost = 30;
   static const int _addCardsCost = 40;
@@ -56,9 +63,63 @@ class _GameScreenState extends State<GameScreen> {
     };
     _game.feedback.soundOn = widget.data.soundOn;
     _game.feedback.vibrateOn = widget.data.vibrateOn;
+    _game.onPlayerAction = _onPlayerAction;
     _analytics = AnalyticsService(widget.data, widget.repo);
     _analytics.levelStart(widget.level);
     _applyBoosters();
+
+    // 教程:前 3 关开启引导
+    final tutorialScript = TutorialScript.getScript(widget.level.id);
+    if (tutorialScript != null && !widget.data.tutorialCompleted.contains(widget.level.id)) {
+      _tutorialActive = true;
+      _tutorialSteps = tutorialScript;
+      _tutorialStepIndex = 0;
+    }
+  }
+
+  void _advanceTutorial() {
+    if (!_tutorialActive) return;
+    if (_tutorialStepIndex < _tutorialSteps.length - 1) {
+      setState(() => _tutorialStepIndex++);
+    } else {
+      setState(() => _tutorialActive = false);
+      widget.data.tutorialCompleted.add(widget.level.id);
+      widget.repo.save(widget.data);
+    }
+  }
+
+  void _notifyTutorialAction(TutorialAction action) {
+    if (!_tutorialActive) return;
+    final currentStep = _tutorialSteps[_tutorialStepIndex];
+    if (currentStep.action == action && currentStep.blocking) {
+      _advanceTutorial();
+    }
+  }
+
+  void _skipTutorial() {
+    setState(() => _tutorialActive = false);
+    widget.data.tutorialCompleted.add(widget.level.id);
+    widget.repo.save(widget.data);
+  }
+
+  void _onPlayerAction(String action, CarTier? tier) {
+    switch (action) {
+      case 'draw':
+        _notifyTutorialAction(TutorialAction.drawCard);
+        break;
+      case 'merge':
+        _notifyTutorialAction(TutorialAction.mergeCards);
+        break;
+      case 'hammer':
+        _notifyTutorialAction(TutorialAction.useHammer);
+        break;
+      case 'move':
+        _notifyTutorialAction(TutorialAction.dragCard);
+        break;
+      case 'reveal':
+        _notifyTutorialAction(TutorialAction.revealFog);
+        break;
+    }
   }
 
   /// 开局道具：加时 / 补卡 / 双倍，各消耗 1 个。
@@ -347,9 +408,19 @@ class _GameScreenState extends State<GameScreen> {
           ),
         ),
         child: SafeArea(
-          child: isLandscape
-              ? _buildLandscapeLayout()
-              : _buildPortraitLayout(),
+          child: Stack(
+            children: [
+              isLandscape
+                  ? _buildLandscapeLayout()
+                  : _buildPortraitLayout(),
+              if (_tutorialActive)
+                TutorialOverlay(
+                  steps: _tutorialSteps,
+                  onComplete: _skipTutorial,
+                  onActionDetected: (action) => _notifyTutorialAction(action),
+                ),
+            ],
+          ),
         ),
       ),
     );

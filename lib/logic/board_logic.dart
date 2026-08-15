@@ -406,13 +406,13 @@ class BoardLogic {
     if (target.count >= 3) {
       upgraded = true;
       final next = target.tier.next;
-      target.count = 1;
       if (next == null) {
-        // 最高级：产出后清除。
-        target.tier = CarTier.values.last;
-        target.count = 0;
+        // 最高级（彗星）：保留在棋盘上，不清掉。
+        // 玩家可以看到自己的彗星成就。
+        target.count = 1;
       } else {
         target.tier = next;
+        target.count = 1;
       }
     }
     totalMerges++;
@@ -494,12 +494,13 @@ class BoardLogic {
   }
 
   /// 是否存在任意可合并操作（用于提示，含万能卡与炸弹）。
+  /// 修复：BFS 搜索判断同等级卡是否可达（不只是数数量）。
   bool get hasPossibleMove {
     var wildcards = 0;
     var bombs = 0;
     final normalByTier = <CarTier, int>{};
     for (final s in _grid) {
-      if (s == null) continue;
+      if (s == null || s.isEmpty) continue;
       if (s.isWildcard) {
         wildcards += s.count;
       } else if (s.isBomb) {
@@ -508,12 +509,89 @@ class BoardLogic {
         normalByTier[s.tier] = (normalByTier[s.tier] ?? 0) + s.count;
       }
     }
-    if (normalByTier.values.any((c) => c >= 2)) return true;
-    if (bombs >= 2) return true;
-    // 万能卡可与任意一张普通卡合并，或两张万能卡互合。
     if (wildcards >= 2) return true;
+    if (bombs >= 2) return true;
     final normalCount = normalByTier.values.fold(0, (a, b) => a + b);
     if (wildcards >= 1 && normalCount >= 1) return true;
+
+    // 普通卡：检查是否有任意两张同等级卡可达，或交换可制造合并
+    for (var c = 0; c < cols; c++) {
+      for (var r = 0; r < rows; r++) {
+        final s = at(c, r);
+        if (s == null || s.isEmpty || s.isWildcard || s.isBomb) continue;
+        if (_canReachSameTier(c, r, s.tier)) return true;
+        if (_swapCreatesMerge(c, r)) return true;
+      }
+    }
+    return false;
+  }
+
+  /// BFS 搜索：从 (col,row) 出发，能否到达任意同等级卡。
+  /// 空格可通过，障碍 / 其他卡片阻挡。
+  bool _canReachSameTier(int col, int row, CarTier tier) {
+    final visited = <int>{};
+    final queue = <int>[_idx(col, row)];
+    visited.add(_idx(col, row));
+
+    while (queue.isNotEmpty) {
+      final curr = queue.removeAt(0);
+      final cc = curr % cols;
+      final cr = curr ~/ cols;
+
+      for (final (dc, dr) in [(1, 0), (-1, 0), (0, 1), (0, -1)]) {
+        final nc = cc + dc, nr = cr + dr;
+        if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) continue;
+        final ni = _idx(nc, nr);
+        if (visited.contains(ni)) continue;
+        visited.add(ni);
+
+        final ns = _grid[ni];
+        if (ns == null || ns.isEmpty) {
+          queue.add(ni);
+        } else if (!ns.isWildcard &&
+            !ns.isBomb &&
+            ns.tier == tier) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /// 检查 (col,row) 的卡片与任意邻居交换后是否制造同等级相邻。
+  bool _swapCreatesMerge(int col, int row) {
+    final s = at(col, row);
+    if (s == null) return false;
+
+    for (final (dc, dr) in [(1, 0), (-1, 0), (0, 1), (0, -1)]) {
+      final nc = col + dc, nr = row + dr;
+      if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) continue;
+      final ns = at(nc, nr);
+      if (ns == null ||
+          ns.isEmpty ||
+          ns.isWildcard ||
+          ns.isBomb ||
+          ns.tier == s.tier) continue;
+
+      // 模拟交换后检查 (nc,nr) 周围是否有 s 的同等级卡
+      for (final (dc2, dr2) in [(1, 0), (-1, 0), (0, 1), (0, -1)]) {
+        final ac = nc + dc2, ar = nr + dr2;
+        if (ac >= 0 &&
+            ac < cols &&
+            ar >= 0 &&
+            ar < rows &&
+            !(ac == col && ar == row)) {
+          final adj = at(ac, ar);
+          if (adj != null &&
+              !adj.isEmpty &&
+              !adj.isWildcard &&
+              !adj.isBomb &&
+              adj.tier == s.tier) {
+            return true;
+          }
+        }
+      }
+    }
     return false;
   }
 

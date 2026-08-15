@@ -1,0 +1,103 @@
+import '../models/car.dart';
+
+/// 停车模式格子类型
+enum ParkingCellType {
+  road, // 可行车
+  parking, // 可停车(终点)
+  obstacle, // 障碍(石墩 / 水坑)
+  entrance, // 入口(车从这里出现)
+  exit, // 出口(车从这里离开)
+}
+
+/// 停车模式障碍类型
+enum ParkingObstacleType {
+  none,
+  block, // 石墩(永久障碍)
+  puddle, // 水坑(可融化)
+}
+
+/// 初始车辆放置
+class VehicleSpawn {
+  final int col;
+  final int row;
+  final CarTier tier;
+  final int count;
+
+  const VehicleSpawn({
+    required this.col,
+    required this.row,
+    required this.tier,
+    this.count = 1,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'col': col,
+        'row': row,
+        'tier': tier.index,
+        'count': count,
+      };
+
+  factory VehicleSpawn.fromJson(Map<String, dynamic> json) => VehicleSpawn(
+        col: json['col'] as int,
+        row: json['row'] as int,
+        tier: CarTier.fromIndex(json['tier'] as int),
+        count: json['count'] as int? ?? 1,
+      );
+}
+
+/// 停车关卡定义
+class ParkingLevel {
+  final int id;
+  final String name;
+  final int rows;
+  final int cols;
+  final List<List<ParkingCellType>> grid;
+  final List<VehicleSpawn> vehicles;
+  final CarTier targetTier;
+  final int? timeLimit;
+  final int? movesLimit;
+
+  const ParkingLevel({
+    required this.id,
+    required this.name,
+    required this.rows,
+    required this.cols,
+    required this.grid,
+    required this.vehicles,
+    required this.targetTier,
+    this.timeLimit,
+    this.movesLimit,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'rows': rows,
+        'cols': cols,
+        'grid': grid
+            .map((row) => row.map((c) => c.index).toList())
+            .toList(),
+        'vehicles': vehicles.map((v) => v.toJson()).toList(),
+        'targetTier': targetTier.index,
+        'timeLimit': timeLimit,
+        'movesLimit': movesLimit,
+      };
+
+  factory ParkingLevel.fromJson(Map<String, dynamic> json) => ParkingLevel(
+        id: json['id'] as int,
+        name: json['name'] as String,
+        rows: json['rows'] as int,
+        cols: json['cols'] as int,
+        grid: (json['grid'] as List)
+            .map((row) => (row as List)
+                .map((c) => ParkingCellType.values[c as int])
+                .toList())
+            .toList(),
+        vehicles: (json['vehicles'] as List)
+            .map((v) => VehicleSpawn.fromJson(v as Map<String, dynamic>))
+            .toList(),
+        targetTier: CarTier.fromIndex(json['targetTier'] as int),
+        timeLimit: json['timeLimit'] as int?,
+        movesLimit: json['movesLimit'] as int?,
+      );
+}

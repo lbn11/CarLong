@@ -42,6 +42,9 @@ class PlayerData {
   /// 本地记录行为数据，供后续调数值/看留存使用。
   List<Map<String, Object>> analyticsEvents;
 
+  /// 已完成教程的关卡 id 集合。
+  Set<int> tutorialCompleted;
+
   PlayerData({
     this.coins = 0,
     this.unlockedLevel = 1,
@@ -59,13 +62,15 @@ class PlayerData {
     Set<String>? claimedAchievements,
     Map<String, int>? boosters,
     List<Map<String, Object>>? analyticsEvents,
+    Set<int>? tutorialCompleted,
   })  : bestScores = bestScores ?? {},
         bestStars = bestStars ?? {},
         endlessBest = endlessBest ?? [],
         collection = collection ?? {},
         claimedAchievements = claimedAchievements ?? {},
         boosters = boosters ?? {},
-        analyticsEvents = analyticsEvents ?? [];
+        analyticsEvents = analyticsEvents ?? [],
+        tutorialCompleted = tutorialCompleted ?? {};
 
   Map<String, dynamic> toJson() => {
         'coins': coins,
@@ -84,6 +89,7 @@ class PlayerData {
         'claimedAchievements': claimedAchievements.toList(),
         'boosters': boosters,
         'analytics': analyticsEvents,
+        'tutorialCompleted': tutorialCompleted.toList(),
       };
 
   factory PlayerData.fromJson(Map<String, dynamic> json) => PlayerData(
@@ -120,6 +126,10 @@ class PlayerData {
             ?.map((e) => Map<String, Object>.from(e as Map))
             .toList() ??
             [],
+        tutorialCompleted: (json['tutorialCompleted'] as List?)
+                ?.map((e) => (e as num).toInt())
+                .toSet() ??
+            {},
       );
 }
 
