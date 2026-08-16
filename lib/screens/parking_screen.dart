@@ -31,6 +31,11 @@ class _ParkingScreenState extends State<ParkingScreen> {
   int _tutorialStep = 0;
   bool _tutorialActive = false;
 
+  /// 提示状态：被建议移动的车辆索引与其落点（用于高亮，null 表示未激活）。
+  int? _hintVehicle;
+  int? _hintToRow;
+  int? _hintToCol;
+
   @override
   void initState() {
     super.initState();
@@ -59,7 +64,12 @@ class _ParkingScreenState extends State<ParkingScreen> {
     if (_selectedVehicle != null) {
       final moved = _game.moveVehicle(_selectedVehicle!, row, col);
       if (moved) {
-        setState(() => _selectedVehicle = null);
+        setState(() {
+          _selectedVehicle = null;
+          _hintVehicle = null;
+          _hintToRow = null;
+          _hintToCol = null;
+        });
         _onPlayerAction('move');
         if (_game.hasWon) {
           _settleWin();
@@ -106,7 +116,30 @@ class _ParkingScreenState extends State<ParkingScreen> {
 
   void _resetGame() {
     _game.reset();
-    setState(() => _settled = false);
+    setState(() {
+      _settled = false;
+      _hintVehicle = null;
+      _hintToRow = null;
+      _hintToCol = null;
+    });
+  }
+
+  void _requestHint() {
+    if (_game.hasWon || _game.hasLost) return;
+    final h = _game.hint();
+    setState(() {
+      _hintVehicle = h?.vehicleIndex;
+      _hintToRow = h?.toRow;
+      _hintToCol = h?.toCol;
+    });
+    if (h == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('暂时找不到解法，试试撤销或重置'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   void _onPlayerAction(String action) {
@@ -492,6 +525,16 @@ class _ParkingScreenState extends State<ParkingScreen> {
           ),
           const SizedBox(width: 12),
           ElevatedButton.icon(
+            onPressed: _requestHint,
+            icon: const Icon(Icons.lightbulb_outline),
+            label: const Text('提示'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4A90D9),
+              foregroundColor: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 12),
+          ElevatedButton.icon(
             onPressed: _resetGame,
             icon: const Icon(Icons.refresh),
             label: const Text('重置'),
@@ -567,6 +610,13 @@ class _ParkingScreenState extends State<ParkingScreen> {
     }
 
     final isSelected = vehicle?.index == _selectedVehicle;
+    final isHintVehicle = vehicle?.index == _hintVehicle;
+    final isHintTarget = row == _hintToRow && col == _hintToCol;
+
+    // 提示落点格叠加半透明高亮底。
+    if (isHintTarget && !isHintVehicle) {
+      bg = Color.lerp(bg, const Color(0xFF26C6DA), 0.45)!;
+    }
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -579,8 +629,10 @@ class _ParkingScreenState extends State<ParkingScreen> {
           border: Border.all(
             color: isSelected
                 ? const Color(0xFFFFD54F)
-                : Colors.white10,
-            width: isSelected ? 3 : 1,
+                : (isHintVehicle || isHintTarget)
+                    ? const Color(0xFF26C6DA)
+                    : Colors.white10,
+            width: (isSelected || isHintVehicle || isHintTarget) ? 3 : 1,
           ),
           borderRadius: BorderRadius.circular(4),
         ),
@@ -591,13 +643,31 @@ class _ParkingScreenState extends State<ParkingScreen> {
 
   Widget? _buildCellContent(ParkingCell cell, VehicleState? vehicle, double size) {
     if (vehicle != null) {
-      return Center(
+      final icon = Center(
         child: VehicleIcon(
           tier: vehicle.tier,
           size: size * 0.7,
           color: vehicle.parked ? const Color(0xFFFFD54F) : Colors.white,
         ),
       );
+      if (vehicle.index == _hintVehicle) {
+        // 提示车辆：叠加青色描边环，强调"该移动这辆"。
+        return Stack(
+          children: [
+            icon,
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: const Color(0xFF26C6DA),
+                  width: 2.5,
+                ),
+              ),
+            ),
+          ],
+        );
+      }
+      return icon;
     }
 
     // 障碍图标

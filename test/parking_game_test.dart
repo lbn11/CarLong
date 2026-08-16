@@ -95,5 +95,32 @@ void main() {
       expect(game.moves, 2);
       expect(game.calcStars(), 3);
     });
+
+    test('hint：返回最优解首步且不改变棋盘状态', () {
+      final game = ParkingGame(_miniLevel());
+      final hint = game.hint();
+      // 初始 bike 挡住 car，首步应建议移动 bike 让路。
+      expect(hint, isNotNull);
+      final filler =
+          game.vehicles.firstWhere((v) => v.tier == CarTier.bike);
+      expect(hint!.vehicleIndex, filler.index);
+      // hint 不应消耗步数、不应改变 hasWon。
+      expect(game.moves, 0);
+      expect(game.hasWon, isFalse);
+      // 按 hint 执行后，car 应能继续推进（仍可求下一步）。
+      game.moveVehicle(hint.vehicleIndex, hint.toRow, hint.toCol);
+      final next = game.hint();
+      expect(next, isNotNull);
+    });
+
+    test('hint：已胜利时返回 null', () {
+      final game = ParkingGame(_miniLevel());
+      _moveBikeAside(game);
+      final target =
+          game.vehicles.firstWhere((v) => v.tier == CarTier.car);
+      game.moveVehicle(target.index, 3, 3);
+      expect(game.hasWon, isTrue);
+      expect(game.hint(), isNull);
+    });
   });
 }

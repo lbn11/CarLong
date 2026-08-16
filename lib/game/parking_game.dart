@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../logic/parking_solver.dart';
 import '../models/car.dart';
 import '../models/parking_level.dart';
 
@@ -313,6 +314,39 @@ class ParkingGame extends ChangeNotifier {
 
   VehicleState? get _targetVehicle =>
       _vehicles.where((v) => v.tier == level.targetTier).firstOrNull;
+
+  /// 提示：基于当前棋盘实时状态求下一步建议（不消耗步数、不改状态）。
+  /// 返回 [ParkingMove]，无解或已胜利/失败时返回 null。
+  ParkingMove? hint() {
+    if (_won || _lost) return null;
+
+    // 用当前格子类型重建网格（type 在移动中不变，仅 vehicleIndex 变化）。
+    final grid = List.generate(
+      level.rows,
+      (r) => List.generate(
+        level.cols,
+        (c) => _grid[r][c].type,
+      ),
+    );
+
+    // 用当前车辆坐标重建生成信息。
+    final vehicles = _vehicles
+        .map((v) => VehicleSpawn(col: v.col, row: v.row, tier: v.tier))
+        .toList();
+
+    final snapshot = ParkingLevel(
+      id: level.id,
+      name: level.name,
+      rows: level.rows,
+      cols: level.cols,
+      grid: grid,
+      vehicles: vehicles,
+      targetTier: level.targetTier,
+    );
+
+    final solution = ParkingSolver.solve(snapshot, maxStates: 40000);
+    return solution?.firstOrNull;
+  }
 
   /// 通关星级：步数越省、用时越短星级越高（胜利时调用）。
   int calcStars() {
