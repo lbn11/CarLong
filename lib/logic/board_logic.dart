@@ -571,7 +571,9 @@ class BoardLogic {
           ns.isEmpty ||
           ns.isWildcard ||
           ns.isBomb ||
-          ns.tier == s.tier) continue;
+          ns.tier == s.tier) {
+        continue;
+      }
 
       // 模拟交换后检查 (nc,nr) 周围是否有 s 的同等级卡
       for (final (dc2, dr2) in [(1, 0), (-1, 0), (0, 1), (0, -1)]) {

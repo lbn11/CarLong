@@ -45,6 +45,12 @@ class PlayerData {
   /// 已完成教程的关卡 id 集合。
   Set<int> tutorialCompleted;
 
+  /// 停车模式解锁到的关卡序号（独立于主线）。
+  int parkingUnlocked;
+
+  /// 停车模式每关最佳星级（1-3），key 为停车关卡 id。
+  Map<int, int> parkingBestStars;
+
   PlayerData({
     this.coins = 0,
     this.unlockedLevel = 1,
@@ -63,6 +69,8 @@ class PlayerData {
     Map<String, int>? boosters,
     List<Map<String, Object>>? analyticsEvents,
     Set<int>? tutorialCompleted,
+    this.parkingUnlocked = 1,
+    Map<int, int>? parkingBestStars,
   })  : bestScores = bestScores ?? {},
         bestStars = bestStars ?? {},
         endlessBest = endlessBest ?? [],
@@ -70,7 +78,8 @@ class PlayerData {
         claimedAchievements = claimedAchievements ?? {},
         boosters = boosters ?? {},
         analyticsEvents = analyticsEvents ?? [],
-        tutorialCompleted = tutorialCompleted ?? {};
+        tutorialCompleted = tutorialCompleted ?? {},
+        parkingBestStars = parkingBestStars ?? {};
 
   Map<String, dynamic> toJson() => {
         'coins': coins,
@@ -90,6 +99,9 @@ class PlayerData {
         'boosters': boosters,
         'analytics': analyticsEvents,
         'tutorialCompleted': tutorialCompleted.toList(),
+        'parkingUnlocked': parkingUnlocked,
+        'parkingBestStars':
+            parkingBestStars.map((k, v) => MapEntry(k.toString(), v)),
       };
 
   factory PlayerData.fromJson(Map<String, dynamic> json) => PlayerData(
@@ -129,6 +141,10 @@ class PlayerData {
         tutorialCompleted: (json['tutorialCompleted'] as List?)
                 ?.map((e) => (e as num).toInt())
                 .toSet() ??
+            {},
+        parkingUnlocked: (json['parkingUnlocked'] as num?)?.toInt() ?? 1,
+        parkingBestStars: (json['parkingBestStars'] as Map?)
+                ?.map((k, v) => MapEntry(int.parse(k), (v as num).toInt())) ??
             {},
       );
 }

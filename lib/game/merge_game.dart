@@ -597,8 +597,12 @@ class MergeGame extends FlameGame {
     _consumeMove();
 
     // 落子揭开附近迷雾。
+    final wasFogged = board.isFogged(fc, fr) || board.isFogged(tc, tr);
     board.revealNear(fc, fr);
     board.revealNear(tc, tr);
+    if (wasFogged) {
+      onPlayerAction?.call('reveal', null);
+    }
 
     // 视觉终点以移动后为准（传送门可能改道；合并判定看源格是否已清空）。
     final dstSprite = _findStack(tc, tr);

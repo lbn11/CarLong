@@ -12,10 +12,14 @@ class ParkingCell {
 
   const ParkingCell({required this.type, this.vehicleIndex});
 
-  ParkingCell copyWith({ParkingCellType? type, int? vehicleIndex}) {
+  ParkingCell copyWith({
+    ParkingCellType? type,
+    int? vehicleIndex,
+    bool clearVehicle = false,
+  }) {
     return ParkingCell(
       type: type ?? this.type,
-      vehicleIndex: vehicleIndex ?? this.vehicleIndex,
+      vehicleIndex: clearVehicle ? null : (vehicleIndex ?? this.vehicleIndex),
     );
   }
 
@@ -191,6 +195,9 @@ class ParkingGame extends ChangeNotifier {
     final dest = _grid[toRow][toCol];
     if (!dest.isPassable) return false;
 
+    // 只有目标等级的车才能停进停车位；其余车只能停在路面。
+    if (dest.isParking && v.tier != level.targetTier) return false;
+
     // 只能沿直线移动(滑块风格)
     if (toRow != v.row && toCol != v.col) return false;
 
@@ -230,7 +237,7 @@ class ParkingGame extends ChangeNotifier {
     ));
 
     // 清空原格
-    _grid[v.row][v.col] = _grid[v.row][v.col].copyWith(vehicleIndex: null);
+    _grid[v.row][v.col] = _grid[v.row][v.col].copyWith(clearVehicle: true);
 
     // 检查是否停在停车位
     final isParking = _grid[toRow][toCol].isParking;
@@ -245,6 +252,7 @@ class ParkingGame extends ChangeNotifier {
 
     _moves++;
     _checkWin();
+    if (!_won) _checkLose();
     notifyListeners();
     return true;
   }
@@ -259,6 +267,82 @@ class ParkingGame extends ChangeNotifier {
     }
   }
 
+  /// 判负：限步关步数耗尽且未达成；或已无任何可移动的车辆（死局）。
+  void _checkLose() {
+    if (level.movesLimit != null &&
+        _moves >= level.movesLimit! &&
+        _targetVehicle != null &&
+        !_targetVehicle!.parked) {
+      _lost = true;
+      _timer?.cancel();
+      return;
+    }
+    if (!_hasAnyMove()) {
+      _lost = true;
+      _timer?.cancel();
+    }
+  }
+
+  /// 是否还存在任意一次合法移动。
+  bool _hasAnyMove() {
+    for (final v in _vehicles) {
+      if (v.parked) continue;
+      // 四个方向各走一步即可，路径合法性交给 canMoveTo。
+      for (final (dr, dc) in const [
+        (0, 1),
+        (0, -1),
+        (1, 0),
+        (-1, 0),
+      ]) {
+        if (_canMoveOneStep(v.index, dr, dc)) return true;
+      }
+    }
+    return false;
+  }
+
+  /// 沿 (dr,dc) 方向找到的目标格是否存在合法移动。
+  bool _canMoveOneStep(int vehicleIndex, int dr, int dc) {
+    final v = _vehicles[vehicleIndex];
+    final toR = v.row + dr;
+    final toC = v.col + dc;
+    if (toR < 0 || toR >= level.rows || toC < 0 || toC >= level.cols) {
+      return false;
+    }
+    return canMoveTo(vehicleIndex, toR, toC);
+  }
+
+  VehicleState? get _targetVehicle =>
+      _vehicles.where((v) => v.tier == level.targetTier).firstOrNull;
+
+  /// 通关星级：步数越省、用时越短星级越高（胜利时调用）。
+  int calcStars() {
+    if (!_won) return 0;
+    var stars = 1;
+    if (level.movesLimit != null) {
+      final ratio = _moves / level.movesLimit!;
+      if (ratio <= 0.5) {
+        stars = 3;
+      } else if (ratio <= 0.75) {
+        stars = 2;
+      }
+    } else if (level.timeLimit != null) {
+      final ratio = _elapsedSeconds / level.timeLimit!;
+      if (ratio <= 0.5) {
+        stars = 3;
+      } else if (ratio <= 0.75) {
+        stars = 2;
+      }
+    } else {
+      // 无限关：6 步内三星、10 步内两星
+      if (_moves <= 6) {
+        stars = 3;
+      } else if (_moves <= 10) {
+        stars = 2;
+      }
+    }
+    return stars;
+  }
+
   /// 撤销上一步
   void undo() {
     if (_undoStack.isEmpty) return;
@@ -267,7 +351,7 @@ class ParkingGame extends ChangeNotifier {
     final v = _vehicles[action.vehicleIndex];
 
     // 移回原位
-    _grid[v.row][v.col] = _grid[v.row][v.col].copyWith(vehicleIndex: null);
+    _grid[v.row][v.col] = _grid[v.row][v.col].copyWith(clearVehicle: true);
     _vehicles[action.vehicleIndex] = v.copyWith(
       row: action.fromRow,
       col: action.fromCol,
@@ -277,6 +361,8 @@ class ParkingGame extends ChangeNotifier {
         _grid[action.fromRow][action.fromCol].copyWith(vehicleIndex: action.vehicleIndex);
 
     _moves--;
+    _won = false; // 撤销后重新检查胜利
+    _lost = false; // 撤销后解除死局/限步判负
     notifyListeners();
   }
 

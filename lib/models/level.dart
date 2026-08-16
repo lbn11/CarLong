@@ -200,6 +200,9 @@ const levels = <LevelDefinition>[
     stockSize: 24,
     targetTier: CarTier.bus,
     targetCount: 1,
+    obstacles: [
+      ObstacleSpec(ObstacleType.lock, 1, 2),
+    ],
   ),
   LevelDefinition(
     id: 3,
@@ -209,6 +212,7 @@ const levels = <LevelDefinition>[
     stockSize: 30,
     targetTier: CarTier.truck,
     targetCount: 1,
+    fogCells: 6,
   ),
   LevelDefinition(
     id: 4,

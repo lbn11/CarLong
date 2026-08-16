@@ -97,8 +97,8 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
   }
 
   Widget _levelTile(ParkingLevel level) {
-    final unlocked = widget.data.unlockedLevel > level.id;
-    final stars = widget.data.bestStars[level.id] ?? 0;
+    final unlocked = widget.data.parkingUnlocked > level.id;
+    final stars = widget.data.parkingBestStars[level.id] ?? 0;
 
     return GestureDetector(
       onTap: unlocked

@@ -32,6 +32,46 @@ class _GameScreenState extends State<GameScreen> {
   bool _finished = false;
   bool _hammering = false;
 
+  // 教程高亮区域追踪
+  final GlobalKey _stockBarKey = GlobalKey();
+  final GlobalKey _toolsKey = GlobalKey();
+  final GlobalKey _boardKey = GlobalKey();
+  final GlobalKey _hammerToolKey = GlobalKey();
+  final GlobalKey _undoToolKey = GlobalKey();
+  final GlobalKey _addCardsToolKey = GlobalKey();
+  Rect? _currentHighlightRect;
+
+  void _updateHighlightRect() {
+    if (!_tutorialActive || _tutorialStepIndex >= _tutorialSteps.length) {
+      _currentHighlightRect = null;
+      return;
+    }
+    final step = _tutorialSteps[_tutorialStepIndex];
+    GlobalKey? targetKey;
+    switch (step.highlight) {
+      case TutorialHighlight.stockPile: targetKey = _stockBarKey; break;
+      case TutorialHighlight.board: targetKey = _boardKey; break;
+      case TutorialHighlight.hammerTool: targetKey = _hammerToolKey; break;
+      case TutorialHighlight.undoTool: targetKey = _undoToolKey; break;
+      case TutorialHighlight.addCardsTool: targetKey = _addCardsToolKey; break;
+      case TutorialHighlight.coinsDisplay: targetKey = _toolsKey; break;
+      case TutorialHighlight.none: targetKey = null; break;
+    }
+    if (targetKey == null) { _currentHighlightRect = null; return; }
+    final box = targetKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) { _currentHighlightRect = null; return; }
+    _currentHighlightRect = box.localToGlobal(Offset.zero) & box.size;
+  }
+
+  void _scheduleHighlightUpdate() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _tutorialActive) {
+        _updateHighlightRect();
+        setState(() {});
+      }
+    });
+  }
+
   /// 双倍卡生效中：本关通关金币 ×2。
   bool _doubleCoin = false;
 
@@ -81,6 +121,7 @@ class _GameScreenState extends State<GameScreen> {
     if (!_tutorialActive) return;
     if (_tutorialStepIndex < _tutorialSteps.length - 1) {
       setState(() => _tutorialStepIndex++);
+      _scheduleHighlightUpdate();
     } else {
       setState(() => _tutorialActive = false);
       widget.data.tutorialCompleted.add(widget.level.id);
@@ -105,19 +146,19 @@ class _GameScreenState extends State<GameScreen> {
   void _onPlayerAction(String action, CarTier? tier) {
     switch (action) {
       case 'draw':
-        _notifyTutorialAction(TutorialAction.drawCard);
+        _notifyTutorialAction(TutorialAction.draw);
         break;
       case 'merge':
-        _notifyTutorialAction(TutorialAction.mergeCards);
+        _notifyTutorialAction(TutorialAction.merge);
         break;
       case 'hammer':
-        _notifyTutorialAction(TutorialAction.useHammer);
+        _notifyTutorialAction(TutorialAction.hammer);
         break;
       case 'move':
-        _notifyTutorialAction(TutorialAction.dragCard);
+        _notifyTutorialAction(TutorialAction.move);
         break;
       case 'reveal':
-        _notifyTutorialAction(TutorialAction.revealFog);
+        _notifyTutorialAction(TutorialAction.reveal);
         break;
     }
   }
@@ -418,6 +459,7 @@ class _GameScreenState extends State<GameScreen> {
                   steps: _tutorialSteps,
                   onComplete: _skipTutorial,
                   onActionDetected: (action) => _notifyTutorialAction(action),
+                  highlightRect: _currentHighlightRect,
                 ),
             ],
           ),
@@ -432,7 +474,7 @@ class _GameScreenState extends State<GameScreen> {
       children: [
         _buildHud(),
         Expanded(
-          child: GameWidget(game: _game),
+          child: KeyedSubtree(key: _boardKey, child: GameWidget(game: _game)),
         ),
         _buildStockBar(),
         _buildTools(),
@@ -445,7 +487,7 @@ class _GameScreenState extends State<GameScreen> {
     return Row(
       children: [
         Expanded(
-          child: GameWidget(game: _game),
+          child: KeyedSubtree(key: _boardKey, child: GameWidget(game: _game)),
         ),
         Container(
           width: 156,
@@ -997,6 +1039,7 @@ class _GameScreenState extends State<GameScreen> {
           valueListenable: _game.hint,
           builder: (context, hint, _) {
             return Padding(
+              key: _stockBarKey,
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1064,6 +1107,7 @@ class _GameScreenState extends State<GameScreen> {
     final coins = widget.data.coins;
     final disabled = _finished;
     return Padding(
+      key: _toolsKey,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
       child: Row(
         children: [
@@ -1088,6 +1132,7 @@ class _GameScreenState extends State<GameScreen> {
           const Spacer(),
           if (_hammering)
             _toolButton(
+              key: _hammerToolKey,
               icon: Icons.close,
               label: '取消',
               cost: null,
@@ -1096,6 +1141,7 @@ class _GameScreenState extends State<GameScreen> {
             )
           else
             _toolButton(
+              key: _hammerToolKey,
               icon: Icons.construction,
               label: '清除',
               cost: _hammerCost,
@@ -1103,6 +1149,7 @@ class _GameScreenState extends State<GameScreen> {
               enabled: coins >= _hammerCost && !disabled,
             ),
           _toolButton(
+            key: _undoToolKey,
             icon: Icons.undo,
             label: '撤销',
             cost: _undoCost,
@@ -1111,6 +1158,7 @@ class _GameScreenState extends State<GameScreen> {
           ),
           if (!widget.level.endless)
             _toolButton(
+              key: _addCardsToolKey,
               icon: Icons.add_box,
               label: '加牌',
               cost: _addCardsCost,
@@ -1123,6 +1171,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _toolButton({
+    Key? key,
     required IconData icon,
     required String label,
     required int? cost,
@@ -1132,6 +1181,7 @@ class _GameScreenState extends State<GameScreen> {
   }) {
     final on = enabled ? onTap : null;
     return Padding(
+      key: key,
       padding: const EdgeInsets.only(left: 8),
       child: Material(
         color: Colors.transparent,
