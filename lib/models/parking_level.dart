@@ -56,6 +56,7 @@ class ParkingLevel {
   final CarTier targetTier;
   final int? timeLimit;
   final int? movesLimit;
+  final int? minMoves; // 求解器算出的最短步数（标定难度用，无解为 null）
 
   const ParkingLevel({
     required this.id,
@@ -67,7 +68,34 @@ class ParkingLevel {
     required this.targetTier,
     this.timeLimit,
     this.movesLimit,
+    this.minMoves,
   });
+
+  ParkingLevel copyWith({
+    int? id,
+    String? name,
+    int? rows,
+    int? cols,
+    List<List<ParkingCellType>>? grid,
+    List<VehicleSpawn>? vehicles,
+    CarTier? targetTier,
+    int? timeLimit,
+    int? movesLimit,
+    int? minMoves,
+  }) {
+    return ParkingLevel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      rows: rows ?? this.rows,
+      cols: cols ?? this.cols,
+      grid: grid ?? this.grid,
+      vehicles: vehicles ?? this.vehicles,
+      targetTier: targetTier ?? this.targetTier,
+      timeLimit: timeLimit ?? this.timeLimit,
+      movesLimit: movesLimit ?? this.movesLimit,
+      minMoves: minMoves ?? this.minMoves,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -81,6 +109,7 @@ class ParkingLevel {
         'targetTier': targetTier.index,
         'timeLimit': timeLimit,
         'movesLimit': movesLimit,
+        'minMoves': minMoves,
       };
 
   factory ParkingLevel.fromJson(Map<String, dynamic> json) => ParkingLevel(
@@ -99,5 +128,6 @@ class ParkingLevel {
         targetTier: CarTier.fromIndex(json['targetTier'] as int),
         timeLimit: json['timeLimit'] as int?,
         movesLimit: json['movesLimit'] as int?,
+        minMoves: json['minMoves'] as int?,
       );
 }
