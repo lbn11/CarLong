@@ -99,7 +99,7 @@ class LevelCard extends StatelessWidget {
     this.onTap,
   });
 
-  Color get _accent => level.targetTier?.color ?? const Color(0xFF4A90D9);
+  Color get _accent => level.targetTier?.color ?? const Color(0xFFF2784E);
 
   @override
   Widget build(BuildContext context) {

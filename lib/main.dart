@@ -30,7 +30,7 @@ class MergeGameApp extends StatelessWidget {
         useMaterial3: true,
         fontFamily: 'Noto Sans SC',
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF4A90D9),
+          seedColor: const Color(0xFFF2784E),
           brightness: Brightness.dark,
         ),
         scaffoldBackgroundColor: const Color(0xFF171A1E),
