@@ -12,6 +12,7 @@ import 'achievements_screen.dart';
 import 'collection_screen.dart';
 import 'game_screen.dart';
 import 'level_select_screen.dart';
+import 'parking_level_select.dart';
 import 'shop_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -25,7 +26,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   PlayerData get data => widget.data;
 
   /// 入场仪式：控制各区块的淡入上浮。
@@ -376,6 +377,12 @@ class _HomeScreenState extends State<HomeScreen>
                           start: 0.7,
                           child: _buildLevelListEntry(),
                         ),
+                        const SizedBox(height: 12),
+                        _Reveal(
+                          anim: _enterAnim,
+                          start: 0.82,
+                          child: _buildParkingEntry(),
+                        ),
                       ],
                     ),
                   ),
@@ -388,7 +395,70 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  /// 收纳入口：首页只留一行「全部关卡」，点进去看完整关卡网格。
+  /// 停车模式入口
+  Widget _buildParkingEntry() {
+    return Material(
+      color: Colors.transparent,
+      child: Ink(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF2A2F38), Color(0xFF1E2229)],
+          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0x335C6BC0)),
+          boxShadow: const [
+            BoxShadow(
+                color: Color(0x33000000), blurRadius: 10, offset: Offset(0, 4)),
+          ],
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  ParkingLevelSelectScreen(data: data, repo: widget.repo),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(
+                      color: Color(0x33FFFFFF), shape: BoxShape.circle),
+                  child: const Icon(Icons.local_parking,
+                      color: Colors.white70, size: 24),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('停车模式',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15)),
+                      Text('把车辆停到指定车位',
+                          style:
+                              TextStyle(color: Colors.white54, fontSize: 12)),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: Colors.white38, size: 20),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 收纳入口：首页只留一行「全部关卡」，点进去看完整网格。
   Widget _buildLevelListEntry() {
     final completed =
         levels.where((l) => (data.bestStars[l.id] ?? 0) > 0).length;

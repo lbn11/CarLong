@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../models/car.dart';
-import '../models/level.dart';
 
 /// 主线关卡数据生成器(71-200 关)
 class LevelDataGenerator {
