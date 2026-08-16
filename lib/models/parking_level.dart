@@ -16,6 +16,12 @@ enum ParkingObstacleType {
   puddle, // 水坑(可融化)
 }
 
+/// 车辆朝向：决定长条车能滑动的轴（Rush Hour 风格）。
+enum ParkingOrientation {
+  horizontal, // 横向（占同一行的若干列）
+  vertical, // 纵向（占同一列的若干行）
+}
+
 /// 初始车辆放置
 class VehicleSpawn {
   final int col;
@@ -23,18 +29,39 @@ class VehicleSpawn {
   final CarTier tier;
   final int count;
 
+  /// 占用格数（1 = 单格车；>=2 = 长条车，沿 [orientation] 延伸）。
+  final int length;
+
+  /// 朝向：仅当 [length] > 1 时约束滑动轴；length == 1 时四向均可滑动。
+  final ParkingOrientation orientation;
+
   const VehicleSpawn({
     required this.col,
     required this.row,
     required this.tier,
     this.count = 1,
+    this.length = 1,
+    this.orientation = ParkingOrientation.horizontal,
   });
+
+  /// 该车辆占用的所有格子（以 anchor 为左上角）。
+  List<(int, int)> cells() {
+    final out = <(int, int)>[];
+    for (var i = 0; i < length; i++) {
+      out.add(orientation == ParkingOrientation.horizontal
+          ? (row, col + i)
+          : (row + i, col));
+    }
+    return out;
+  }
 
   Map<String, dynamic> toJson() => {
         'col': col,
         'row': row,
         'tier': tier.index,
         'count': count,
+        'length': length,
+        'orientation': orientation.index,
       };
 
   factory VehicleSpawn.fromJson(Map<String, dynamic> json) => VehicleSpawn(
@@ -42,6 +69,9 @@ class VehicleSpawn {
         row: json['row'] as int,
         tier: CarTier.fromIndex(json['tier'] as int),
         count: json['count'] as int? ?? 1,
+        length: json['length'] as int? ?? 1,
+        orientation: ParkingOrientation
+            .values[(json['orientation'] as int?) ?? 0],
       );
 }
 

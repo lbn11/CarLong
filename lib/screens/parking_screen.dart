@@ -31,10 +31,10 @@ class _ParkingScreenState extends State<ParkingScreen> {
   int _tutorialStep = 0;
   bool _tutorialActive = false;
 
-  /// 提示状态：被建议移动的车辆索引与其落点（用于高亮，null 表示未激活）。
+  /// 提示状态：被建议移动的车辆索引（用于高亮，null 表示未激活）。
   int? _hintVehicle;
-  int? _hintToRow;
-  int? _hintToCol;
+  /// 提示目标落点的整块格集合（长条车为多格），用于青色高亮。
+  List<(int, int)> _hintCells = const [];
 
   @override
   void initState() {
@@ -62,13 +62,13 @@ class _ParkingScreenState extends State<ParkingScreen> {
     if (_game.hasWon || _game.hasLost) return;
 
     if (_selectedVehicle != null) {
-      final moved = _game.moveVehicle(_selectedVehicle!, row, col);
+      // 沿车身方向滑到点击侧最远可达处（长条车只能沿轴滑动）。
+      final moved = _game.slideTo(_selectedVehicle!, row, col);
       if (moved) {
         setState(() {
           _selectedVehicle = null;
           _hintVehicle = null;
-          _hintToRow = null;
-          _hintToCol = null;
+          _hintCells = const [];
         });
         _onPlayerAction('move');
         if (_game.hasWon) {
@@ -119,8 +119,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
     setState(() {
       _settled = false;
       _hintVehicle = null;
-      _hintToRow = null;
-      _hintToCol = null;
+      _hintCells = const [];
     });
   }
 
@@ -129,8 +128,17 @@ class _ParkingScreenState extends State<ParkingScreen> {
     final h = _game.hint();
     setState(() {
       _hintVehicle = h?.vehicleIndex;
-      _hintToRow = h?.toRow;
-      _hintToCol = h?.toCol;
+      // 计算建议落点的整块格（长条车为多格），用于青色高亮。
+      if (h != null) {
+        final v = _game.vehicles[h.vehicleIndex];
+        _hintCells = List.generate(v.length, (i) {
+          return v.orientation == ParkingOrientation.horizontal
+              ? (h.toRow, h.toCol + i)
+              : (h.toRow + i, h.toCol);
+        });
+      } else {
+        _hintCells = const [];
+      }
     });
     if (h == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -193,6 +201,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
             const Text('• 碰到 🧱 障碍和其他车会停下', style: TextStyle(color: Colors.white70)),
             const Text('• 其他车是障碍，拖开它们让路', style: TextStyle(color: Colors.white70)),
             const Text('• 可以撤销、重置', style: TextStyle(color: Colors.white70)),
+            const Text('• 横/竖长车只能沿车身方向滑动，先挪开挡路的车', style: TextStyle(color: Colors.white70)),
           ],
         ),
         actions: [
@@ -569,19 +578,89 @@ class _ParkingScreenState extends State<ParkingScreen> {
         );
         final cellSize = (availableSize / math.max(_game.rows, _game.cols))
             .clamp(40.0, 80.0);
+        final boardW = _game.cols * cellSize;
+        final boardH = _game.rows * cellSize;
 
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: List.generate(_game.rows, (r) {
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: List.generate(_game.cols, (c) {
-                return _buildCell(r, c, cellSize);
-              }),
-            );
-          }),
+        return SizedBox(
+          width: boardW,
+          height: boardH,
+          child: Stack(
+            children: [
+              // 底层：格子（背景/障碍/车位/入口），并接收点击。
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: List.generate(_game.rows, (r) {
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(_game.cols, (c) {
+                      return _buildCell(r, c, cellSize);
+                    }),
+                  );
+                }),
+              ),
+              // 覆盖层：车辆（长条车画成一整块），IgnorePointer 让点击穿透到格子。
+              for (final v in _game.vehicles) _buildVehicleOverlay(v, cellSize),
+            ],
+          ),
         );
       },
+    );
+  }
+
+  /// 车辆覆盖层：长条车按占用格数绘制成一整块圆角车身（含车图标居中）。
+  Widget _buildVehicleOverlay(VehicleState v, double size) {
+    final isSelected = v.index == _selectedVehicle;
+    final isHint = v.index == _hintVehicle;
+    final w = (v.orientation == ParkingOrientation.horizontal ? v.length : 1) *
+        size;
+    final h = (v.orientation == ParkingOrientation.vertical ? v.length : 1) *
+        size;
+    final left = v.col * size;
+    final top = v.row * size;
+    final inset = size * 0.06;
+    final color = v.tier.color;
+
+    return Positioned(
+      left: left + inset,
+      top: top + inset,
+      width: w - 2 * inset,
+      height: h - 2 * inset,
+      child: IgnorePointer(
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(size * 0.18),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color.lerp(color, Colors.white, 0.30)!,
+                color,
+                Color.lerp(color, Colors.black, 0.28)!,
+              ],
+            ),
+            border: Border.all(
+              color: isSelected
+                  ? const Color(0xFFFFD54F)
+                  : (isHint ? const Color(0xFF26C6DA) : Colors.white10),
+              width: (isSelected || isHint) ? 3 : 1,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x40000000),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Center(
+            child: VehicleIcon(
+              tier: v.tier,
+              size: math.min(w, h) * 0.6,
+              color: v.parked ? const Color(0xFFFFD54F) : Colors.white,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -609,12 +688,9 @@ class _ParkingScreenState extends State<ParkingScreen> {
         break;
     }
 
-    final isSelected = vehicle?.index == _selectedVehicle;
-    final isHintVehicle = vehicle?.index == _hintVehicle;
-    final isHintTarget = row == _hintToRow && col == _hintToCol;
-
-    // 提示落点格叠加半透明高亮底。
-    if (isHintTarget && !isHintVehicle) {
+    // 提示落点格（仅空格）：叠加青色半透明高亮底。
+    final isHintTarget = _hintCells.contains((row, col)) && vehicle == null;
+    if (isHintTarget) {
       bg = Color.lerp(bg, const Color(0xFF26C6DA), 0.45)!;
     }
 
@@ -627,12 +703,8 @@ class _ParkingScreenState extends State<ParkingScreen> {
         decoration: BoxDecoration(
           color: bg,
           border: Border.all(
-            color: isSelected
-                ? const Color(0xFFFFD54F)
-                : (isHintVehicle || isHintTarget)
-                    ? const Color(0xFF26C6DA)
-                    : Colors.white10,
-            width: (isSelected || isHintVehicle || isHintTarget) ? 3 : 1,
+            color: isHintTarget ? const Color(0xFF26C6DA) : Colors.white10,
+            width: isHintTarget ? 3 : 1,
           ),
           borderRadius: BorderRadius.circular(4),
         ),
@@ -642,46 +714,21 @@ class _ParkingScreenState extends State<ParkingScreen> {
   }
 
   Widget? _buildCellContent(ParkingCell cell, VehicleState? vehicle, double size) {
-    if (vehicle != null) {
-      final icon = Center(
-        child: VehicleIcon(
-          tier: vehicle.tier,
-          size: size * 0.7,
-          color: vehicle.parked ? const Color(0xFFFFD54F) : Colors.white,
-        ),
-      );
-      if (vehicle.index == _hintVehicle) {
-        // 提示车辆：叠加青色描边环，强调"该移动这辆"。
-        return Stack(
-          children: [
-            icon,
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(
-                  color: const Color(0xFF26C6DA),
-                  width: 2.5,
-                ),
-              ),
-            ),
-          ],
-        );
-      }
-      return icon;
-    }
-
+    // 车辆图标由覆盖层 _buildVehicleOverlay 统一绘制，这里只画地形标记。
     // 障碍图标
     if (cell.isObstacle) {
       return const Center(
         child: Text('🧱', style: TextStyle(fontSize: 18)),
       );
     }
-    // 停车位图标
+    // 停车位图标（停在车下的幽灵图标）
     if (cell.isParking) {
       final parked = vehicle != null;
       return Center(
         child: Text(widget.level.targetTier.icon,
-            style: TextStyle(fontSize: size * 0.4, color: parked ? Colors.white : Colors.white30)),
+            style: TextStyle(
+                fontSize: size * 0.4,
+                color: parked ? Colors.white : Colors.white30)),
       );
     }
     // 入口

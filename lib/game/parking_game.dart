@@ -41,6 +41,8 @@ class VehicleState {
   final String label;
   int row;
   int col;
+  final int length; // 占用格数（>=2 为长条车）
+  final ParkingOrientation orientation; // 长条车朝向
   bool parked; // 是否已停在停车位
 
   VehicleState({
@@ -49,8 +51,27 @@ class VehicleState {
     required this.label,
     required this.row,
     required this.col,
+    this.length = 1,
+    this.orientation = ParkingOrientation.horizontal,
     this.parked = false,
   });
+
+  /// 该车辆当前占用的所有格子（以 anchor(row,col) 为左上角）。
+  List<(int, int)> get cells {
+    final out = <(int, int)>[];
+    for (var i = 0; i < length; i++) {
+      out.add(orientation == ParkingOrientation.horizontal
+          ? (row, col + i)
+          : (row + i, col));
+    }
+    return out;
+  }
+
+  /// 长条车只能沿车身方向滑动；单格车四向均可。
+  bool get _canHoriz =>
+      length == 1 || orientation == ParkingOrientation.horizontal;
+  bool get _canVert =>
+      length == 1 || orientation == ParkingOrientation.vertical;
 
   VehicleState copyWith({int? row, int? col, bool? parked}) {
     return VehicleState(
@@ -59,6 +80,8 @@ class VehicleState {
       label: label,
       row: row ?? this.row,
       col: col ?? this.col,
+      length: length,
+      orientation: orientation,
       parked: parked ?? this.parked,
     );
   }
@@ -158,9 +181,12 @@ class ParkingGame extends ChangeNotifier {
         label: v.tier.icon,
         row: v.row,
         col: v.col,
+        length: v.length,
+        orientation: v.orientation,
       ));
-      _grid[v.row][v.col] =
-          _grid[v.row][v.col].copyWith(vehicleIndex: i);
+      for (final (r, c) in _vehicles[i].cells) {
+        _grid[r][c] = _grid[r][c].copyWith(vehicleIndex: i);
+      }
     }
   }
 
@@ -178,7 +204,33 @@ class ParkingGame extends ChangeNotifier {
     });
   }
 
-  /// 能否将车辆移动到目标格
+  /// 计算车辆以 (row,col) 为 anchor 时占用的所有格子。
+  static List<(int, int)> _cellsAt(
+      VehicleState v, int row, int col) {
+    final out = <(int, int)>[];
+    for (var i = 0; i < v.length; i++) {
+      out.add(v.orientation == ParkingOrientation.horizontal
+          ? (row, col + i)
+          : (row + i, col));
+    }
+    return out;
+  }
+
+  /// 在 (row,col) 处落子该车占用的所有格子。
+  void _occupy(VehicleState v, int row, int col) {
+    for (final (r, c) in _cellsAt(v, row, col)) {
+      _grid[r][c] = _grid[r][c].copyWith(vehicleIndex: v.index);
+    }
+  }
+
+  /// 清空 (row,col) 处该车占用的所有格子。
+  void _vacate(VehicleState v, int row, int col) {
+    for (final (r, c) in _cellsAt(v, row, col)) {
+      _grid[r][c] = _grid[r][c].copyWith(clearVehicle: true);
+    }
+  }
+
+  /// 能否将车辆移动到目标 anchor 格
   bool canMoveTo(int vehicleIndex, int toRow, int toCol) {
     if (_won || _lost) return false;
     final v = _vehicles[vehicleIndex];
@@ -192,39 +244,37 @@ class ParkingGame extends ChangeNotifier {
       return false;
     }
 
-    // 目标格必须可通行(路面或停车位)且无其他车辆
-    final dest = _grid[toRow][toCol];
-    if (!dest.isPassable) return false;
-
-    // 只有目标等级的车才能停进停车位；其余车只能停在路面。
-    if (dest.isParking && v.tier != level.targetTier) return false;
-
-    // 只能沿直线移动(滑块风格)
+    // 必须沿直线滑动（单格车四向，长条车仅沿车身轴）。
     if (toRow != v.row && toCol != v.col) return false;
+    if (v.length > 1) {
+      if (v.orientation == ParkingOrientation.horizontal &&
+          toRow != v.row) {
+        return false;
+      }
+      if (v.orientation == ParkingOrientation.vertical &&
+          toCol != v.col) {
+        return false;
+      }
+    }
 
-    // 检查路径上是否有障碍
-    if (toRow == v.row) {
-      // 横向
-      final step = toCol > v.col ? 1 : -1;
-      for (var c = v.col + step; c != toCol + step; c += step) {
-        if (_grid[toRow][c].vehicleIndex != null || _grid[toRow][c].isObstacle) {
-          return false;
-        }
+    // 目标车身占用的所有格子都必须合法（路面/停车位，且无其他车辆）。
+    for (final (r, c) in _cellsAt(v, toRow, toCol)) {
+      if (r < 0 || r >= level.rows || c < 0 || c >= level.cols) {
+        return false;
       }
-    } else {
-      // 纵向
-      final step = toRow > v.row ? 1 : -1;
-      for (var r = v.row + step; r != toRow + step; r += step) {
-        if (_grid[r][toCol].vehicleIndex != null || _grid[r][toCol].isObstacle) {
-          return false;
-        }
+      final cell = _grid[r][c];
+      if (!cell.isRoad && !cell.isParking) return false;
+      if (cell.vehicleIndex != null && cell.vehicleIndex != vehicleIndex) {
+        return false;
       }
+      // 只有目标等级的车才能进入停车位。
+      if (cell.isParking && v.tier != level.targetTier) return false;
     }
 
     return true;
   }
 
-  /// 移动车辆到目标格
+  /// 移动车辆到目标 anchor 格
   bool moveVehicle(int vehicleIndex, int toRow, int toCol) {
     if (!canMoveTo(vehicleIndex, toRow, toCol)) return false;
 
@@ -237,25 +287,66 @@ class ParkingGame extends ChangeNotifier {
       toCol: toCol,
     ));
 
-    // 清空原格
-    _grid[v.row][v.col] = _grid[v.row][v.col].copyWith(clearVehicle: true);
+    // 清空原占用（长条车可能占多格）
+    _vacate(v, v.row, v.col);
 
-    // 检查是否停在停车位
-    final isParking = _grid[toRow][toCol].isParking;
+    // 检查移动后是否停在停车位（车身任一格压住停车位即算停好）
+    final parked = _cellsAt(v, toRow, toCol)
+        .any((cell) => _grid[cell.$1][cell.$2].isParking);
     _vehicles[vehicleIndex] = v.copyWith(
       row: toRow,
       col: toCol,
-      parked: isParking,
+      parked: parked,
     );
 
-    // 设置新格
-    _grid[toRow][toCol] = _grid[toRow][toCol].copyWith(vehicleIndex: vehicleIndex);
+    // 设置新占用
+    _occupy(_vehicles[vehicleIndex], toRow, toCol);
 
     _moves++;
     _checkWin();
     if (!_won) _checkLose();
     notifyListeners();
     return true;
+  }
+
+  /// 点击交互：把选中的车朝点击格方向滑动，停在能到达的最远位置（不越过点击格）。
+  /// 长条车只能沿车身轴滑动；单格车四向。返回是否发生了移动。
+  bool slideTo(int vehicleIndex, int tapRow, int tapCol) {
+    if (_won || _lost) return false;
+    final v = _vehicles[vehicleIndex];
+    if (v.parked) return false;
+
+    if (v._canHoriz && tapRow == v.row && tapCol != v.col) {
+      final dir = tapCol > v.col ? 1 : -1;
+      // 目标 anchor：让车头（dir>0 时为右端）对齐到点击列；dir<0 时左端对齐。
+      final desired = (v.length > 1 && dir > 0)
+          ? tapCol - (v.length - 1)
+          : tapCol;
+      var best = v.col;
+      var c = v.col + dir;
+      while (desired > v.col ? c <= desired : c >= desired) {
+        if (!canMoveTo(vehicleIndex, v.row, c)) break;
+        best = c;
+        c += dir;
+      }
+      if (best == v.col) return false;
+      return moveVehicle(vehicleIndex, v.row, best);
+    } else if (v._canVert && tapCol == v.col && tapRow != v.row) {
+      final dir = tapRow > v.row ? 1 : -1;
+      final desired = (v.length > 1 && dir > 0)
+          ? tapRow - (v.length - 1)
+          : tapRow;
+      var best = v.row;
+      var r = v.row + dir;
+      while (desired > v.row ? r <= desired : r >= desired) {
+        if (!canMoveTo(vehicleIndex, r, v.col)) break;
+        best = r;
+        r += dir;
+      }
+      if (best == v.row) return false;
+      return moveVehicle(vehicleIndex, best, v.col);
+    }
+    return false;
   }
 
   void _checkWin() {
@@ -288,13 +379,18 @@ class ParkingGame extends ChangeNotifier {
   bool _hasAnyMove() {
     for (final v in _vehicles) {
       if (v.parked) continue;
-      // 四个方向各走一步即可，路径合法性交给 canMoveTo。
-      for (final (dr, dc) in const [
-        (0, 1),
-        (0, -1),
-        (1, 0),
-        (-1, 0),
-      ]) {
+      // 长条车只能沿车身轴；单格车四向。
+      final dirs = (v._canHoriz && v._canVert)
+          ? const [
+              (0, 1),
+              (0, -1),
+              (1, 0),
+              (-1, 0),
+            ]
+          : (v._canHoriz
+              ? const [(0, 1), (0, -1)]
+              : const [(1, 0), (-1, 0)]);
+      for (final (dr, dc) in dirs) {
         if (_canMoveOneStep(v.index, dr, dc)) return true;
       }
     }
@@ -329,9 +425,15 @@ class ParkingGame extends ChangeNotifier {
       ),
     );
 
-    // 用当前车辆坐标重建生成信息。
+    // 用当前车辆坐标重建生成信息（含长度/朝向，供求解器精确建模）。
     final vehicles = _vehicles
-        .map((v) => VehicleSpawn(col: v.col, row: v.row, tier: v.tier))
+        .map((v) => VehicleSpawn(
+              col: v.col,
+              row: v.row,
+              tier: v.tier,
+              length: v.length,
+              orientation: v.orientation,
+            ))
         .toList();
 
     final snapshot = ParkingLevel(
@@ -384,15 +486,14 @@ class ParkingGame extends ChangeNotifier {
 
     final v = _vehicles[action.vehicleIndex];
 
-    // 移回原位
-    _grid[v.row][v.col] = _grid[v.row][v.col].copyWith(clearVehicle: true);
+    // 清空移动后的占用，恢复原位占用（长条车占多格）。
+    _vacate(v, v.row, v.col);
     _vehicles[action.vehicleIndex] = v.copyWith(
       row: action.fromRow,
       col: action.fromCol,
       parked: false,
     );
-    _grid[action.fromRow][action.fromCol] =
-        _grid[action.fromRow][action.fromCol].copyWith(vehicleIndex: action.vehicleIndex);
+    _occupy(_vehicles[action.vehicleIndex], action.fromRow, action.fromCol);
 
     _moves--;
     _won = false; // 撤销后重新检查胜利
