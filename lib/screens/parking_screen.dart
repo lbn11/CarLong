@@ -1,12 +1,17 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../game/audio_feedback.dart';
 import '../game/parking_game.dart';
 import '../game/vehicle_icons.dart';
 import '../models/parking_level.dart';
 import '../save/save_repository.dart';
 import '../services/parking_generator.dart';
+
+/// 车辆滑动动画时长（选车滑行 / 重置归位）。
+const Duration _kVehicleSlide = Duration(milliseconds: 170);
 
 /// 停车模式主屏
 class ParkingScreen extends StatefulWidget {
@@ -27,6 +32,7 @@ class ParkingScreen extends StatefulWidget {
 
 class _ParkingScreenState extends State<ParkingScreen> {
   late final ParkingGame _game;
+  final AudioFeedback _audio = AudioFeedback();
   int? _selectedVehicle;
   int _tutorialStep = 0;
   bool _tutorialActive = false;
@@ -41,6 +47,10 @@ class _ParkingScreenState extends State<ParkingScreen> {
     super.initState();
     _game = ParkingGame(widget.level);
     _game.addListener(_onGameUpdate);
+    // 音效/触感跟随全局开关。
+    _audio.soundOn = widget.data.soundOn;
+    _audio.vibrateOn = widget.data.vibrateOn;
+    unawaited(_audio.load());
     // 停车模式首次进入弹出教学
     if (!widget.data.tutorialCompleted.contains(-1)) {
       _tutorialActive = true;
@@ -65,6 +75,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
       // 沿车身方向滑到点击侧最远可达处（长条车只能沿轴滑动）。
       final moved = _game.slideTo(_selectedVehicle!, row, col);
       if (moved) {
+        _audio.play(Sfx.move);
         setState(() {
           _selectedVehicle = null;
           _hintVehicle = null;
@@ -81,6 +92,8 @@ class _ParkingScreenState extends State<ParkingScreen> {
       final v = _game.vehicleAt(row, col);
       if (v != null && !v.parked) {
         setState(() => _selectedVehicle = v.index);
+        _audio.play(Sfx.tick);
+        unawaited(_audio.tap());
         _onPlayerAction('select');
       }
     }
@@ -105,6 +118,8 @@ class _ParkingScreenState extends State<ParkingScreen> {
     final prev = widget.data.parkingBestStars[widget.level.id] ?? 0;
     if (stars > prev) widget.data.parkingBestStars[widget.level.id] = stars;
     widget.repo.save(widget.data);
+    _audio.play(Sfx.win);
+    unawaited(_audio.success());
   }
 
   void _settleLose() {
@@ -112,6 +127,8 @@ class _ParkingScreenState extends State<ParkingScreen> {
     _settled = true;
     // 失败不解锁、不发奖，仅保底存盘。
     widget.repo.save(widget.data);
+    _audio.play(Sfx.lose);
+    unawaited(_audio.fail());
   }
 
   void _resetGame() {
@@ -121,6 +138,12 @@ class _ParkingScreenState extends State<ParkingScreen> {
       _hintVehicle = null;
       _hintCells = const [];
     });
+  }
+
+  void _undo() {
+    if (!_game.canUndo) return;
+    _game.undo();
+    _audio.play(Sfx.undo);
   }
 
   void _requestHint() {
@@ -136,6 +159,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
               ? (h.toRow, h.toCol + i)
               : (h.toRow + i, h.toCol);
         });
+        _audio.play(Sfx.tick);
       } else {
         _hintCells = const [];
       }
@@ -329,99 +353,138 @@ class _ParkingScreenState extends State<ParkingScreen> {
     final canNext = won && widget.level.id < widget.data.parkingUnlocked;
     return Container(
       color: Colors.black54,
-      child: Center(
-        child: Container(
-          margin: const EdgeInsets.all(32),
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: const Color(0xFF232830),
-            borderRadius: BorderRadius.circular(20),
+      child: Stack(
+        children: [
+          if (won) const WinConfetti(),
+          Center(
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOut,
+              builder: (context, t, child) {
+                final scale = 0.82 + 0.18 * Curves.elasticOut.transform(t);
+                return Opacity(
+                  opacity: t.clamp(0.0, 1.0),
+                  child: Transform.scale(scale: scale, child: child),
+                );
+              },
+              child: _buildResultCard(won, canNext),
+            ),
           ),
-          child: Column(
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResultCard(bool won, bool canNext) {
+    return Container(
+      margin: const EdgeInsets.all(32),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF232830),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            won ? '🎉' : '😞',
+            style: const TextStyle(fontSize: 48),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            won ? '停车成功!' : '失败',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (won)
+            _buildStarsRow()
+          else
+            const Text('再试一次吧', style: TextStyle(color: Colors.white70)),
+          const SizedBox(height: 8),
+          Text(
+            won
+                ? '步数: ${_game.moves} | 时间: ${_game.elapsedSeconds}s'
+                : '没有可用的移动了',
+            style: const TextStyle(color: Colors.white70),
+          ),
+          if (won)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('+$_lastReward 🪙',
+                  style: const TextStyle(
+                      color: Color(0xFFFFD54F),
+                      fontWeight: FontWeight.w800)),
+            ),
+          const SizedBox(height: 20),
+          Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                won ? '🎉' : '😞',
-                style: const TextStyle(fontSize: 48),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                won ? '停车成功!' : '失败',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+              FilledButton(
+                onPressed: _resetGame,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF4A90D9),
                 ),
+                child: const Text('重玩'),
               ),
-              const SizedBox(height: 8),
-              if (won)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: List.generate(3, (i) {
-                    final earned = i < _lastStars;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2),
-                      child: Icon(
-                        earned ? Icons.star : Icons.star_border,
-                        color: earned ? const Color(0xFFFFD54F) : Colors.white24,
-                        size: 28,
-                      ),
-                    );
-                  }),
-                )
-              else
-                const Text('再试一次吧', style: TextStyle(color: Colors.white70)),
-              const SizedBox(height: 8),
-              Text(
-                won
-                    ? '步数: ${_game.moves} | 时间: ${_game.elapsedSeconds}s'
-                    : '没有可用的移动了',
-                style: const TextStyle(color: Colors.white70),
-              ),
-              if (won)
+              const SizedBox(width: 12),
+              if (canNext)
                 Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text('+$_lastReward 🪙',
-                      style: const TextStyle(
-                          color: Color(0xFFFFD54F),
-                          fontWeight: FontWeight.w800)),
+                  padding: const EdgeInsets.only(right: 12),
+                  child: FilledButton(
+                    onPressed: _goNext,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF66BB6A),
+                    ),
+                    child: const Text('下一关'),
+                  ),
                 ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  FilledButton(
-                    onPressed: _resetGame,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF4A90D9),
-                    ),
-                    child: const Text('重玩'),
-                  ),
-                  const SizedBox(width: 12),
-                  if (canNext)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: FilledButton(
-                        onPressed: _goNext,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF66BB6A),
-                        ),
-                        child: const Text('下一关'),
-                      ),
-                    ),
-                  FilledButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF2A2F38),
-                    ),
-                    child: const Text('返回'),
-                  ),
-                ],
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF2A2F38),
+                ),
+                child: const Text('返回'),
               ),
             ],
           ),
-        ),
+        ],
       ),
+    );
+  }
+
+  /// 胜利星星逐颗弹出（stagger）。
+  Widget _buildStarsRow() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(3, (i) {
+        final earned = i < _lastStars;
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 520),
+          curve: Curves.linear,
+          builder: (_, t, _) {
+            final start = i * 0.22;
+            final local = ((t - start) / (1 - start)).clamp(0.0, 1.0);
+            final eased = Curves.elasticOut.transform(local);
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Transform.scale(
+                scale: earned ? eased : 1.0,
+                child: Icon(
+                  earned ? Icons.star : Icons.star_border,
+                  color: earned ? const Color(0xFFFFD54F) : Colors.white24,
+                  size: 28,
+                ),
+              ),
+            );
+          },
+        );
+      }),
     );
   }
 
@@ -476,23 +539,33 @@ class _ParkingScreenState extends State<ParkingScreen> {
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () => Navigator.of(context).pop(),
           ),
-          const Spacer(),
-          _buildInfoChip('🚗 ${widget.level.name}', const Color(0xFF4A90D9)),
-          const SizedBox(width: 6),
-          _buildInfoChip('👣 ${_game.moves}', const Color(0xFF2A2F38)),
-          if (widget.level.timeLimit != null) ...[
-            const SizedBox(width: 6),
-            _buildInfoChip(
-              '⏱ ${_game.timeLeft}s',
-              _game.timeLeft! <= 10
-                  ? const Color(0xFFE53935)
-                  : const Color(0xFF2A2F38),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildInfoChip(
+                      '🚗 ${widget.level.name}', const Color(0xFF4A90D9)),
+                  const SizedBox(width: 6),
+                  _buildInfoChip('👣 ${_game.moves}', const Color(0xFF2A2F38)),
+                  if (widget.level.timeLimit != null) ...[
+                    const SizedBox(width: 6),
+                    _buildInfoChip(
+                      '⏱ ${_game.timeLeft}s',
+                      _game.timeLeft! <= 10
+                          ? const Color(0xFFE53935)
+                          : const Color(0xFF2A2F38),
+                    ),
+                  ],
+                  const SizedBox(width: 6),
+                  IconButton(
+                    icon: const Icon(Icons.help_outline,
+                        color: Colors.white70, size: 20),
+                    onPressed: _showHelpDialog,
+                  ),
+                ],
+              ),
             ),
-          ],
-          const SizedBox(width: 6),
-          IconButton(
-            icon: const Icon(Icons.help_outline, color: Colors.white70, size: 20),
-            onPressed: _showHelpDialog,
           ),
         ],
       ),
@@ -520,11 +593,13 @@ class _ParkingScreenState extends State<ParkingScreen> {
   Widget _buildActionBar() {
     return Padding(
       padding: const EdgeInsets.all(8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
           ElevatedButton.icon(
-            onPressed: _game.canUndo ? () => _game.undo() : null,
+            onPressed: _game.canUndo ? _undo : null,
             icon: const Icon(Icons.undo),
             label: const Text('撤销'),
             style: ElevatedButton.styleFrom(
@@ -565,6 +640,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
             ),
           ],
         ],
+      ),
       ),
     );
   }
@@ -620,7 +696,10 @@ class _ParkingScreenState extends State<ParkingScreen> {
     final inset = size * 0.06;
     final color = v.tier.color;
 
-    return Positioned(
+    return AnimatedPositioned(
+      key: ValueKey(v.index),
+      duration: _kVehicleSlide,
+      curve: Curves.easeOutCubic,
       left: left + inset,
       top: top + inset,
       width: w - 2 * inset,
@@ -696,6 +775,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
+      key: ValueKey('cell-$row-$col'),
       onTap: () => _handleCellTap(row, col),
       child: Container(
         width: size,
@@ -742,4 +822,96 @@ class _ParkingScreenState extends State<ParkingScreen> {
 
     return null;
   }
+}
+
+/// 胜利彩带：一次性下落的 emoji 粒子，stateless（固定种子保证重绘稳定、不掉帧）。
+class WinConfetti extends StatelessWidget {
+  const WinConfetti({super.key});
+
+  static final List<_Confetto> _particles = _buildParticles();
+
+  static List<_Confetto> _buildParticles() {
+    final rand = math.Random(20260817);
+    const emojis = ['🎉', '⭐', '✨', '🟢'];
+    return List.generate(28, (i) {
+      return _Confetto(
+        xFrac: rand.nextDouble(),
+        delay: rand.nextDouble() * 0.25,
+        durMs: 900 + rand.nextInt(800),
+        emoji: emojis[i % emojis.length],
+        phase: rand.nextDouble() * math.pi * 2,
+        size: 16 + rand.nextDouble() * 14,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    final h = MediaQuery.of(context).size.height;
+    return SizedBox.expand(
+      child: Stack(
+        children: [
+          for (var i = 0; i < _particles.length; i++)
+            _ConfettoWidget(p: _particles[i], index: i, w: w, h: h),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConfettoWidget extends StatelessWidget {
+  final _Confetto p;
+  final int index;
+  final double w;
+  final double h;
+
+  const _ConfettoWidget({
+    required this.p,
+    required this.index,
+    required this.w,
+    required this.h,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(index),
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: p.durMs),
+      curve: Curves.easeIn,
+      builder: (_, t, _) {
+        final local = ((t - p.delay) / (1 - p.delay)).clamp(0.0, 1.0);
+        final y = -34 + local * (h + 68);
+        final opacity = (1 - local).clamp(0.0, 1.0);
+        final x = p.xFrac * w + math.sin(local * 6 + p.phase) * 16;
+        return Positioned(
+          left: x,
+          top: y,
+          child: Opacity(
+            opacity: opacity,
+            child: Text(p.emoji, style: TextStyle(fontSize: p.size)),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _Confetto {
+  final double xFrac;
+  final double delay;
+  final int durMs;
+  final String emoji;
+  final double phase;
+  final double size;
+
+  const _Confetto({
+    required this.xFrac,
+    required this.delay,
+    required this.durMs,
+    required this.emoji,
+    required this.phase,
+    required this.size,
+  });
 }
