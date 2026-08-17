@@ -23,6 +23,7 @@ flutter:
 
   assets:
     - assets/audio/
+    - assets/vehicles/
 
   fonts:
     - family: Noto Sans SC

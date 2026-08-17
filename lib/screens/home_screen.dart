@@ -4,8 +4,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import '../game/daily_challenge.dart';
-import '../game/vehicle_icons.dart';
 import '../models/achievement.dart';
+import '../theme/app_theme.dart';
 import '../models/level.dart';
 import '../save/save_repository.dart';
 import 'achievements_screen.dart';
@@ -127,7 +127,7 @@ class _HomeScreenState extends State<HomeScreen>
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(),
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF4A90D9),
+                  backgroundColor: AppColors.accent,
                   padding: const EdgeInsets.symmetric(
                       horizontal: 40, vertical: 12),
                 ),
@@ -157,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen>
                 value: data.soundOn,
                 title: const Text('音效',
                     style: TextStyle(color: Colors.white)),
-                activeTrackColor: const Color(0xFF4A90D9),
+                activeTrackColor: AppColors.accent,
                 onChanged: (v) {
                   setDialogState(() => data.soundOn = v);
                   widget.repo.save(data);
@@ -168,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen>
                 value: data.vibrateOn,
                 title: const Text('振动',
                     style: TextStyle(color: Colors.white)),
-                activeTrackColor: const Color(0xFF4A90D9),
+                activeTrackColor: AppColors.accent,
                 onChanged: (v) {
                   setDialogState(() => data.vibrateOn = v);
                   widget.repo.save(data);
@@ -250,7 +250,7 @@ class _HomeScreenState extends State<HomeScreen>
                               value: list[i] / (list.first == 0 ? 1 : list.first),
                               minHeight: 8,
                               backgroundColor: const Color(0xFF2C2F36),
-                              color: const Color(0xFF4A90D9),
+                              color: AppColors.accent,
                             ),
                           ),
                         ),
@@ -265,7 +265,7 @@ class _HomeScreenState extends State<HomeScreen>
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(),
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF4A90D9),
+                  backgroundColor: AppColors.accent,
                   padding: const EdgeInsets.symmetric(
                       horizontal: 40, vertical: 12),
                 ),
@@ -701,7 +701,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildHero() {
     final nextIndex = (data.unlockedLevel - 1).clamp(0, levels.length - 1);
     final level = levels[nextIndex];
-    final accent = level.targetTier?.color ?? const Color(0xFF4A90D9);
+    final accent = level.targetTier?.color ?? AppColors.accent;
     final completed =
         levels.where((l) => (data.bestStars[l.id] ?? 0) > 0).length;
     final progress = completed / levels.length;
@@ -750,8 +750,13 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 child: level.targetTier != null
                     ? Center(
-                        child: VehicleIcon(
-                            tier: level.targetTier!, size: 56, color: accent),
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Image.asset(
+                            'assets/vehicles/${level.targetTier!.name}.png',
+                            fit: BoxFit.contain,
+                          ),
+                        ),
                       )
                     : const Center(
                         child: Icon(Icons.grid_view,
@@ -1168,7 +1173,7 @@ class _AmbientPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    _orb(canvas, size, 0.16, 0.30, 190, const Color(0xFF4A90D9), t * 1.1);
+    _orb(canvas, size, 0.16, 0.30, 190, AppColors.accent, t * 1.1);
     _orb(canvas, size, 0.86, 0.62, 230, const Color(0xFFFFCA28), t * 0.9 + 2.1);
     _orb(canvas, size, 0.62, 0.12, 160, const Color(0xFFB39DDB), t * 1.3 + 4.0);
   }

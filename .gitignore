@@ -46,3 +46,6 @@ app.*.map.json
 
 # WorkBuddy agent working memory (not project source)
 .workbuddy/
+
+# ImageGen 原始渲染中间产物 (非游戏资源, 不入库)
+generated-images/

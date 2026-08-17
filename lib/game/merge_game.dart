@@ -1,8 +1,10 @@
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/widgets.dart' hide View;
 
 import '../logic/board_logic.dart';
@@ -50,6 +52,10 @@ void paintFog(Canvas canvas, RRect rr) {
 class MergeGame extends FlameGame {
   final LevelDefinition level;
   final BoardLogic board;
+
+  /// 预加载的 17 张车模 PNG（ui.Image），供方块绘制真实车模；
+  /// 加载失败或缺图时，方块会降级回 canvas 剪影。
+  final Map<CarTier, ui.Image> vehicleImages = {};
 
   final ValueNotifier<int> score = ValueNotifier<int>(0);
   final ValueNotifier<int> produced = ValueNotifier<int>(0);
@@ -209,6 +215,18 @@ class MergeGame extends FlameGame {
   @override
   Future<void> onLoad() async {
     super.onLoad();
+    // 预加载 17 张车模 PNG，供方块绘制真实车模。
+    // 用 rootBundle 直接加载，规避 Flame images 缓存默认前缀 assets/images/ 导致的路径翻倍。
+    for (final tier in CarTier.values) {
+      try {
+        final bytes =
+            await rootBundle.load('assets/vehicles/${tier.name}.png');
+        vehicleImages[tier] = await decodeImageFromList(
+            bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes));
+      } catch (_) {
+        // 忽略：方块 _drawIcon 会回退到 canvas 剪影。
+      }
+    }
     await feedback.load();
     add(AmbientBackground()..priority = -2);
     for (var c = 0; c < level.cols; c++) {
@@ -1262,6 +1280,7 @@ class StackSprite extends PositionComponent
   Paint? _gradient;
   Paint? _gloss;
   Paint? _badgeGradient;
+  int _lastKind = -1; // 0=普通车 1=万能卡 2=炸弹，类型变化时重算卡面。
   late final Paint _shadow = Paint()
     ..color = const Color(0x4D000000)
     ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
@@ -1273,10 +1292,14 @@ class StackSprite extends PositionComponent
     ..color = const Color(0xFFFFD54F)
     ..style = PaintingStyle.stroke
     ..strokeWidth = 3.5;
+  // 特殊卡（万能卡/炸弹）专属描边，运行时按类型着色。
+  late final Paint _ring = Paint()..style = PaintingStyle.stroke;
 
   void _ensureVisualCache() {
-    if (size.x == _lastSize) return;
+    final kind = data.isBomb ? 2 : (data.isWildcard ? 1 : 0);
+    if (size.x == _lastSize && kind == _lastKind) return;
     _lastSize = size.x;
+    _lastKind = kind;
     final rect = Rect.fromLTWH(0, 0, size.x, size.y);
     final r = size.x * 0.14;
     _rr = RRect.fromRectAndRadius(rect, Radius.circular(r));
@@ -1284,16 +1307,44 @@ class StackSprite extends PositionComponent
       Rect.fromLTWH(0, 0, size.x, size.y * 0.6),
       Radius.circular(r),
     );
+    final isSpecial = data.isBomb || data.isWildcard;
+    final isVehicle = !isSpecial;
     _gradient = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [
-          Color.lerp(data.tier.color, const Color(0xFFFFFFFF), 0.3)!,
-          data.tier.color,
-          Color.lerp(data.tier.color, const Color(0xFF000000), 0.28)!,
-        ],
+        colors: isVehicle
+            ? [
+                Color.lerp(const Color(0xFF2A313C), data.tier.color, 0.18)!,
+                Color.lerp(const Color(0xFF161B22), data.tier.color, 0.10)!,
+              ]
+            // 特殊卡（万能卡/炸弹）用中性玻璃底，不再染车型色，
+            // 避免被误认成普通车卡（它们的底层 tier 默认是 bike）。
+            : const [
+                Color(0xFF2A313C),
+                Color(0xFF161B22),
+              ],
       ).createShader(rect);
+    // 特殊卡专属描边：万能卡彩虹环，炸弹橙色危险环。
+    if (data.isWildcard) {
+      _ring
+        ..shader = const SweepGradient(
+          colors: [
+            Color(0xFFFF5252),
+            Color(0xFFFFCA28),
+            Color(0xFF66BB6A),
+            Color(0xFF42A5F5),
+            Color(0xFFAB47BC),
+            Color(0xFFFF5252),
+          ],
+        ).createShader(rect)
+        ..strokeWidth = 3;
+    } else if (data.isBomb) {
+      _ring
+        ..color = const Color(0xFFFF7043)
+        ..shader = null
+        ..strokeWidth = 3;
+    }
     _gloss = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
@@ -1358,6 +1409,8 @@ class StackSprite extends PositionComponent
     // 边框/选中描边
     if (selected) {
       canvas.drawRRect(rr, _selBorder);
+    } else if (data.isBomb || data.isWildcard) {
+      canvas.drawRRect(rr, _ring);
     } else {
       canvas.drawRRect(rr, _border);
     }
@@ -1390,7 +1443,36 @@ class StackSprite extends PositionComponent
     } else if (data.isWildcard) {
       paintWildcardIcon(canvas, box);
     } else {
-      paintVehicleIcon(canvas, data.tier, box, body: data.tier.color);
+      final img = game.vehicleImages[data.tier];
+      if (img != null) {
+        // 车型色光晕，让车模更立体（与停车卡槽风格一致）。
+        final glow = Paint()
+          ..shader = RadialGradient(
+            center: const Alignment(0.5, 0.42),
+            radius: 0.72,
+            colors: [
+              data.tier.color.withValues(alpha: 0.22),
+              data.tier.color.withValues(alpha: 0.0),
+            ],
+          ).createShader(
+              Rect.fromCenter(center: Offset.zero, width: box, height: box));
+        canvas.drawRect(
+          Rect.fromLTWH(-box / 2, -box / 2, box, box),
+          glow,
+        );
+        // 以 contain 方式把整张车模图缩放进 box，居中绘制。
+        final s = box / max(img.width, img.height);
+        canvas.save();
+        canvas.scale(s);
+        canvas.drawImage(
+          img,
+          Offset(-img.width / 2, -img.height / 2),
+          Paint(),
+        );
+        canvas.restore();
+      } else {
+        paintVehicleIcon(canvas, data.tier, box, body: data.tier.color);
+      }
     }
     canvas.restore();
   }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../game/vehicle_icons.dart';
 import '../models/level.dart';
 import '../save/save_repository.dart';
 import 'game_screen.dart';
@@ -182,13 +181,15 @@ class LevelCard extends StatelessWidget {
                         ),
                         child: Center(
                           child: level.targetTier != null
-                              ? VehicleIcon(
-                                  tier: level.targetTier!,
-                                  size: 30,
-                                  color: unlocked
-                                      ? level.targetTier!.color
-                                      : level.targetTier!.color.withValues(
-                                          alpha: 0.35),
+                              ? Padding(
+                                  padding: const EdgeInsets.all(7),
+                                  child: Opacity(
+                                    opacity: unlocked ? 1.0 : 0.4,
+                                    child: Image.asset(
+                                      'assets/vehicles/${level.targetTier!.name}.png',
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
                                 )
                               : Icon(Icons.grid_view,
                                   size: 26,

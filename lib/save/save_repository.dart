@@ -69,7 +69,7 @@ class PlayerData {
     Map<String, int>? boosters,
     List<Map<String, Object>>? analyticsEvents,
     Set<int>? tutorialCompleted,
-    this.parkingUnlocked = 1,
+    this.parkingUnlocked = 2,
     Map<int, int>? parkingBestStars,
   })  : bestScores = bestScores ?? {},
         bestStars = bestStars ?? {},
@@ -142,7 +142,10 @@ class PlayerData {
                 ?.map((e) => (e as num).toInt())
                 .toSet() ??
             {},
-        parkingUnlocked: (json['parkingUnlocked'] as num?)?.toInt() ?? 1,
+        // parkingUnlocked 表示"下一个待解锁的关卡 id"，第 1 关默认可玩，
+        // 故下限钳制为 2；修复旧存档中持久化为 1 导致的全关死锁。
+        parkingUnlocked: ((json['parkingUnlocked'] as num?)?.toInt() ?? 2)
+            .clamp(2, 1 << 30),
         parkingBestStars: (json['parkingBestStars'] as Map?)
                 ?.map((k, v) => MapEntry(int.parse(k), (v as num).toInt())) ??
             {},

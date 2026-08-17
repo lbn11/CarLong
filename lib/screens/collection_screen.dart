@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../game/vehicle_icons.dart';
 import '../models/car.dart';
 import '../save/save_repository.dart';
+import '../theme/app_theme.dart';
 
 /// 交通图鉴：按 5 大车系分组展示全部车辆，首次合成点亮。
 class CollectionScreen extends StatelessWidget {
@@ -72,7 +72,7 @@ class CollectionScreen extends StatelessWidget {
                     value: total == 0 ? 0 : owned / total,
                     minHeight: 6,
                     backgroundColor: const Color(0xFF2C2F36),
-                    color: const Color(0xFF4A90D9),
+                    color: AppColors.accent,
                   ),
                 ),
               ),
@@ -184,62 +184,69 @@ class CollectionScreen extends StatelessWidget {
   }
 }
 
-/// 单辆车辆的图鉴卡片：点亮显示彩色车辆，未点亮显示剪影与问号。
-class _CollectionCard extends StatelessWidget {
-  final CarTier tier;
-  final bool unlocked;
+  /// 单辆车辆的图鉴卡片：点亮显示真实 3D 车模，未点亮显示去色剪影。
+  class _CollectionCard extends StatelessWidget {
+    final CarTier tier;
+    final bool unlocked;
 
-  const _CollectionCard({required this.tier, required this.unlocked});
+    const _CollectionCard({required this.tier, required this.unlocked});
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 92,
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: unlocked
-              ? [tier.color.withValues(alpha: 0.22), const Color(0xFF1E2229)]
-              : const [Color(0xFF23262B), Color(0xFF1A1D22)],
+    @override
+    Widget build(BuildContext context) {
+      final image = Image.asset(
+        'assets/vehicles/${tier.name}.png',
+        fit: BoxFit.contain,
+      );
+      return Container(
+        width: 96,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: AppTheme.glass(
+          gradient: unlocked
+              ? [tier.color.withValues(alpha: 0.26), AppColors.surfaceLo]
+              : [AppColors.surfaceHi, AppColors.surfaceLo],
+          border: unlocked
+              ? tier.color.withValues(alpha: 0.5)
+              : Colors.white.withValues(alpha: 0.08),
+          radius: 16,
+          borderWidth: 1.2,
         ),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: unlocked
-              ? tier.color.withValues(alpha: 0.45)
-              : const Color(0xFF2A2F38),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 56,
+              height: 48,
+              child: unlocked
+                  ? image
+                  : ColorFiltered(
+                      colorFilter: const ColorFilter.matrix(<double>[
+                        0.33, 0.33, 0.33, 0, 0,
+                        0.33, 0.33, 0.33, 0, 0,
+                        0.33, 0.33, 0.33, 0, 0,
+                        0, 0, 0, 1, 0,
+                      ]),
+                      child: Opacity(opacity: 0.4, child: image),
+                    ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              unlocked ? tier.label : '???',
+              style: TextStyle(
+                color: unlocked ? Colors.white : Colors.white38,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              unlocked ? tier.icon : '未发现',
+              style: TextStyle(
+                color: unlocked ? Colors.white60 : Colors.white24,
+                fontSize: 10,
+              ),
+            ),
+          ],
         ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 46,
-            height: 46,
-            child: unlocked
-                ? VehicleIcon(tier: tier, size: 40, color: tier.color)
-                : Icon(Icons.help_outline, color: Colors.white24, size: 30),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            unlocked ? tier.label : '???',
-            style: TextStyle(
-              color: unlocked ? Colors.white : Colors.white38,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            unlocked ? tier.icon : '未发现',
-            style: TextStyle(
-              color: unlocked ? Colors.white60 : Colors.white24,
-              fontSize: 10,
-            ),
-          ),
-        ],
-      ),
-    );
+      );
+    }
   }
-}

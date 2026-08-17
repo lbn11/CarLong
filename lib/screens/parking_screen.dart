@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 
 import '../game/audio_feedback.dart';
 import '../game/parking_game.dart';
-import '../game/vehicle_icons.dart';
 import '../models/parking_level.dart';
 import '../save/save_repository.dart';
 import '../services/parking_generator.dart';
+import '../theme/app_theme.dart';
 
 /// 车辆滑动动画时长（选车滑行 / 重置归位）。
 const Duration _kVehicleSlide = Duration(milliseconds: 170);
@@ -246,7 +246,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(),
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF4A90D9),
+              backgroundColor: AppColors.accent,
             ),
             child: const Text('知道了'),
           ),
@@ -450,7 +450,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
               FilledButton(
                 onPressed: _resetGame,
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF4A90D9),
+                  backgroundColor: AppColors.accent,
                 ),
                 child: const Text('重玩'),
               ),
@@ -461,7 +461,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
                   child: FilledButton(
                     onPressed: _goNext,
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF66BB6A),
+                      backgroundColor: AppColors.success,
                     ),
                     child: const Text('下一关'),
                   ),
@@ -469,7 +469,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(),
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF2A2F38),
+                  backgroundColor: AppColors.surfaceHi,
                 ),
                 child: const Text('返回'),
               ),
@@ -568,16 +568,16 @@ class _ParkingScreenState extends State<ParkingScreen> {
               child: Row(
                 children: [
                   _buildInfoChip(
-                      '🚗 ${widget.level.name}', const Color(0xFF4A90D9)),
+                      '🚗 ${widget.level.name}', AppColors.accent),
                   const SizedBox(width: 6),
-                  _buildInfoChip('👣 ${_game.moves}', const Color(0xFF2A2F38)),
+                  _buildInfoChip('👣 ${_game.moves}', AppColors.surfaceHi),
                   if (widget.level.timeLimit != null) ...[
                     const SizedBox(width: 6),
                     _buildInfoChip(
                       '⏱ ${_game.timeLeft}s',
                       _game.timeLeft! <= 10
                           ? const Color(0xFFE53935)
-                          : const Color(0xFF2A2F38),
+                          : AppColors.surfaceHi,
                     ),
                   ],
                   const SizedBox(width: 6),
@@ -626,7 +626,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
             icon: const Icon(Icons.undo),
             label: const Text('撤销'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2A2F38),
+              backgroundColor: AppColors.surfaceHi,
               foregroundColor: Colors.white,
             ),
           ),
@@ -636,7 +636,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
             icon: const Icon(Icons.lightbulb_outline),
             label: const Text('提示'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4A90D9),
+              backgroundColor: AppColors.accent,
               foregroundColor: Colors.white,
             ),
           ),
@@ -646,7 +646,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
             icon: const Icon(Icons.refresh),
             label: const Text('重置'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2A2F38),
+              backgroundColor: AppColors.surfaceHi,
               foregroundColor: Colors.white,
             ),
           ),
@@ -657,7 +657,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
               icon: const Icon(Icons.check),
               label: const Text('完成'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF66BB6A),
+                backgroundColor: AppColors.success,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -707,6 +707,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
   }
 
   /// 车辆覆盖层：长条车按占用格数绘制成一整块圆角车身（含车图标居中）。
+  /// 颜色按车型(tier)取，颜色即"车的身份"，玩家可凭色辨认不同车。
   Widget _buildVehicleOverlay(VehicleState v, double size) {
     final isSelected = v.index == _selectedVehicle;
     final isHint = v.index == _hintVehicle;
@@ -717,7 +718,14 @@ class _ParkingScreenState extends State<ParkingScreen> {
     final left = v.col * size;
     final top = v.row * size;
     final inset = size * 0.06;
-    final color = v.tier.color;
+    final isTarget = v.tier == widget.level.targetTier;
+
+    final borderColor = isSelected
+        ? const Color(0xFFFFD54F)
+        : (isHint
+            ? const Color(0xFF26C6DA)
+            : (isTarget ? const Color(0xFFFBC02D) : v.tier.color.withValues(alpha: 0.55)));
+    final borderWidth = (isSelected || isHint || isTarget) ? 3.0 : 1.0;
 
     return AnimatedPositioned(
       key: ValueKey(v.index),
@@ -728,44 +736,89 @@ class _ParkingScreenState extends State<ParkingScreen> {
       width: w - 2 * inset,
       height: h - 2 * inset,
       child: IgnorePointer(
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(size * 0.18),
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color.lerp(color, Colors.white, 0.30)!,
-                color,
-                Color.lerp(color, Colors.black, 0.28)!,
-              ],
-            ),
-            border: Border.all(
-              color: isSelected
-                  ? const Color(0xFFFFD54F)
-                  : (isHint ? const Color(0xFF26C6DA) : Colors.white10),
-              width: (isSelected || isHint) ? 3 : 1,
-            ),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x40000000),
-                blurRadius: 4,
-                offset: Offset(0, 2),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Stack(
+                children: [
+                  // 车型色光晕：让精致车模更立体、更"影棚"。
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(size * 0.2),
+                      gradient: RadialGradient(
+                        center: const Alignment(0.5, 0.42),
+                        radius: 0.78,
+                        colors: [
+                          v.tier.color.withValues(alpha: 0.30),
+                          v.tier.color.withValues(alpha: 0.0),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // 玻璃卡槽 + 柔和投影
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(size * 0.18),
+                      gradient: const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0xFF2A313C), Color(0xFF161B22)],
+                      ),
+                      border: Border.all(color: borderColor, width: borderWidth),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x55000000),
+                          blurRadius: 6,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(size * 0.18),
+                      child: Padding(
+                        padding: EdgeInsets.all(size * 0.08),
+                        child: Image.asset(
+                          'assets/vehicles/${v.tier.name}.png',
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Center(
-            child: VehicleIcon(
-              tier: v.tier,
-              size: math.min(w, h) * 0.6,
-              color: v.parked ? const Color(0xFFFFD54F) : Colors.white,
             ),
-          ),
+            // 目标车标记：提示玩家"把这部停进去"。
+            if (isTarget)
+              Positioned(
+                top: 2,
+                right: 2,
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: size * 0.06,
+                    vertical: size * 0.02,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFD54F),
+                    borderRadius: BorderRadius.circular(size * 0.1),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x66000000),
+                        blurRadius: 3,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Text('🎯', style: TextStyle(fontSize: size * 0.18)),
+                ),
+              ),
+          ],
         ),
       ),
     );
   }
 
+  /// 停车模式车辆卡：矢量绘制的车身（高光 + 车窗 + 车轮 + 车灯），
+  /// 颜色由车型决定，整体比纯渐变块更有质感、更像"一张车卡"。
   Widget _buildCell(int row, int col, double size) {
     final cell = _game.cellAt(row, col);
     final vehicle = _game.vehicleAt(row, col);
@@ -774,7 +827,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
     Color bg;
     switch (cell.type) {
       case ParkingCellType.road:
-        bg = const Color(0xFF2A2F38);
+        bg = AppColors.surfaceHi;
         break;
       case ParkingCellType.parking:
         bg = const Color(0xFF2E7D32);
@@ -846,6 +899,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
     return null;
   }
 }
+
 
 /// 胜利彩带：一次性下落的 emoji 粒子，stateless（固定种子保证重绘稳定、不掉帧）。
 class WinConfetti extends StatelessWidget {

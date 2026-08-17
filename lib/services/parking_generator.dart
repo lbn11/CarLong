@@ -31,8 +31,6 @@ class ParkingLevelGenerator {
     final rng = Random(id * 2654435761 % 2147483647);
     final size = id < 50 ? 4 : (id < 200 ? 5 : 6);
     final tier = _tierForLevel(id);
-    final fillTier =
-        CarTier.fromIndex((tier.index - 1).clamp(0, CarTier.values.length - 1));
 
     // 障碍 / 挡路车数量随难度缓慢增长（上限受棋盘大小约束，降低堵死概率）。
     final obstacleCount = ((id ~/ 15).clamp(0, size - 2));
@@ -50,7 +48,6 @@ class ParkingLevelGenerator {
         id: id,
         size: size,
         tier: tier,
-        fillTier: fillTier,
         obstacleCount: obstacleCount,
         fillCount: fillCount,
       );
@@ -74,7 +71,7 @@ class ParkingLevelGenerator {
 
     // 兜底：极端情况下退化为"目标车在停车位同行、一步可解"的简单关，永不死局。
     if (bestCandidate == null) {
-      return _fallbackLevel(id, size, tier, fillTier);
+      return _fallbackLevel(id, size, tier);
     }
 
     // 标定难度：最优解可拿三星，给足余量。
@@ -95,7 +92,6 @@ class ParkingLevelGenerator {
     required int id,
     required int size,
     required CarTier tier,
-    required CarTier fillTier,
     required int obstacleCount,
     required int fillCount,
   }) {
@@ -114,6 +110,17 @@ class ParkingLevelGenerator {
     taken.add((0, 0));
 
     final vehicles = <VehicleSpawn>[];
+
+    // 填充车使用"除目标档之外的所有档位"，逐个取不同档位，使每辆车颜色/图标都不同，
+    // 还原"不同车不同颜色"的观感；同时保证没有任何填充车能冒充目标车开进停车位。
+    final otherTiers = [
+      for (var i = 0; i < CarTier.values.length; i++)
+        if (i != tier.index) CarTier.values[i]
+    ];
+    otherTiers.shuffle(rng); // 确定性：同 id 同一关配色稳定可复现
+    var fillerCursor = 0;
+    CarTier nextFillerTier() =>
+        otherTiers[fillerCursor++ % otherTiers.length];
 
     // 目标车：size>=5 时放 2 格横车在停车行（经典 Rush Hour 红车），起点不压停车位；
     // 小棋盘(size<=4)用单格车，且强制不在底部停车行，保证至少"下移+横移"两步。
@@ -175,7 +182,7 @@ class ParkingLevelGenerator {
         vehicles.add(VehicleSpawn(
           col: c,
           row: pr - 1,
-          tier: fillTier,
+          tier: nextFillerTier(),
           length: 2,
           orientation: ParkingOrientation.vertical,
         ));
@@ -201,7 +208,7 @@ class ParkingLevelGenerator {
       vehicles.add(VehicleSpawn(
         col: spot.$2,
         row: spot.$1,
-        tier: fillTier,
+        tier: nextFillerTier(),
         length: len,
         orientation: horiz
             ? ParkingOrientation.horizontal
@@ -281,7 +288,6 @@ class ParkingLevelGenerator {
     int id,
     int size,
     CarTier tier,
-    CarTier fillTier,
   ) {
     final grid = List.generate(
       size,
@@ -305,7 +311,7 @@ class ParkingLevelGenerator {
       VehicleSpawn(
         col: pc,
         row: pr - 1,
-        tier: fillTier,
+        tier: CarTier.fromIndex((tier.index + 1) % CarTier.values.length),
         length: 2,
         orientation: ParkingOrientation.vertical,
       ),

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../analytics/analytics.dart';
 import '../game/daily_challenge.dart';
 import '../game/merge_game.dart';
-import '../game/vehicle_icons.dart';
+import '../theme/app_theme.dart';
 import '../models/car.dart';
 import '../models/level.dart';
 import '../save/save_repository.dart';
@@ -598,16 +598,18 @@ class _GameScreenState extends State<GameScreen> {
         final isClear = widget.level.goalType == GoalType.clearBoard;
         final accent = endless
             ? _game.endlessTarget.color
-            : widget.level.targetTier?.color ?? const Color(0xFF4A90D9);
+            : widget.level.targetTier?.color ?? AppColors.accent;
         final Widget child;
         if (endless) {
           child = Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              VehicleIcon(
-                  tier: _game.endlessTarget,
-                  size: 14,
-                  color: _game.endlessTarget.color),
+              SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: Image.asset(
+                      'assets/vehicles/${_game.endlessTarget.name}.png',
+                      fit: BoxFit.contain)),
               const SizedBox(width: 4),
               Text('$v / ${_game.endlessNeed}',
                   style: const TextStyle(
@@ -626,10 +628,12 @@ class _GameScreenState extends State<GameScreen> {
           child = Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              VehicleIcon(
-                  tier: widget.level.targetTier!,
-                  size: 14,
-                  color: widget.level.targetTier!.color),
+              SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: Image.asset(
+                      'assets/vehicles/${widget.level.targetTier!.name}.png',
+                      fit: BoxFit.contain)),
               const SizedBox(width: 4),
               Text('$v / ${widget.level.targetCount}',
                   style: const TextStyle(
@@ -688,7 +692,14 @@ class _GameScreenState extends State<GameScreen> {
                       onTap: left > 0 && !_finished
                           ? () => _game.drawStock(i)
                           : null,
-                      child: VehicleCard(tier: next[i], size: 34),
+                      child: SizedBox(
+                        width: 34,
+                        height: 34,
+                        child: Image.asset(
+                          'assets/vehicles/${next[i].name}.png',
+                          fit: BoxFit.contain,
+                        ),
+                      ),
                     ),
                   ),
               ],
@@ -883,14 +894,14 @@ class _GameScreenState extends State<GameScreen> {
                       (endless
                               ? _game.endlessTarget.color
                               : widget.level.targetTier?.color ??
-                                  const Color(0xFF4A90D9)),
+                                  AppColors.accent),
                       Colors.white,
                       0.15)!,
                   Color.lerp(
                       (endless
                               ? _game.endlessTarget.color
                               : widget.level.targetTier?.color ??
-                                  const Color(0xFF4A90D9)),
+                                  AppColors.accent),
                       Colors.black,
                       0.15)!,
                 ],
@@ -901,10 +912,12 @@ class _GameScreenState extends State<GameScreen> {
                           const Text('目标',
                               style: TextStyle(color: Colors.white)),
                           const SizedBox(width: 6),
-                          VehicleIcon(
-                              tier: _game.endlessTarget,
-                              size: 18,
-                              color: _game.endlessTarget.color),
+                          SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: Image.asset(
+                                  'assets/vehicles/${_game.endlessTarget.name}.png',
+                                  fit: BoxFit.contain)),
                           const SizedBox(width: 6),
                           Text(
                             '$v / ${_game.endlessNeed}',
@@ -928,10 +941,12 @@ class _GameScreenState extends State<GameScreen> {
                               const Text('目标',
                                   style: TextStyle(color: Colors.white)),
                               const SizedBox(width: 6),
-                              VehicleIcon(
-                                  tier: widget.level.targetTier!,
-                                  size: 18,
-                                  color: widget.level.targetTier!.color),
+                              SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: Image.asset(
+                                      'assets/vehicles/${widget.level.targetTier!.name}.png',
+                                      fit: BoxFit.contain)),
                               const SizedBox(width: 6),
                               Text(
                                 '$v / ${widget.level.targetCount}',
@@ -952,7 +967,7 @@ class _GameScreenState extends State<GameScreen> {
                     return _chip(
                       gradient: urgent
                           ? const [Color(0xFFE53935), Color(0xFFC62828)]
-                          : const [Color(0xFF2A2F38), Color(0xFF1F242C)],
+                          : const [Color(0xFF17C2CF), Color(0xFF0D93A0)],
                       shadow: urgent,
                       child: Text(
                         '⏱ $t s',
@@ -975,7 +990,7 @@ class _GameScreenState extends State<GameScreen> {
                     return _chip(
                       gradient: urgent
                           ? const [Color(0xFFE53935), Color(0xFFC62828)]
-                          : const [Color(0xFF2A2F38), Color(0xFF1F242C)],
+                          : const [Color(0xFF17C2CF), Color(0xFF0D93A0)],
                       shadow: urgent,
                       child: Text(
                         '👟 $m 步',
@@ -1064,7 +1079,14 @@ class _GameScreenState extends State<GameScreen> {
                               : null,
                           child: Padding(
                             padding: const EdgeInsets.only(right: 8),
-                            child: VehicleCard(tier: next[i], size: 46),
+                            child: SizedBox(
+                              width: 46,
+                              height: 46,
+                              child: Image.asset(
+                                'assets/vehicles/${next[i].name}.png',
+                                fit: BoxFit.contain,
+                              ),
+                            ),
                           ),
                         ),
                       const Spacer(),
@@ -1438,7 +1460,7 @@ class _ResultDialog extends StatelessWidget {
                         child: FilledButton(
                           onPressed: onReplay,
                           style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF4A90D9),
+                            backgroundColor: AppColors.accent,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                           child: const Text('再来一局'),

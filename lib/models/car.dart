@@ -15,23 +15,23 @@ enum CarFamily {
 
 /// 车辆等级。三张同等级卡片合成升一级（跨车系线性递进）。
 enum CarTier {
-  bike(0, '单车', '🚲', Color(0xFFF4A988), CarFamily.ground),
-  scooter(1, '踏板', '🛵', Color(0xFFF0916A), CarFamily.ground),
-  car(2, '汽车', '🚗', Color(0xFFFF8A5B), CarFamily.ground),
-  taxi(3, '出租车', '🚕', Color(0xFFF2693E), CarFamily.ground),
-  bus(4, '巴士', '🚌', Color(0xFFDB4E26), CarFamily.ground),
-  truck(5, '卡车', '🚚', Color(0xFFFFD06B), CarFamily.heavy),
-  train(6, '列车', '🚆', Color(0xFF7FCAEE), CarFamily.rail),
-  rocket(7, '火箭', '🛸', Color(0xFFB79CEA), CarFamily.space),
-  tanker(8, '油罐车', '🚛', Color(0xFFF2C042), CarFamily.heavy),
-  metro(9, '高铁', '🚄', Color(0xFF56B9E8), CarFamily.rail),
-  plane(10, '客机', '✈️', Color(0xFF7CD9AE), CarFamily.air),
-  jet(11, '战机', '🛩️', Color(0xFF4FC98A), CarFamily.air),
-  shuttle(12, '航天飞机', '🚀', Color(0xFF9B7FE0), CarFamily.space),
-  ufo(13, '星舰', '🛰️', Color(0xFF8366D4), CarFamily.space),
-  maglev(14, '磁悬浮', '🚝', Color(0xFF3DA3D8), CarFamily.rail),
-  station(15, '空间站', '🛸', Color(0xFF6F4FC9), CarFamily.space),
-  comet(16, '彗星', '☄️', Color(0xFF5A3BB8), CarFamily.space);
+  bike(0, '单车', '🚲', Color(0xFF4CAF50), CarFamily.ground),
+  scooter(1, '踏板', '🛵', Color(0xFF009688), CarFamily.ground),
+  car(2, '汽车', '🚗', Color(0xFFF44336), CarFamily.ground),
+  taxi(3, '出租车', '🚕', Color(0xFFFF9800), CarFamily.ground),
+  bus(4, '巴士', '🚌', Color(0xFF2196F3), CarFamily.ground),
+  truck(5, '卡车', '🚚', Color(0xFF795548), CarFamily.heavy),
+  train(6, '列车', '🚆', Color(0xFF9C27B0), CarFamily.rail),
+  rocket(7, '火箭', '🛸', Color(0xFFE91E63), CarFamily.space),
+  tanker(8, '油罐车', '🚛', Color(0xFFFFC107), CarFamily.heavy),
+  metro(9, '高铁', '🚄', Color(0xFF00BCD4), CarFamily.rail),
+  plane(10, '客机', '✈️', Color(0xFF607D8B), CarFamily.air),
+  jet(11, '战机', '🛩️', Color(0xFF8BC34A), CarFamily.air),
+  shuttle(12, '航天飞机', '🚀', Color(0xFF673AB7), CarFamily.space),
+  ufo(13, '星舰', '🛰️', Color(0xFF3F51B5), CarFamily.space),
+  maglev(14, '磁悬浮', '🚝', Color(0xFF00BFA5), CarFamily.rail),
+  station(15, '空间站', '🛸', Color(0xFF7E57C2), CarFamily.space),
+  comet(16, '彗星', '☄️', Color(0xFFC2185B), CarFamily.space);
 
   final int tierIndex;
   final String label;
