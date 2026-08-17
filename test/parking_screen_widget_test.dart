@@ -79,6 +79,11 @@ void main() {
     await tester.pumpAndSettle(); // 跑完入场动画 + 胜利彩带
 
     expect(find.text('停车成功!'), findsOneWidget);
+
+    // 接入校验：胜利后目标车型点亮图鉴、最佳星级落盘、解锁下一关。
+    expect(data.collection.contains(CarTier.car.index), isTrue);
+    expect(data.parkingBestStars[1], greaterThan(0));
+    expect(data.parkingUnlocked, greaterThanOrEqualTo(2));
   });
 
   testWidgets('胜利彩带 WinConfetti 渲染不抛异常', (tester) async {

@@ -29,6 +29,10 @@ int _completed(PlayerData d) =>
 int _totalStars(PlayerData d) =>
     d.bestStars.values.fold(0, (a, b) => a + b);
 
+/// 已通关的停车关卡数（拿到 ≥1 星即算通关）。
+int _parkingCompleted(PlayerData d) =>
+    d.parkingBestStars.values.where((s) => s > 0).length;
+
 final achievements = <Achievement>[
   Achievement(
     id: 'first_win',
@@ -117,5 +121,47 @@ final achievements = <Achievement>[
     reward: 100,
     icon: Icons.stars,
     achieved: (d) => _totalStars(d) >= 30,
+  ),
+
+  // —— 停车模式成就（基于 parkingBestStars / parkingUnlocked）——
+  Achievement(
+    id: 'park_first',
+    title: '初停牛刀',
+    desc: '通关第 1 个停车关卡',
+    reward: 30,
+    icon: Icons.local_parking,
+    achieved: (d) => (d.parkingBestStars[1] ?? 0) > 0,
+  ),
+  Achievement(
+    id: 'park_clear_5',
+    title: '泊车新手',
+    desc: '累计通关 5 个停车关卡',
+    reward: 60,
+    icon: Icons.directions_car,
+    achieved: (d) => _parkingCompleted(d) >= 5,
+  ),
+  Achievement(
+    id: 'park_clear_10',
+    title: '停车达人',
+    desc: '累计通关 10 个停车关卡',
+    reward: 100,
+    icon: Icons.emoji_events,
+    achieved: (d) => _parkingCompleted(d) >= 10,
+  ),
+  Achievement(
+    id: 'park_star_3',
+    title: '完美泊车',
+    desc: '任一停车关卡拿到 3 星',
+    reward: 80,
+    icon: Icons.star_rate,
+    achieved: (d) => d.parkingBestStars.values.any((s) => s >= 3),
+  ),
+  Achievement(
+    id: 'park_master',
+    title: '泊车大师',
+    desc: '解锁第 20 个停车关卡',
+    reward: 200,
+    icon: Icons.workspace_premium,
+    achieved: (d) => d.parkingUnlocked > 20,
   ),
 ];

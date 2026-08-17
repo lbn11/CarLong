@@ -104,6 +104,10 @@ class _ParkingScreenState extends State<ParkingScreen> {
   int _lastStars = 0;
   int _lastReward = 0;
 
+  /// 本次胜利是否首次点亮目标车型图鉴（用于通关卡片提示）。
+  bool _collectionNew = false;
+  int _collectionBonus = 0;
+
   void _settleWin() {
     if (_settled) return;
     _settled = true;
@@ -112,6 +116,14 @@ class _ParkingScreenState extends State<ParkingScreen> {
     _lastStars = stars;
     _lastReward = reward;
     widget.data.coins += reward;
+
+    // 图鉴接入：通关停车关卡即点亮目标车型（与合成游戏共享同一套交通图鉴）。
+    _collectionNew = widget.data.collection.add(widget.level.targetTier.index);
+    if (_collectionNew) {
+      _collectionBonus = 10;
+      widget.data.coins += _collectionBonus;
+    }
+
     if (widget.level.id >= widget.data.parkingUnlocked) {
       widget.data.parkingUnlocked = widget.level.id + 1;
     }
@@ -135,6 +147,8 @@ class _ParkingScreenState extends State<ParkingScreen> {
     _game.reset();
     setState(() {
       _settled = false;
+      _collectionNew = false;
+      _collectionBonus = 0;
       _hintVehicle = null;
       _hintCells = const [];
     });
@@ -419,6 +433,15 @@ class _ParkingScreenState extends State<ParkingScreen> {
                   style: const TextStyle(
                       color: Color(0xFFFFD54F),
                       fontWeight: FontWeight.w800)),
+            ),
+          if (won && _collectionNew)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                '📖 图鉴点亮 ${widget.level.targetTier.icon} +$_collectionBonus 🪙',
+                style: const TextStyle(
+                    color: Color(0xFF7CD9AE), fontWeight: FontWeight.w800),
+              ),
             ),
           const SizedBox(height: 20),
           Row(
