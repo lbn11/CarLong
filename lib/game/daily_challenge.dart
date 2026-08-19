@@ -1,12 +1,13 @@
 import 'dart:math';
 
+import 'game_config.dart';
 import '../models/car.dart';
 import '../models/level.dart';
 
 /// 每日挑战：按日期确定性生成一关，每天一个，首次通关领大奖。
 class DailyChallenge {
   /// 当日首次通关的固定奖励。
-  static const int reward = 150;
+  static int get reward => GameConfig.dailyChallengeReward;
 
   /// 每日关卡 id（避开正常关卡 1-50）。
   static const int levelId = 900;

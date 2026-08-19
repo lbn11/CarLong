@@ -3,6 +3,7 @@ import 'dart:math';
 import '../logic/parking_solver.dart';
 import '../models/car.dart';
 import '../models/parking_level.dart';
+import 'parking_chapters.dart';
 
 /// 停车关卡生成器 (Car Master 3D 风格)
 ///
@@ -13,7 +14,11 @@ import '../models/parking_level.dart';
 /// - 全程基于 id 的确定性随机，generateOne(id) 与 generate() 结果一致、可复现。
 class ParkingLevelGenerator {
   /// 单关求解器状态上限：有解关卡通常 <1ms，无解关会在该上限内放弃并重试。
-  static const int _maxSolverStates = 40000;
+  /// 实测：6x6 在 300k 预算下最短路 max 仅 ~8，但 7x7 需要 300k 预算时
+  /// 单关生成平均 28.7s（最差 62s）——实时生成不可接受。故定稿：
+  /// 棋盘封顶 6x6，预算 60000（6x6 足够且生成快），难度靠"后期下限 + 目标"
+  /// 稳定在 5~8 步，而非无意义地追高目标。
+  static const int _maxSolverStates = 60000;
 
   /// 每关最多重生成次数（防极端情况下耗时过长）。
   static const int _maxRetries = 60;
@@ -29,15 +34,24 @@ class ParkingLevelGenerator {
 
   static ParkingLevel _generateLevel(int id) {
     final rng = Random(id * 2654435761 % 2147483647);
+    // 棋盘尺寸：4→5→6。7x7 因生成耗时爆炸（实测 avg 28.7s/关）被否决。
     final size = id < 50 ? 4 : (id < 200 ? 5 : 6);
     final tier = _tierForLevel(id);
 
-    // 障碍 / 挡路车数量随难度缓慢增长（上限受棋盘大小约束，降低堵死概率）。
-    final obstacleCount = ((id ~/ 15).clamp(0, size - 2));
-    final fillCount = (id < 30 ? 1 : (id < 200 ? 2 : 3)).clamp(1, size - 2);
+    // 障碍 / 挡路车数量随难度增长（6x6 密度封顶：障碍 6、挡路车 4）。
+    final obstacleCount = ((id ~/ 6).clamp(1, size));
+    final fillCount = (id < 25
+            ? 1
+            : (id < 100 ? 2 : (id < 300 ? 3 : 4)))
+        .clamp(1, size - 2);
 
     // 难度目标随 id 缓慢增长：小棋盘易，大棋盘需多思考。达到目标即提前结束，控制耗时。
     final target = _targetMinMoves(id);
+
+    // 难度下限：避免"一步通关"的弱关。5x5+ 要求至少 3 步（有解谜感）。
+    // 注意不能设太高——6x6 随机布局高步数关稀有，floor 过苛会导致重试耗尽
+    // → fallback 爆炸（实测 floor=5 时 285/500 关退化成 2 步弱关）。
+    final floor = size >= 5 ? 3 : 2;
 
     ParkingLevel? bestCandidate;
     int bestMin = 0;
@@ -57,9 +71,7 @@ class ParkingLevelGenerator {
       );
       if (minMoves == null) continue; // 不可解，换种子重试。
 
-      // 难度下限：避免"一步通关"的弱关（长条车让 2 步谜题已具解谜感）。
-      const floor = 2;
-      if (minMoves < floor) continue; // 太易，换种子重试。
+      if (minMoves < floor) continue; // 低于当期下限，换种子重试。
 
       // 在重试预算内保留"步数最多"的候选，让难度尽量贴近目标。
       if (minMoves > bestMin) {
@@ -75,9 +87,10 @@ class ParkingLevelGenerator {
     }
 
     // 标定难度：最优解可拿三星，给足余量。
-    final movesLimit = max(bestMin * 2, bestMin + 4).toInt();
+    // 6x6 步数天花板 ~8，后期"变难"靠收紧三星门槛与限时压力，而非追步数。
+    final movesLimit = max(bestMin + 4, (bestMin * 1.6).round()).toInt();
     final timeLimit = id >= 100
-        ? (bestMin * 8 + 25).clamp(60, 600).toInt()
+        ? (bestMin * 6 + 20).clamp(45, 600).toInt()
         : null;
 
     return bestCandidate.copyWith(
@@ -166,8 +179,9 @@ class ParkingLevelGenerator {
 
     // 底部行挡块：竖向 2 格车压在停车行上，是经典 Rush Hour 的"必须让位"机制
     // （竖车可上下滑离底部行，横车则永远清不掉该行，故只用竖车）。
-    if (size >= 5) {
-      final rowBlockers = 2;
+    // 中度难度：4×4 也加入该机制（放 1 个），5×5+ 放 2 个。
+    if (size >= 4) {
+      final rowBlockers = size >= 5 ? 2 : 1;
       var rb = 0;
       var guard = 0;
       while (rb < rowBlockers && guard++ < 60) {
@@ -283,7 +297,9 @@ class ParkingLevelGenerator {
     return out;
   }
 
-  /// 兜底关：长条目标车 + 底部行竖挡块的 Rush Hour 式可解关（绝不退化成 1 步弱关）。
+  /// 兜底关：长条目标车 + 底部行竖挡块的 Rush Hour 式可解关。
+  /// 5x5+ 放 2 个竖挡块（目标车正前方 + 停车位列），解 = 2 次上移 + 横移 = 3 步，
+  /// 满足"较大棋盘 >=3 步"的解谜感约定；4x4 单挡块 2 步。绝不退化成 1 步弱关。
   static ParkingLevel _fallbackLevel(
     int id,
     int size,
@@ -298,6 +314,7 @@ class ParkingLevelGenerator {
     final pc = (size - 2).clamp(0, size - 1);
     grid[pr][pc] = ParkingCellType.parking;
 
+    final big = size >= 5;
     final vehicles = <VehicleSpawn>[
       // 目标车：底部行 2 格横车，起点不压停车位。
       VehicleSpawn(
@@ -307,14 +324,23 @@ class ParkingLevelGenerator {
         length: 2,
         orientation: ParkingOrientation.horizontal,
       ),
-      // 竖挡块压在底部行、停车位正上方列，必须上移才能让目标滑入。
+      // 挡块 A：压在目标车正前方（col 1），必须上移目标才能右滑。
       VehicleSpawn(
-        col: pc,
+        col: 1,
         row: pr - 1,
         tier: CarTier.fromIndex((tier.index + 1) % CarTier.values.length),
         length: 2,
         orientation: ParkingOrientation.vertical,
       ),
+      // 挡块 B（5x5+）：压在停车位列上方，必须再上移一格目标才能滑入。
+      if (big)
+        VehicleSpawn(
+          col: pc,
+          row: pr - 1,
+          tier: CarTier.fromIndex((tier.index + 2) % CarTier.values.length),
+          length: 2,
+          orientation: ParkingOrientation.vertical,
+        ),
     ];
     return ParkingLevel(
       id: id,
@@ -324,27 +350,23 @@ class ParkingLevelGenerator {
       grid: grid,
       vehicles: vehicles,
       targetTier: tier,
-      minMoves: 2,
+      minMoves: big ? 3 : 2,
       movesLimit: 8,
       timeLimit: id >= 100 ? 120 : null,
     );
   }
 
-  /// 难度目标步数随 id 缓增：小棋盘以 2~3 步为主，大棋盘逐步上探到 6~8 步。
-  /// 达到该目标即提前结束重试，控制生成耗时。
+  /// 难度目标步数随 id 缓增。
+  /// 数据定稿：6x6 最短路天花板实测 ~8（avg 4），500+ 目标封顶 7 即可
+  /// （让生成尽量往高处够），后期难度主要由密度 + 三星门槛 + 限时承担。
   static int _targetMinMoves(int id) {
-    if (id < 50) return 2;
+    if (id < 50) return 3;
     if (id < 200) return 3 + ((id - 50) ~/ 50); // 50-99:3, 100-149:4, 150-199:5
     if (id < 500) return 5 + ((id - 200) ~/ 100); // 200-299:5, 300-399:6, 400-499:7
-    return 8;
+    return 7; // 500+: 6x6 上探目标
   }
 
-  static CarTier _tierForLevel(int id) {    if (id < 50) return CarTier.bike;
-    if (id < 150) return CarTier.scooter;
-    if (id < 300) return CarTier.car;
-    if (id < 500) return CarTier.taxi;
-    if (id < 700) return CarTier.bus;
-    if (id < 900) return CarTier.truck;
-    return CarTier.train;
-  }
+
+  /// 车型分段与 [ParkingChapters] 保持一致，便于停车章节与合成图鉴联动。
+  static CarTier _tierForLevel(int id) => ParkingChapters.tierForId(id);
 }

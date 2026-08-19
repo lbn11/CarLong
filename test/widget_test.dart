@@ -25,6 +25,7 @@ void main() {
   });
 
   test('最高级卡片无法继续升级', () {
-    expect(CarTier.comet.next, isNull);
+    expect(CarTier.antigrav.next, isNull);
+    expect(CarTier.comet.next, CarTier.warp); // 任务93：comet 之后有 5 档新车
   });
 }

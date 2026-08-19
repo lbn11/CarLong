@@ -597,6 +597,88 @@ class BoardLogic {
     return false;
   }
 
+  /// 洗牌重排（金币道具）：收集所有非空卡片，打乱后重新分配到全部可占用格
+  /// （含原卡位）。障碍 / 传送门 / 迷雾保持不动，卡片数量不变。
+  /// 死局时用可解除死局（重排后可能出现可合并组合）。
+  void shuffleTiles() {
+    final cards = <StackData>[];
+    final slots = <int>[];
+    for (var i = 0; i < _grid.length; i++) {
+      final s = _grid[i];
+      if (s != null && !s.isEmpty) cards.add(s);
+      if (_usable(i % cols, i ~/ cols)) slots.add(i);
+    }
+    if (cards.isEmpty) return;
+    cards.shuffle(_random);
+    for (var i = 0; i < _grid.length; i++) {
+      _grid[i] = null;
+    }
+    for (var k = 0; k < cards.length; k++) {
+      _grid[slots[k % slots.length]] = cards[k];
+    }
+  }
+
+  /// 提示一步：返回一个"立即能合并/引爆"的操作 (from -> to)，供高亮与文案提示。
+  /// 优先级：炸弹对炸弹 → 普通卡 + 万能卡 → 任意两张同等级卡。无操作返回 null。
+  /// 注：move() 是格对格操作（同等级合并、异等级交换），无需路径可达性。
+  ({int fc, int fr, int tc, int tr})? hintMove() {
+    // 1) 炸弹：任意两颗炸弹相互合并即引爆。
+    var firstBomb = -1;
+    for (var i = 0; i < _grid.length; i++) {
+      final s = _grid[i];
+      if (s != null && s.isBomb) {
+        if (firstBomb == -1) {
+          firstBomb = i;
+        } else {
+          return (
+            fc: firstBomb % cols,
+            fr: firstBomb ~/ cols,
+            tc: i % cols,
+            tr: i ~/ cols,
+          );
+        }
+      }
+    }
+    // 2) 万能卡 + 任意普通卡。
+    var firstWild = -1;
+    var firstNormal = -1;
+    for (var i = 0; i < _grid.length; i++) {
+      final s = _grid[i];
+      if (s == null || s.isEmpty) continue;
+      if (s.isWildcard) {
+        if (firstWild == -1) firstWild = i;
+      } else if (!s.isBomb) {
+        if (firstNormal == -1) firstNormal = i;
+      }
+    }
+    if (firstWild != -1 && firstNormal != -1) {
+      return (
+        fc: firstNormal % cols,
+        fr: firstNormal ~/ cols,
+        tc: firstWild % cols,
+        tr: firstWild ~/ cols,
+      );
+    }
+    // 3) 任意两张同等级普通卡。
+    for (var i = 0; i < _grid.length; i++) {
+      final s = _grid[i];
+      if (s == null || s.isEmpty || s.isWildcard || s.isBomb) continue;
+      for (var j = i + 1; j < _grid.length; j++) {
+        final t = _grid[j];
+        if (t == null || t.isEmpty || t.isWildcard || t.isBomb) continue;
+        if (t.tier == s.tier) {
+          return (
+            fc: i % cols,
+            fr: i ~/ cols,
+            tc: j % cols,
+            tr: j ~/ cols,
+          );
+        }
+      }
+    }
+    return null;
+  }
+
   CarTier _weightedTier() {
     var total = 0;
     for (final w in _spawnWeights) {

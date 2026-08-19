@@ -172,14 +172,28 @@ void _paintTier(Canvas canvas, CarTier tier, Color body) {
       _drawStation(canvas, body);
     case CarTier.comet:
       _drawComet(canvas, body);
+    // 任务93 新档：PNG 是主视觉，此处兜底剪影复用最接近的绘制。
+    case CarTier.warp:
+      _drawRocket(canvas, body);
+    case CarTier.hover:
+      _drawUfo(canvas, body);
+    case CarTier.cruiser:
+      _drawShuttle(canvas, body);
+    case CarTier.mecha:
+      _drawTruck(canvas, body);
+    case CarTier.antigrav:
+      _drawUfo(canvas, body);
   }
 }
 
-/// 每种车型绘制内容的外接框缓存（100×100 坐标）。
+/// 每种车型绘制内容的外接框缓存（64×64 坐标，启动预计算更快）。
 /// 由 [precomputeVehicleBounds] 在启动时一次性量好。
 final Map<CarTier, Rect> _tierBounds = <CarTier, Rect>{};
 
-/// 把每种车型离屏渲染到 100×100，扫描不透明像素得到真实内容外接框。
+/// 离屏渲染分辨率（启动预计算用，越小越快）。
+const int _boundsRes = 64;
+
+/// 把每种车型离屏渲染到 64×64，扫描不透明像素得到真实内容外接框。
 /// 在 runApp 前 await 调用，确保首帧就有精确的居中数据。
 Future<void> precomputeVehicleBounds() async {
   for (final tier in CarTier.values) {
@@ -187,17 +201,17 @@ Future<void> precomputeVehicleBounds() async {
       final recorder = ui.PictureRecorder();
       final canvas = Canvas(recorder);
       _paintTier(canvas, tier, const Color(0xFFFFFFFF));
-      final image = await recorder.endRecording().toImage(100, 100);
+      final image = await recorder.endRecording().toImage(_boundsRes, _boundsRes);
       final data = await image.toByteData(
         format: ui.ImageByteFormat.rawStraightRgba,
       );
       image.dispose();
       if (data == null) continue;
       final bytes = data.buffer.asUint8List();
-      var minX = 100, minY = 100, maxX = -1, maxY = -1;
-      for (var y = 0; y < 100; y++) {
-        for (var x = 0; x < 100; x++) {
-          if (bytes[(y * 100 + x) * 4 + 3] > 0) {
+      var minX = _boundsRes, minY = _boundsRes, maxX = -1, maxY = -1;
+      for (var y = 0; y < _boundsRes; y++) {
+        for (var x = 0; x < _boundsRes; x++) {
+          if (bytes[(y * _boundsRes + x) * 4 + 3] > 0) {
             if (x < minX) minX = x;
             if (x > maxX) maxX = x;
             if (y < minY) minY = y;

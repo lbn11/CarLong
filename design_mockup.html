@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>车水马龙 · Sunny Candy 视觉基调</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-1:#FFF3EA; --bg-2:#FFE3F1; --bg-3:#E4F1FF;
+    --surface:#FFFFFF; --surface-soft:#FFF8F2; --surface-tint:#FCEFF6;
+    --ink-1:#2B2440; --ink-2:#6B6480; --ink-3:#A39DB5;
+    --coral:#FF7A5C; --coral-deep:#FF5E7A;
+    --sun:#FFC24B; --sky:#4CC2FF; --mint:#3ED598; --grape:#A78BFA;
+    --shadow:rgba(50,32,86,.14);
+    --shadow-soft:rgba(50,32,86,.08);
+    --font-d:'Baloo 2','Nunito','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+    --font-b:'Nunito','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{font-family:var(--font-b);color:var(--ink-1)}
+  body{
+    min-height:100vh;
+    background:
+      radial-gradient(900px 600px at 12% 8%, rgba(255,122,92,.18), transparent 60%),
+      radial-gradient(800px 600px at 92% 20%, rgba(76,194,255,.16), transparent 60%),
+      radial-gradient(700px 700px at 70% 100%, rgba(167,139,250,.16), transparent 60%),
+      linear-gradient(160deg,var(--bg-1),var(--bg-2) 52%,var(--bg-3));
+    padding:48px 24px 80px;
+  }
+  .wrap{max-width:1180px;margin:0 auto}
+
+  .hero{text-align:center;margin-bottom:38px}
+  .hero h1{font-family:var(--font-d);font-weight:800;font-size:40px;letter-spacing:.5px;
+    background:linear-gradient(95deg,var(--coral),var(--coral-deep) 45%,var(--grape));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p{margin-top:10px;color:var(--ink-2);font-size:15px;font-weight:700}
+  .hero .tag{display:inline-block;margin-top:14px;padding:6px 16px;border-radius:999px;
+    background:rgba(255,255,255,.7);box-shadow:0 4px 14px var(--shadow-soft);
+    font-family:var(--font-d);font-weight:700;color:var(--ink-1);font-size:13px}
+
+  .tokens{
+    background:rgba(255,255,255,.72);backdrop-filter:blur(8px);
+    border-radius:28px;padding:26px 28px;box-shadow:0 18px 50px var(--shadow);
+    border:1px solid rgba(255,255,255,.9);margin-bottom:42px;
+  }
+  .tokens h2{font-family:var(--font-d);font-size:20px;margin-bottom:4px}
+  .tokens .sub{color:var(--ink-3);font-size:12.5px;font-weight:700;margin-bottom:20px}
+  .tok-grid{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:24px}
+  @media(max-width:880px){.tok-grid{grid-template-columns:1fr}}
+  .tok-block h3{font-family:var(--font-d);font-size:13px;color:var(--ink-2);
+    text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px}
+  .swatches{display:flex;flex-wrap:wrap;gap:10px}
+  .sw{width:58px;text-align:center}
+  .sw .chip{height:58px;border-radius:16px;box-shadow:0 6px 14px var(--shadow-soft);border:2px solid #fff}
+  .sw .lab{font-size:10.5px;font-weight:800;color:var(--ink-2);margin-top:6px}
+  .type-sample .t1{font-family:var(--font-d);font-weight:800;font-size:30px;line-height:1.1}
+  .type-sample .t2{font-family:var(--font-b);font-weight:800;font-size:16px;color:var(--ink-2);margin-top:8px}
+  .type-sample .t3{font-size:13px;color:var(--ink-3);font-weight:700;margin-top:4px}
+  .comp-row{display:flex;flex-direction:column;gap:12px;align-items:flex-start}
+  .btn{font-family:var(--font-d);font-weight:800;border:none;cursor:pointer;
+    padding:11px 22px;border-radius:999px;font-size:14px;color:#fff;
+    background:linear-gradient(95deg,var(--coral),var(--coral-deep));
+    box-shadow:0 8px 18px rgba(255,94,122,.4)}
+  .btn.sec{background:#fff;color:var(--ink-1);box-shadow:0 6px 14px var(--shadow-soft);border:1.5px solid #F0E6EF}
+  .chip-coin{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:999px;
+    font-family:var(--font-d);font-weight:800;color:#7A4A12;font-size:14px;
+    background:linear-gradient(180deg,#FFD982,#FFB23E);box-shadow:0 6px 14px rgba(255,178,62,.45)}
+
+  /* 颜色图例（17 车型身份色） */
+  .legend{margin-top:22px;border-top:1px dashed rgba(110,90,140,.25);padding-top:18px}
+  .legend h3{font-family:var(--font-d);font-size:13px;color:var(--ink-2);
+    text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px}
+  .legend .grid{display:flex;flex-wrap:wrap;gap:8px 14px}
+  .legend .it{display:flex;align-items:center;gap:7px;background:#fff;border-radius:999px;
+    padding:5px 11px 5px 7px;box-shadow:0 4px 10px var(--shadow-soft)}
+  .legend .dot{width:16px;height:16px;border-radius:50%;box-shadow:0 0 0 2px #fff,0 2px 4px rgba(0,0,0,.12)}
+  .legend .nm{font-family:var(--font-d);font-weight:800;font-size:12px;color:var(--ink-1)}
+
+  .phones{display:flex;gap:30px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+  .phone{width:330px;flex:0 0 auto;background:#fff;border-radius:44px;padding:12px;
+    box-shadow:0 30px 70px rgba(50,32,86,.22),0 0 0 2px #fff inset;position:relative}
+  .phone .screen{border-radius:34px;overflow:hidden;height:660px;position:relative;
+    background:linear-gradient(165deg,var(--bg-1),var(--bg-2) 55%,var(--bg-3));
+    display:flex;flex-direction:column}
+  .phone .cap{text-align:center;font-family:var(--font-d);font-weight:800;font-size:15px;
+    color:var(--ink-2);margin-top:14px}
+
+  .sc{padding:18px 16px;display:flex;flex-direction:column;gap:12px;overflow:hidden;height:100%}
+  .topbar{display:flex;align-items:center;justify-content:space-between}
+  .brand{font-family:var(--font-d);font-weight:800;font-size:22px;color:var(--ink-1);line-height:1}
+  .brand small{display:block;font-family:var(--font-b);font-weight:800;font-size:9px;
+    letter-spacing:1.5px;color:var(--ink-3);margin-top:3px}
+  .tright{display:flex;align-items:center;gap:8px}
+  .ic-btn{width:36px;height:36px;border-radius:12px;background:rgba(255,255,255,.8);
+    display:grid;place-items:center;font-size:16px;box-shadow:0 4px 10px var(--shadow-soft)}
+  .coin{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:999px;
+    font-family:var(--font-d);font-weight:800;color:#7A4A12;font-size:13px;
+    background:linear-gradient(180deg,#FFD982,#FFB23E);box-shadow:0 5px 12px rgba(255,178,62,.45)}
+
+  .hero-card{background:#fff;border-radius:24px;padding:16px;position:relative;overflow:hidden;
+    box-shadow:0 14px 30px var(--shadow-soft)}
+  .hero-card .glow{position:absolute;right:-20px;top:-20px;width:120px;height:120px;border-radius:50%;
+    background:radial-gradient(circle,rgba(33,150,243,.26),transparent 70%)}
+  .hero-card .pill{display:inline-block;background:linear-gradient(95deg,rgba(33,150,243,.18),rgba(33,150,243,.10));
+    color:#1565C0;font-family:var(--font-d);font-weight:800;font-size:11px;padding:4px 10px;border-radius:999px}
+  .hero-card h3{font-family:var(--font-d);font-weight:800;font-size:23px;margin-top:8px;color:var(--ink-1)}
+  .hero-card .goal{font-size:12px;color:var(--ink-2);font-weight:700;margin-top:3px}
+  .hero-card .vimg{position:absolute;right:6px;top:34px;width:96px;height:96px;object-fit:contain;
+    filter:drop-shadow(0 10px 14px rgba(50,32,86,.18))}
+  .pbar{height:7px;border-radius:999px;background:#F0E6EF;overflow:hidden;margin-top:14px}
+  .pbar i{display:block;height:100%;width:42%;border-radius:999px;
+    background:linear-gradient(90deg,#42A5F5,#1565C0)}
+  .prow{display:flex;justify-content:space-between;font-size:10.5px;font-weight:800;color:var(--ink-2);margin-top:6px}
+  .play{margin-top:14px;width:100%;border:none;font-family:var(--font-d);font-weight:800;font-size:15px;
+    color:#fff;padding:13px;border-radius:16px;background:linear-gradient(95deg,#42A5F5,#1565C0);
+    box-shadow:0 10px 22px rgba(21,101,192,.34)}
+
+  .row2{display:flex;gap:10px}
+  .tile{flex:1;background:#fff;border-radius:20px;padding:13px;box-shadow:0 10px 22px var(--shadow-soft);position:relative}
+  .tile .ic{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;font-size:19px}
+  .tile .tt{font-family:var(--font-d);font-weight:800;font-size:14px;color:var(--ink-1);margin-top:9px}
+  .tile .ts{font-size:10.5px;color:var(--ink-3);font-weight:700;margin-top:2px}
+  .banner{background:#fff;border-radius:20px;padding:13px;display:flex;align-items:center;gap:11px;
+    box-shadow:0 10px 22px var(--shadow-soft)}
+  .banner .ic{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;font-size:20px;flex:0 0 auto}
+  .banner .bt{font-family:var(--font-d);font-weight:800;font-size:14px;color:var(--ink-1)}
+  .banner .bs{font-size:10.5px;color:var(--ink-3);font-weight:700;margin-top:2px}
+  .banner .go{margin-left:auto;background:linear-gradient(95deg,var(--coral),var(--coral-deep));
+    color:#fff;border:none;font-family:var(--font-d);font-weight:800;font-size:12px;padding:8px 13px;border-radius:12px}
+
+  .hud{display:flex;align-items:center;gap:8px}
+  .hud .lv{font-family:var(--font-d);font-weight:800;font-size:15px;color:var(--ink-1)}
+  .hud .sc2{margin-left:auto;background:rgba(255,255,255,.8);border-radius:999px;padding:6px 12px;
+    font-family:var(--font-d);font-weight:800;font-size:12px;color:var(--coral-deep)}
+  .board{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px}
+  .cell{aspect-ratio:1;border-radius:16px;background:rgba(255,255,255,.55);
+    box-shadow:inset 0 2px 5px rgba(50,32,86,.06);display:grid;place-items:center;position:relative}
+  .cell.f{border-radius:16px;background:#fff;display:grid;place-items:center;position:relative}
+  .cell.f img{width:78%;height:78%;object-fit:contain;filter:drop-shadow(0 6px 8px rgba(50,32,86,.16))}
+  .cell .lvbadge{position:absolute;bottom:3px;right:5px;font-family:var(--font-d);font-weight:800;
+    font-size:9px;color:inherit}
+  .toolbar{display:flex;gap:10px;margin-top:auto}
+  .tb{flex:1;background:#fff;border-radius:16px;padding:11px;text-align:center;
+    box-shadow:0 8px 18px var(--shadow-soft);font-family:var(--font-d);font-weight:800;font-size:12px;color:var(--ink-1)}
+  .tb.act{background:linear-gradient(95deg,var(--coral),var(--coral-deep));color:#fff;box-shadow:0 8px 18px rgba(255,94,122,.4)}
+
+  .park-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:2px}
+  .park{aspect-ratio:1.25;border-radius:18px;background:rgba(255,255,255,.6);
+    border:2px dashed rgba(110,90,140,.28);display:grid;place-items:center;position:relative;
+    box-shadow:inset 0 2px 6px rgba(50,32,86,.05)}
+  .park.f{border-radius:18px;background:#fff;display:grid;place-items:center;position:relative}
+  .park.f img{width:70%;height:70%;object-fit:contain;filter:drop-shadow(0 6px 8px rgba(50,32,86,.16))}
+  .park .num{position:absolute;top:5px;left:7px;font-family:var(--font-d);font-weight:800;font-size:10px;color:inherit}
+  .stars{display:flex;justify-content:center;gap:3px;margin-top:6px;font-size:13px}
+
+  .foot{text-align:center;margin-top:34px;color:var(--ink-3);font-size:12px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <h1>车水马龙 · 全新视觉基调</h1>
+    <p>Sunny Candy 风格 — 卡片按「车型身份色」区分，一眼分辨层级</p>
+    <span class="tag">方向已确认统一（车头朝左）· 此基调不改车模，只重塑界面氛围</span>
+  </div>
+
+  <!-- 设计令牌 -->
+  <div class="tokens">
+    <h2>整体基调 · Design Tokens</h2>
+    <div class="sub">浅色奶油底 + 圆润字体 + 每款车型一个身份色（颜色 = 车型，与车模同色）</div>
+    <div class="tok-grid">
+      <div class="tok-block">
+        <h3>Color · 配色</h3>
+        <div class="swatches">
+          <div class="sw"><div class="chip" style="background:#FFF3EA"></div><div class="lab">奶油底</div></div>
+          <div class="sw"><div class="chip" style="background:#FFE3F1"></div><div class="lab">粉雾</div></div>
+          <div class="sw"><div class="chip" style="background:#E4F1FF"></div><div class="lab">天空</div></div>
+          <div class="sw"><div class="chip" style="background:#FF7A5C"></div><div class="lab">珊瑚</div></div>
+          <div class="sw"><div class="chip" style="background:#FF5E7A"></div><div class="lab">莓红</div></div>
+          <div class="sw"><div class="chip" style="background:#FFC24B"></div><div class="lab">暖金</div></div>
+          <div class="sw"><div class="chip" style="background:#4CC2FF"></div><div class="lab">晴空</div></div>
+          <div class="sw"><div class="chip" style="background:#3ED598"></div><div class="lab">薄荷</div></div>
+          <div class="sw"><div class="chip" style="background:#A78BFA"></div><div class="lab">葡萄</div></div>
+          <div class="sw"><div class="chip" style="background:#2B2440"></div><div class="lab">墨字</div></div>
+        </div>
+      </div>
+      <div class="tok-block type-sample">
+        <h3>Typography · 字体</h3>
+        <div class="t1">车水马龙</div>
+        <div class="t2">Merge Fleet · 合成车队</div>
+        <div class="t3">标题 Baloo 2 800 / 正文 Nunito 800 · 圆润亲和无衬线</div>
+      </div>
+      <div class="tok-block">
+        <h3>Components · 组件</h3>
+        <div class="comp-row">
+          <button class="btn">开始游戏</button>
+          <button class="btn sec">返回</button>
+          <span class="chip-coin">💰 1280</span>
+          <div class="mini-card" style="background:#fff">
+            <div class="ic" style="background:rgba(33,150,243,.18);color:#1565C0">🚌</div>
+            <div><div class="tx">下一目标 · 巴士</div><div class="sx" style="color:#1565C0;font-weight:800">蓝色 = 第 5 阶</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 17 车型身份色图例 -->
+    <div class="legend">
+      <h3>车型身份色 · 全 17 阶（卡片按此上色）</h3>
+      <div class="grid">
+        <div class="it"><span class="dot" style="background:#4CAF50"></span><span class="nm">单车</span></div>
+        <div class="it"><span class="dot" style="background:#009688"></span><span class="nm">踏板</span></div>
+        <div class="it"><span class="dot" style="background:#F44336"></span><span class="nm">汽车</span></div>
+        <div class="it"><span class="dot" style="background:#FF9800"></span><span class="nm">出租车</span></div>
+        <div class="it"><span class="dot" style="background:#2196F3"></span><span class="nm">巴士</span></div>
+        <div class="it"><span class="dot" style="background:#795548"></span><span class="nm">卡车</span></div>
+        <div class="it"><span class="dot" style="background:#9C27B0"></span><span class="nm">列车</span></div>
+        <div class="it"><span class="dot" style="background:#E91E63"></span><span class="nm">火箭</span></div>
+        <div class="it"><span class="dot" style="background:#FFC107"></span><span class="nm">油罐车</span></div>
+        <div class="it"><span class="dot" style="background:#00BCD4"></span><span class="nm">高铁</span></div>
+        <div class="it"><span class="dot" style="background:#607D8B"></span><span class="nm">客机</span></div>
+        <div class="it"><span class="dot" style="background:#8BC34A"></span><span class="nm">战机</span></div>
+        <div class="it"><span class="dot" style="background:#673AB7"></span><span class="nm">航天飞机</span></div>
+        <div class="it"><span class="dot" style="background:#3F51B5"></span><span class="nm">星舰</span></div>
+        <div class="it"><span class="dot" style="background:#00BFA5"></span><span class="nm">磁悬浮</span></div>
+        <div class="it"><span class="dot" style="background:#7E57C2"></span><span class="nm">空间站</span></div>
+        <div class="it"><span class="dot" style="background:#C2185B"></span><span class="nm">彗星</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 三个界面 -->
+  <div class="phones">
+
+    <!-- 首页 -->
+    <div>
+      <div class="phone"><div class="screen">
+        <div class="sc">
+          <div class="topbar">
+            <div class="brand">车水马龙<small>MERGE FLEET</small></div>
+            <div class="tright">
+              <div class="ic-btn">📖</div>
+              <div class="ic-btn">⚙️</div>
+              <div class="coin">💰 1280</div>
+            </div>
+          </div>
+
+          <div class="hero-card">
+            <div class="glow"></div>
+            <span class="pill">继续挑战</span>
+            <h3>第 7 关 · 城市环线</h3>
+            <div class="goal">合成出 3 辆巴士，解锁下一阶段</div>
+            <img class="vimg" src="assets/vehicles/bus.png" alt="">
+            <div class="pbar"><i></i></div>
+            <div class="prow"><span>总进度</span><span>6 / 17 关</span></div>
+            <button class="play">▶ 开始游戏</button>
+          </div>
+
+          <div class="banner">
+            <div class="ic" style="background:rgba(167,139,250,.18);color:#8B6BE8">📅</div>
+            <div><div class="bt">每日挑战</div><div class="bs">完成今日挑战，领 +40 🪙</div></div>
+            <button class="go">开玩</button>
+          </div>
+
+          <div class="banner">
+            <div class="ic" style="background:rgba(76,194,255,.18);color:#2BA8E8">🌌</div>
+            <div><div class="bt">无尽模式</div><div class="bs">最佳纪录 240 分</div></div>
+            <button class="go" style="background:linear-gradient(95deg,#4CC2FF,#2BA8E8)">▶</button>
+          </div>
+
+          <div class="row2">
+            <div class="tile">
+              <div class="ic" style="background:rgba(255,194,75,.2);color:#E09A1E">🏆</div>
+              <div class="tt">成就</div><div class="ts">已领 4/12</div>
+            </div>
+            <div class="tile">
+              <div class="ic" style="background:rgba(62,213,152,.2);color:#1FA771">🛒</div>
+              <div class="tt">商店</div><div class="ts">巧用金币</div>
+            </div>
+          </div>
+
+          <div class="banner">
+            <div class="ic" style="background:rgba(255,94,122,.16);color:#E0456A">🅿️</div>
+            <div><div class="bt">停车模式</div><div class="bs">把车辆停到指定车位</div></div>
+            <div style="margin-left:auto">›</div>
+          </div>
+        </div>
+      </div></div>
+      <div class="cap">首页 Home</div>
+    </div>
+
+    <!-- 合成盘 -->
+    <div>
+      <div class="phone"><div class="screen">
+        <div class="sc">
+          <div class="topbar">
+            <div class="hud">
+              <div class="lv">第 7 关</div>
+              <div class="sc2">★ 1420</div>
+            </div>
+            <div class="coin">💰 1280</div>
+          </div>
+
+          <div class="board">
+            <div class="cell f" style="background:linear-gradient(180deg,rgba(76,175,80,.20),rgba(76,175,80,.05));border:2px solid rgba(76,175,80,.55);box-shadow:0 8px 16px rgba(76,175,80,.20);color:#2E7D32"><img src="assets/vehicles/bike.png"><span class="lvbadge">1</span></div>
+            <div class="cell"></div>
+            <div class="cell f" style="background:linear-gradient(180deg,rgba(0,150,136,.20),rgba(0,150,136,.05));border:2px solid rgba(0,150,136,.55);box-shadow:0 8px 16px rgba(0,150,136,.20);color:#00695C"><img src="assets/vehicles/scooter.png"><span class="lvbadge">2</span></div>
+            <div class="cell f" style="background:linear-gradient(180deg,rgba(244,67,54,.18),rgba(244,67,54,.05));border:2px solid rgba(244,67,54,.55);box-shadow:0 8px 16px rgba(244,67,54,.18);color:#C62828"><img src="assets/vehicles/car.png"><span class="lvbadge">3</span></div>
+            <div class="cell f" style="background:linear-gradient(180deg,rgba(255,152,0,.18),rgba(255,152,0,.05));border:2px solid rgba(255,152,0,.55);box-shadow:0 8px 16px rgba(255,152,0,.18);color:#E65100"><img src="assets/vehicles/taxi.png"><span class="lvbadge">4</span></div>
+            <div class="cell f" style="background:linear-gradient(180deg,rgba(33,150,243,.18),rgba(33,150,243,.05));border:2px solid rgba(33,150,243,.55);box-shadow:0 8px 16px rgba(33,150,243,.18);color:#1565C0"><img src="assets/vehicles/bus.png"><span class="lvbadge">6</span></div>
+            <div class="cell"></div>
+            <div class="cell f" style="background:linear-gradient(180deg,rgba(121,85,72,.18),rgba(121,85,72,.05));border:2px solid rgba(121,85,72,.55);box-shadow:0 8px 16px rgba(121,85,72,.18);color:#4E342E"><img src="assets/vehicles/truck.png"><span class="lvbadge">5</span></div>
+            <div class="cell f" style="background:linear-gradient(180deg,rgba(156,39,176,.18),rgba(156,39,176,.05));border:2px solid rgba(156,39,176,.55);box-shadow:0 8px 16px rgba(156,39,176,.18);color:#6A1B9A"><img src="assets/vehicles/plane.png"><span class="lvbadge">11</span></div>
+            <div class="cell f" style="background:linear-gradient(180deg,rgba(139,195,74,.20),rgba(139,195,74,.05));border:2px solid rgba(139,195,74,.55);box-shadow:0 8px 16px rgba(139,195,74,.20);color:#558B2F"><img src="assets/vehicles/jet.png"><span class="lvbadge">12</span></div>
+            <div class="cell"></div>
+            <div class="cell f" style="background:linear-gradient(180deg,rgba(63,81,181,.18),rgba(63,81,181,.05));border:2px solid rgba(63,81,181,.55);box-shadow:0 8px 16px rgba(63,81,181,.18);color:#283593"><img src="assets/vehicles/ufo.png"><span class="lvbadge">14</span></div>
+            <div class="cell"></div>
+            <div class="cell f" style="background:linear-gradient(180deg,rgba(194,24,91,.18),rgba(194,24,91,.05));border:2px solid rgba(194,24,91,.55);box-shadow:0 8px 16px rgba(194,24,91,.18);color:#880E4F"><img src="assets/vehicles/comet.png"><span class="lvbadge">17</span></div>
+            <div class="cell f" style="background:linear-gradient(180deg,rgba(233,30,99,.18),rgba(233,30,99,.05));border:2px solid rgba(233,30,99,.55);box-shadow:0 8px 16px rgba(233,30,99,.18);color:#AD1457"><img src="assets/vehicles/rocket.png"><span class="lvbadge">8</span></div>
+            <div class="cell"></div>
+            <div class="cell f" style="background:linear-gradient(180deg,rgba(156,39,176,.18),rgba(156,39,176,.05));border:2px solid rgba(156,39,176,.55);box-shadow:0 8px 16px rgba(156,39,176,.18);color:#6A1B9A"><img src="assets/vehicles/train.png"><span class="lvbadge">7</span></div>
+          </div>
+
+          <div class="toolbar">
+            <div class="tb">↩ 撤销</div>
+            <div class="tb act">✦ 合成</div>
+            <div class="tb">⚙ 道具</div>
+          </div>
+        </div>
+      </div></div>
+      <div class="cap">合成盘 Merge Board（卡片按车型色）</div>
+    </div>
+
+    <!-- 停车 -->
+    <div>
+      <div class="phone"><div class="screen">
+        <div class="sc">
+          <div class="topbar">
+            <div class="brand" style="font-size:18px">停车模式<small>PARKING</small></div>
+            <div class="coin">💰 1280</div>
+          </div>
+
+          <div class="park-grid">
+            <div class="park f" style="background:linear-gradient(180deg,rgba(76,175,80,.18),rgba(76,175,80,.04));border:2px solid rgba(76,175,80,.5);box-shadow:0 8px 16px rgba(76,175,80,.16);color:#2E7D32"><span class="num">1</span><img src="assets/vehicles/bike.png"></div>
+            <div class="park f" style="background:linear-gradient(180deg,rgba(244,67,54,.16),rgba(244,67,54,.04));border:2px solid rgba(244,67,54,.5);box-shadow:0 8px 16px rgba(244,67,54,.16);color:#C62828"><span class="num">2</span><img src="assets/vehicles/car.png"></div>
+            <div class="park f" style="background:linear-gradient(180deg,rgba(33,150,243,.16),rgba(33,150,243,.04));border:2px solid rgba(33,150,243,.5);box-shadow:0 8px 16px rgba(33,150,243,.16);color:#1565C0"><span class="num">3</span><img src="assets/vehicles/bus.png"></div>
+            <div class="park f" style="background:linear-gradient(180deg,rgba(121,85,72,.16),rgba(121,85,72,.04));border:2px solid rgba(121,85,72,.5);box-shadow:0 8px 16px rgba(121,85,72,.16);color:#4E342E"><span class="num">4</span><img src="assets/vehicles/truck.png"></div>
+            <div class="park f" style="background:linear-gradient(180deg,rgba(96,125,139,.16),rgba(96,125,139,.04));border:2px solid rgba(96,125,139,.5);box-shadow:0 8px 16px rgba(96,125,139,.16);color:#37474F"><span class="num">5</span><img src="assets/vehicles/plane.png"></div>
+            <div class="park"><span class="num" style="color:var(--ink-3)">6</span></div>
+            <div class="park f" style="background:linear-gradient(180deg,rgba(139,195,74,.18),rgba(139,195,74,.04));border:2px solid rgba(139,195,74,.5);box-shadow:0 8px 16px rgba(139,195,74,.16);color:#558B2F"><span class="num">7</span><img src="assets/vehicles/jet.png"></div>
+            <div class="park f" style="background:linear-gradient(180deg,rgba(63,81,181,.16),rgba(63,81,181,.04));border:2px solid rgba(63,81,181,.5);box-shadow:0 8px 16px rgba(63,81,181,.16);color:#283593"><span class="num">8</span><img src="assets/vehicles/ufo.png"></div>
+            <div class="park"><span class="num" style="color:var(--ink-3)">9</span></div>
+          </div>
+
+          <div class="stars">⭐ ⭐ ⭐</div>
+          <div class="banner">
+            <div class="ic" style="background:rgba(255,194,75,.2);color:#E09A1E">🎯</div>
+            <div><div class="bt">下一关解锁</div><div class="bs">停满 9 格即通关</div></div>
+            <button class="go">前往</button>
+          </div>
+          <div class="toolbar" style="margin-top:8px">
+            <div class="tb">↺ 重排</div>
+            <div class="tb act">▶ 开始停</div>
+          </div>
+        </div>
+      </div></div>
+      <div class="cap">停车 Parking（卡片按车型色）</div>
+    </div>
+
+  </div>
+
+  <div class="foot">Sunny Candy 基调 v0.2 · 卡片按车型身份色区分 · 仅作视觉方向确认，未改动任何 Flutter 代码</div>
+</div>
+</body>
+</html>

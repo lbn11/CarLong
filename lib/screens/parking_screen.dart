@@ -3,10 +3,14 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../analytics/analytics.dart';
 import '../game/audio_feedback.dart';
+import '../game/game_config.dart';
+import '../game/music_player.dart';
 import '../game/parking_game.dart';
 import '../models/parking_level.dart';
 import '../save/save_repository.dart';
+import '../services/parking_chapters.dart';
 import '../services/parking_generator.dart';
 import '../theme/app_theme.dart';
 
@@ -33,6 +37,7 @@ class ParkingScreen extends StatefulWidget {
 class _ParkingScreenState extends State<ParkingScreen> {
   late final ParkingGame _game;
   final AudioFeedback _audio = AudioFeedback();
+  late final AnalyticsService _analytics;
   int? _selectedVehicle;
   int _tutorialStep = 0;
   bool _tutorialActive = false;
@@ -45,6 +50,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
   @override
   void initState() {
     super.initState();
+    _analytics = AnalyticsService(widget.data, widget.repo);
     _game = ParkingGame(widget.level);
     _game.addListener(_onGameUpdate);
     // 音效/触感跟随全局开关。
@@ -52,8 +58,13 @@ class _ParkingScreenState extends State<ParkingScreen> {
     _audio.vibrateOn = widget.data.vibrateOn;
     unawaited(_audio.load());
     // 停车模式首次进入弹出教学
-    if (!widget.data.tutorialCompleted.contains(-1)) {
-      _tutorialActive = true;
+    // 【2026-08-19 临时禁用】用户反馈新手教学无法使用，先去掉（代码保留可逆）。
+    // if (!widget.data.tutorialCompleted.contains(-1)) {
+    //   _tutorialActive = true;
+    // }
+    // 停车场景 BGM（跟随音效开关；返回首页由 home 的 didPopNext 恢复）。
+    if (widget.data.soundOn) {
+      MusicPlayer.instance.play(MusicPlayer.parking);
     }
   }
 
@@ -108,20 +119,29 @@ class _ParkingScreenState extends State<ParkingScreen> {
   bool _collectionNew = false;
   int _collectionBonus = 0;
 
+  /// 本次 3 星通关奖励的合成道具卡 key（'time'/'cards'/'double'），null 表示未奖励。
+  String? _boosterKey;
+
+  static const Map<String, String> _boosterLabels = {
+    'time': '🕐 加时卡',
+    'cards': '📦 补卡卡',
+    'double': '🎲 双倍卡',
+  };
+
   void _settleWin() {
     if (_settled) return;
     _settled = true;
     final stars = _game.calcStars();
-    final reward = 20 + stars * 10;
+    final reward = GameConfig.parkingBaseReward + stars * GameConfig.parkingStarReward;
     _lastStars = stars;
     _lastReward = reward;
-    widget.data.coins += reward;
+    widget.data.addCoins(reward);
 
     // 图鉴接入：通关停车关卡即点亮目标车型（与合成游戏共享同一套交通图鉴）。
     _collectionNew = widget.data.collection.add(widget.level.targetTier.index);
     if (_collectionNew) {
-      _collectionBonus = 10;
-      widget.data.coins += _collectionBonus;
+      _collectionBonus = GameConfig.parkingCollectionReward;
+      widget.data.addCoins(_collectionBonus);
     }
 
     if (widget.level.id >= widget.data.parkingUnlocked) {
@@ -129,7 +149,19 @@ class _ParkingScreenState extends State<ParkingScreen> {
     }
     final prev = widget.data.parkingBestStars[widget.level.id] ?? 0;
     if (stars > prev) widget.data.parkingBestStars[widget.level.id] = stars;
+
+    // 双向联动：3 星通关额外奖励一张合成可用道具卡（加时/补卡/双倍轮换）。
+    // 这些卡在合成开局会自动消耗（见 GameScreen._applyBoosters），形成停车→合成的回馈环。
+    if (stars >= 3) {
+      const boosterTypes = ['time', 'cards', 'double'];
+      final key = boosterTypes[widget.level.id % boosterTypes.length];
+      widget.data.boosters[key] = (widget.data.boosters[key] ?? 0) + 1;
+      _boosterKey = key;
+    }
+
     widget.repo.save(widget.data);
+    _analytics.parkingEnd(
+        level: widget.level.id, won: true, stars: stars, reward: reward);
     _audio.play(Sfx.win);
     unawaited(_audio.success());
   }
@@ -149,6 +181,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
       _settled = false;
       _collectionNew = false;
       _collectionBonus = 0;
+      _boosterKey = null;
       _hintVehicle = null;
       _hintCells = const [];
     });
@@ -201,6 +234,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
             setState(() => _tutorialActive = false);
             widget.data.tutorialCompleted.add(-1);
             widget.repo.save(widget.data);
+            _analytics.tutorialComplete('parking');
           }
         });
       }
@@ -212,7 +246,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
       context: context,
       barrierDismissible: true,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF232830),
+        backgroundColor: AppColors.surfaceLight,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
@@ -221,7 +255,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
             Text(
               '停车模式',
               style: const TextStyle(
-                color: Colors.white,
+                color: AppColors.ink1,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -232,14 +266,14 @@ class _ParkingScreenState extends State<ParkingScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('目标：把 ${widget.level.targetTier.icon} 停到 🟢 绿色车位上',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                style: const TextStyle(color: AppColors.ink1, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
-            const Text('• 点击一辆车选中（金色边框）', style: TextStyle(color: Colors.white70)),
-            const Text('• 点击空地或车位 — 直线滑行过去', style: TextStyle(color: Colors.white70)),
-            const Text('• 碰到 🧱 障碍和其他车会停下', style: TextStyle(color: Colors.white70)),
-            const Text('• 其他车是障碍，拖开它们让路', style: TextStyle(color: Colors.white70)),
-            const Text('• 可以撤销、重置', style: TextStyle(color: Colors.white70)),
-            const Text('• 横/竖长车只能沿车身方向滑动，先挪开挡路的车', style: TextStyle(color: Colors.white70)),
+            const Text('• 点击一辆车选中（金色边框）', style: TextStyle(color: AppColors.ink2)),
+            const Text('• 点击空地或车位 — 直线滑行过去', style: TextStyle(color: AppColors.ink2)),
+            const Text('• 碰到 🧱 障碍和其他车会停下', style: TextStyle(color: AppColors.ink2)),
+            const Text('• 其他车是障碍，拖开它们让路', style: TextStyle(color: AppColors.ink2)),
+            const Text('• 可以撤销、重置', style: TextStyle(color: AppColors.ink2)),
+            const Text('• 横/竖长车只能沿车身方向滑动，先挪开挡路的车', style: TextStyle(color: AppColors.ink2)),
           ],
         ),
         actions: [
@@ -261,15 +295,8 @@ class _ParkingScreenState extends State<ParkingScreen> {
         MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF171A1E),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment(0, -0.4),
-            radius: 1.2,
-            colors: [Color(0xFF23303E), Color(0xFF171A1E), Color(0xFF0E1013)],
-          ),
-        ),
+      backgroundColor: AppColors.bg1,
+      body: GlowBackground(
         child: SafeArea(
           child: Stack(
             children: [
@@ -308,10 +335,11 @@ class _ParkingScreenState extends State<ParkingScreen> {
                 });
                 widget.data.tutorialCompleted.add(-1);
                 widget.repo.save(widget.data);
+                _analytics.tutorialComplete('parking', skipped: true);
               },
               child: const Text(
                 '跳过',
-                style: TextStyle(color: Colors.white70, fontSize: 14),
+                style: TextStyle(color: AppColors.ink2, fontSize: 14),
               ),
             ),
           ),
@@ -325,11 +353,15 @@ class _ParkingScreenState extends State<ParkingScreen> {
               vertical: 14,
             ),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFD54F),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [AppColors.coral, AppColors.coralDeep],
+              ),
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
+                  color: AppColors.coralDeep.withValues(alpha: 0.4),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -339,7 +371,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
               children: [
                 const Icon(
                   Icons.touch_app,
-                  color: Color(0xFF4E342E),
+                  color: Colors.white,
                   size: 24,
                 ),
                 const SizedBox(width: 12),
@@ -347,9 +379,9 @@ class _ParkingScreenState extends State<ParkingScreen> {
                   child: Text(
                     text,
                     style: const TextStyle(
-                      color: Color(0xFF4E342E),
+                      color: Colors.white,
                       fontSize: 16,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
@@ -364,7 +396,14 @@ class _ParkingScreenState extends State<ParkingScreen> {
 
   Widget _buildResultOverlay() {
     final won = _game.hasWon;
-    final canNext = won && widget.level.id < widget.data.parkingUnlocked;
+    final nextId = widget.level.id + 1;
+    // 下一关仅在「胜利」且「下一关所属章节已解锁」时可用。
+    final canNext = won &&
+        ParkingChapters.isAccessible(
+          ParkingChapters.chapterForId(nextId),
+          widget.data.collection,
+          widget.data.parkingBestStars,
+        );
     return Container(
       color: Colors.black54,
       child: Stack(
@@ -395,7 +434,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
       margin: const EdgeInsets.all(32),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF232830),
+        color: AppColors.surfaceLight,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -409,7 +448,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
           Text(
             won ? '停车成功!' : '失败',
             style: const TextStyle(
-              color: Colors.white,
+              color: AppColors.ink1,
               fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
@@ -418,13 +457,13 @@ class _ParkingScreenState extends State<ParkingScreen> {
           if (won)
             _buildStarsRow()
           else
-            const Text('再试一次吧', style: TextStyle(color: Colors.white70)),
+            const Text('再试一次吧', style: TextStyle(color: AppColors.ink2)),
           const SizedBox(height: 8),
           Text(
             won
                 ? '步数: ${_game.moves} | 时间: ${_game.elapsedSeconds}s'
                 : '没有可用的移动了',
-            style: const TextStyle(color: Colors.white70),
+            style: const TextStyle(color: AppColors.ink2),
           ),
           if (won)
             Padding(
@@ -440,7 +479,16 @@ class _ParkingScreenState extends State<ParkingScreen> {
               child: Text(
                 '📖 图鉴点亮 ${widget.level.targetTier.icon} +$_collectionBonus 🪙',
                 style: const TextStyle(
-                    color: Color(0xFF7CD9AE), fontWeight: FontWeight.w800),
+                    color: Color(0xFF159C6A), fontWeight: FontWeight.w800),
+              ),
+            ),
+          if (won && _boosterKey != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                '🎁 获得 ${_boosterLabels[_boosterKey]!} · 合成开局可用',
+                style: const TextStyle(
+                    color: Color(0xFF7E57C2), fontWeight: FontWeight.w800),
               ),
             ),
           const SizedBox(height: 20),
@@ -469,7 +517,8 @@ class _ParkingScreenState extends State<ParkingScreen> {
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(),
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.surfaceHi,
+                  backgroundColor: AppColors.surfaceLight,
+                  foregroundColor: AppColors.ink1,
                 ),
                 child: const Text('返回'),
               ),
@@ -500,7 +549,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
                 scale: earned ? eased : 1.0,
                 child: Icon(
                   earned ? Icons.star : Icons.star_border,
-                  color: earned ? const Color(0xFFFFD54F) : Colors.white24,
+                  color: earned ? const Color(0xFFFFD54F) : AppColors.ink3.withValues(alpha: 0.4),
                   size: 28,
                 ),
               ),
@@ -559,7 +608,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: const Icon(Icons.arrow_back, color: AppColors.ink1),
             onPressed: () => Navigator.of(context).pop(),
           ),
           Expanded(
@@ -570,20 +619,26 @@ class _ParkingScreenState extends State<ParkingScreen> {
                   _buildInfoChip(
                       '🚗 ${widget.level.name}', AppColors.accent),
                   const SizedBox(width: 6),
-                  _buildInfoChip('👣 ${_game.moves}', AppColors.surfaceHi),
+                  // 常驻目标提示：把哪辆车开到绿车位（不依赖教学弹窗）。
+                  _buildInfoChip(
+                    '🎯 ${widget.level.targetTier.icon}→🟢',
+                    AppColors.mint.withValues(alpha: 0.25),
+                  ),
+                  const SizedBox(width: 6),
+                  _buildInfoChip('👣 ${_game.moves}', AppColors.surfaceSoft),
                   if (widget.level.timeLimit != null) ...[
                     const SizedBox(width: 6),
                     _buildInfoChip(
                       '⏱ ${_game.timeLeft}s',
                       _game.timeLeft! <= 10
                           ? const Color(0xFFE53935)
-                          : AppColors.surfaceHi,
+                          : AppColors.surfaceSoft,
                     ),
                   ],
                   const SizedBox(width: 6),
                   IconButton(
                     icon: const Icon(Icons.help_outline,
-                        color: Colors.white70, size: 20),
+                        color: AppColors.ink2, size: 20),
                     onPressed: _showHelpDialog,
                   ),
                 ],
@@ -596,6 +651,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
   }
 
   Widget _buildInfoChip(String label, Color color) {
+    final isLight = color.computeLuminance() > 0.5;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -604,8 +660,8 @@ class _ParkingScreenState extends State<ParkingScreen> {
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: Colors.white,
+        style: TextStyle(
+          color: isLight ? AppColors.ink1 : Colors.white,
           fontWeight: FontWeight.bold,
           fontSize: 12,
         ),
@@ -626,8 +682,8 @@ class _ParkingScreenState extends State<ParkingScreen> {
             icon: const Icon(Icons.undo),
             label: const Text('撤销'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.surfaceHi,
-              foregroundColor: Colors.white,
+              backgroundColor: AppColors.surfaceLight,
+              foregroundColor: AppColors.ink1,
             ),
           ),
           const SizedBox(width: 12),
@@ -646,8 +702,8 @@ class _ParkingScreenState extends State<ParkingScreen> {
             icon: const Icon(Icons.refresh),
             label: const Text('重置'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.surfaceHi,
-              foregroundColor: Colors.white,
+              backgroundColor: AppColors.surfaceLight,
+              foregroundColor: AppColors.ink1,
             ),
           ),
           if (_game.hasWon || _game.hasLost) ...[
@@ -676,7 +732,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
           constraints.maxHeight,
         );
         final cellSize = (availableSize / math.max(_game.rows, _game.cols))
-            .clamp(40.0, 80.0);
+            .clamp(56.0, 140.0);
         final boardW = _game.cols * cellSize;
         final boardH = _game.rows * cellSize;
 
@@ -749,7 +805,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
                         center: const Alignment(0.5, 0.42),
                         radius: 0.78,
                         colors: [
-                          v.tier.color.withValues(alpha: 0.30),
+                          v.tier.color.withValues(alpha: 0.36),
                           v.tier.color.withValues(alpha: 0.0),
                         ],
                       ),
@@ -759,15 +815,18 @@ class _ParkingScreenState extends State<ParkingScreen> {
                   Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(size * 0.18),
-                      gradient: const LinearGradient(
+                      gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Color(0xFF2A313C), Color(0xFF161B22)],
+                        colors: [
+                          v.tier.color.withValues(alpha: 0.28),
+                          v.tier.color.withValues(alpha: 0.10),
+                        ],
                       ),
                       border: Border.all(color: borderColor, width: borderWidth),
                       boxShadow: const [
                         BoxShadow(
-                          color: Color(0x55000000),
+                          color: AppColors.shadow,
                           blurRadius: 6,
                           offset: Offset(0, 3),
                         ),
@@ -780,6 +839,12 @@ class _ParkingScreenState extends State<ParkingScreen> {
                         child: Image.asset(
                           'assets/vehicles/${v.tier.name}.png',
                           fit: BoxFit.contain,
+                          // 新档车模 PNG 未就位时降级为车型色 icon，避免红屏。
+                          errorBuilder: (_, _, _) => Icon(
+                            Icons.directions_car,
+                            color: v.tier.color.withValues(alpha: 0.7),
+                            size: size * 0.4,
+                          ),
                         ),
                       ),
                     ),
@@ -827,19 +892,19 @@ class _ParkingScreenState extends State<ParkingScreen> {
     Color bg;
     switch (cell.type) {
       case ParkingCellType.road:
-        bg = AppColors.surfaceHi;
+        bg = AppColors.surfaceSoft;
         break;
       case ParkingCellType.parking:
-        bg = const Color(0xFF2E7D32);
+        bg = AppColors.mint.withValues(alpha: 0.30);
         break;
       case ParkingCellType.obstacle:
-        bg = const Color(0xFF5D4037);
+        bg = AppColors.ink3.withValues(alpha: 0.18);
         break;
       case ParkingCellType.entrance:
-        bg = const Color(0xFF1565C0);
+        bg = AppColors.sky.withValues(alpha: 0.30);
         break;
       case ParkingCellType.exit:
-        bg = const Color(0xFF6A1B9A);
+        bg = AppColors.grape.withValues(alpha: 0.30);
         break;
     }
 
@@ -859,7 +924,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
         decoration: BoxDecoration(
           color: bg,
           border: Border.all(
-            color: isHintTarget ? const Color(0xFF26C6DA) : Colors.white10,
+            color: isHintTarget ? const Color(0xFF26C6DA) : AppColors.ink3.withValues(alpha: 0.18),
             width: isHintTarget ? 3 : 1,
           ),
           borderRadius: BorderRadius.circular(4),
@@ -884,7 +949,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
         child: Text(widget.level.targetTier.icon,
             style: TextStyle(
                 fontSize: size * 0.4,
-                color: parked ? Colors.white : Colors.white30)),
+                color: parked ? AppColors.mint : AppColors.ink3.withValues(alpha: 0.4))),
       );
     }
     // 入口

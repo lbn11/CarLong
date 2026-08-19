@@ -1,4 +1,4 @@
-package com.example.merge_fleet
+package com.carlong.mergefleet
 
 import io.flutter.embedding.android.FlutterActivity
 

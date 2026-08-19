@@ -16,15 +16,8 @@ class CollectionScreen extends StatelessWidget {
     final total = CarTier.values.length;
     final owned = data.collection.length;
     return Scaffold(
-      backgroundColor: const Color(0xFF171A1E),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment(0, -0.5),
-            radius: 1.3,
-            colors: [Color(0xFF23303E), Color(0xFF171A1E), Color(0xFF0E1013)],
-          ),
-        ),
+      backgroundColor: AppColors.bg1,
+      body: GlowBackground(
         child: SafeArea(
           child: Column(
             children: [
@@ -34,15 +27,15 @@ class CollectionScreen extends StatelessWidget {
                   children: [
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.arrow_back, color: Colors.white70),
+                      icon: const Icon(Icons.arrow_back, color: AppColors.ink2),
                       style: IconButton.styleFrom(
-                        backgroundColor: const Color(0x22FFFFFF),
+                        backgroundColor: AppColors.ink3.withValues(alpha: 0.14),
                       ),
                     ),
                     const SizedBox(width: 8),
                     const Text('交通图鉴',
                         style: TextStyle(
-                            color: Colors.white,
+                            color: AppColors.ink1,
                             fontSize: 20,
                             fontWeight: FontWeight.w900)),
                     const Spacer(),
@@ -71,7 +64,7 @@ class CollectionScreen extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: total == 0 ? 0 : owned / total,
                     minHeight: 6,
-                    backgroundColor: const Color(0xFF2C2F36),
+                    backgroundColor: AppColors.ink3.withValues(alpha: 0.18),
                     color: AppColors.accent,
                   ),
                 ),
@@ -83,7 +76,7 @@ class CollectionScreen extends StatelessWidget {
                     for (final family in CarFamily.values) ...[
                       _buildFamilyHeader(family),
                       const SizedBox(height: 8),
-                      _buildFamilyGrid(family),
+                      _buildFamilyGrid(context, family),
                       const SizedBox(height: 18),
                     ],
                   ],
@@ -108,7 +101,7 @@ class CollectionScreen extends StatelessWidget {
           child: Text(
             '${family.label} ${_familyIcon(family)}',
             style: TextStyle(
-              color: Colors.white,
+              color: AppColors.ink1,
               fontWeight: FontWeight.w800,
               fontSize: 14,
             ),
@@ -118,7 +111,7 @@ class CollectionScreen extends StatelessWidget {
         Expanded(
           child: Text(
             _familySub(family),
-            style: const TextStyle(color: Colors.white38, fontSize: 11),
+            style: const TextStyle(color: AppColors.ink3, fontSize: 11),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -126,7 +119,7 @@ class CollectionScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFamilyGrid(CarFamily family) {
+  Widget _buildFamilyGrid(BuildContext context, CarFamily family) {
     final tiers = CarTier.values.where((t) => t.family == family).toList();
     return Wrap(
       spacing: 10,
@@ -136,8 +129,100 @@ class CollectionScreen extends StatelessWidget {
           _CollectionCard(
             tier: tier,
             unlocked: data.collection.contains(tier.index),
+            onTap: () => _showDetail(context, tier),
           ),
       ],
+    );
+  }
+
+  /// 车型详情弹层（#88）：大图 + 名称 + 车系 + 解锁状态。
+  void _showDetail(BuildContext context, CarTier tier) {
+    final unlocked = data.collection.contains(tier.index);
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surfaceLight,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 220,
+                height: 150,
+                padding: const EdgeInsets.all(12),
+                decoration: AppTheme.tierCard(tier.color, radius: 20),
+                child: Image.asset(
+                  'assets/vehicles/${tier.name}.png',
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, _, _) => Icon(
+                    Icons.directions_transit,
+                    color: tier.color.withValues(alpha: 0.7),
+                    size: 72,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(tier.icon, style: const TextStyle(fontSize: 22)),
+                  const SizedBox(width: 8),
+                  Text(tier.label,
+                      style: const TextStyle(
+                          color: AppColors.ink1,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900)),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _familyColor(tier.family).withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '${tier.family.label}系 · ${_familySub(tier.family)}',
+                  style: const TextStyle(
+                      color: AppColors.ink2,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                unlocked
+                    ? '✅ 已收集 · 等级 ${tier.tierIndex + 1}/22'
+                    : '🔒 未收集 · 合成或停车通关解锁',
+                style: TextStyle(
+                  color: unlocked ? const Color(0xFF66BB6A) : AppColors.ink3,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.coral,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999)),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 40, vertical: 12),
+                ),
+                child: const Text('好',
+                    style: TextStyle(fontWeight: FontWeight.w900)),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -188,28 +273,34 @@ class CollectionScreen extends StatelessWidget {
   class _CollectionCard extends StatelessWidget {
     final CarTier tier;
     final bool unlocked;
+    final VoidCallback onTap;
 
-    const _CollectionCard({required this.tier, required this.unlocked});
+    const _CollectionCard({
+      required this.tier,
+      required this.unlocked,
+      required this.onTap,
+    });
 
     @override
     Widget build(BuildContext context) {
       final image = Image.asset(
         'assets/vehicles/${tier.name}.png',
         fit: BoxFit.contain,
+        // 新档车模 PNG 未就位时降级为车型色 icon，避免红屏。
+        errorBuilder: (_, _, _) => Icon(
+          Icons.directions_transit,
+          color: tier.color.withValues(alpha: 0.7),
+          size: 36,
+        ),
       );
-      return Container(
+      return GestureDetector(
+        onTap: onTap,
+        child: Container(
         width: 96,
         padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: AppTheme.glass(
-          gradient: unlocked
-              ? [tier.color.withValues(alpha: 0.26), AppColors.surfaceLo]
-              : [AppColors.surfaceHi, AppColors.surfaceLo],
-          border: unlocked
-              ? tier.color.withValues(alpha: 0.5)
-              : Colors.white.withValues(alpha: 0.08),
-          radius: 16,
-          borderWidth: 1.2,
-        ),
+        decoration: unlocked
+            ? AppTheme.tierCard(tier.color, radius: 16)
+            : AppTheme.card(radius: 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -232,7 +323,7 @@ class CollectionScreen extends StatelessWidget {
             Text(
               unlocked ? tier.label : '???',
               style: TextStyle(
-                color: unlocked ? Colors.white : Colors.white38,
+                color: unlocked ? AppTheme.tierInk(tier.color) : AppColors.ink3,
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
               ),
@@ -241,11 +332,12 @@ class CollectionScreen extends StatelessWidget {
             Text(
               unlocked ? tier.icon : '未发现',
               style: TextStyle(
-                color: unlocked ? Colors.white60 : Colors.white24,
+                color: unlocked ? AppColors.ink2 : AppColors.ink3,
                 fontSize: 10,
               ),
             ),
           ],
+        ),
         ),
       );
     }

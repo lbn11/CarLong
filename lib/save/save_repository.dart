@@ -5,6 +5,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// 玩家存档。
 class PlayerData {
   int coins;
+
+  /// 金币上限（防御性，避免长期通胀导致数值溢出/显示异常）。
+  static const int kMaxCoins = 99999;
+
+  /// 统一加金币入口：自动钳制到 [0, kMaxCoins]，所有金币来源都应走这里。
+  void addCoins(int amount) {
+    coins = (coins + amount).clamp(0, kMaxCoins);
+  }
   int unlockedLevel;
   Map<int, int> bestScores;
 
@@ -32,6 +40,10 @@ class PlayerData {
   /// 最近一次通关每日挑战的日期（yyyy-MM-dd），当天未通关为 null。
   String? dailyClearedDate;
 
+  /// 每日挑战连续通关天数与最近通关日期（#83：连胜奖励）。
+  int dailyStreak;
+  String? dailyLastDate;
+
   /// 已领取过奖励的成就 id 集合。
   Set<String> claimedAchievements;
 
@@ -51,6 +63,16 @@ class PlayerData {
   /// 停车模式每关最佳星级（1-3），key 为停车关卡 id。
   Map<int, int> parkingBestStars;
 
+  /// 最近一次在线时间（epoch 毫秒），用于离线收益计算。
+  int? lastSeenAt;
+
+  /// 激励广告：今日已观看次数与日期（yyyy-MM-dd）。
+  String? adWatchDate;
+  int adWatchCount;
+
+  /// 全图鉴大奖（17/17 点亮）是否已领取。
+  bool collectionRewardClaimed;
+
   PlayerData({
     this.coins = 0,
     this.unlockedLevel = 1,
@@ -65,12 +87,18 @@ class PlayerData {
     this.soundOn = true,
     this.vibrateOn = true,
     this.dailyClearedDate,
+    this.dailyStreak = 0,
+    this.dailyLastDate,
     Set<String>? claimedAchievements,
     Map<String, int>? boosters,
     List<Map<String, Object>>? analyticsEvents,
     Set<int>? tutorialCompleted,
     this.parkingUnlocked = 2,
     Map<int, int>? parkingBestStars,
+    this.lastSeenAt,
+    this.adWatchDate,
+    this.adWatchCount = 0,
+    this.collectionRewardClaimed = false,
   })  : bestScores = bestScores ?? {},
         bestStars = bestStars ?? {},
         endlessBest = endlessBest ?? [],
@@ -95,6 +123,8 @@ class PlayerData {
         'soundOn': soundOn,
         'vibrateOn': vibrateOn,
         'dailyClearedDate': dailyClearedDate,
+        'dailyStreak': dailyStreak,
+        'dailyLastDate': dailyLastDate,
         'claimedAchievements': claimedAchievements.toList(),
         'boosters': boosters,
         'analytics': analyticsEvents,
@@ -102,6 +132,10 @@ class PlayerData {
         'parkingUnlocked': parkingUnlocked,
         'parkingBestStars':
             parkingBestStars.map((k, v) => MapEntry(k.toString(), v)),
+        'lastSeenAt': lastSeenAt,
+        'adWatchDate': adWatchDate,
+        'adWatchCount': adWatchCount,
+        'collectionRewardClaimed': collectionRewardClaimed,
       };
 
   factory PlayerData.fromJson(Map<String, dynamic> json) => PlayerData(
@@ -128,6 +162,8 @@ class PlayerData {
         soundOn: json['soundOn'] as bool? ?? true,
         vibrateOn: json['vibrateOn'] as bool? ?? true,
         dailyClearedDate: json['dailyClearedDate'] as String?,
+        dailyStreak: (json['dailyStreak'] as num?)?.toInt() ?? 0,
+        dailyLastDate: json['dailyLastDate'] as String?,
         claimedAchievements:
             (json['claimedAchievements'] as List?)?.cast<String>().toSet() ??
                 {},
@@ -149,6 +185,11 @@ class PlayerData {
         parkingBestStars: (json['parkingBestStars'] as Map?)
                 ?.map((k, v) => MapEntry(int.parse(k), (v as num).toInt())) ??
             {},
+        lastSeenAt: (json['lastSeenAt'] as num?)?.toInt(),
+        adWatchDate: json['adWatchDate'] as String?,
+        adWatchCount: (json['adWatchCount'] as num?)?.toInt() ?? 0,
+        collectionRewardClaimed:
+            json['collectionRewardClaimed'] as bool? ?? false,
       );
 }
 

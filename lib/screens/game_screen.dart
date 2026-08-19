@@ -1,8 +1,11 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../analytics/analytics.dart';
 import '../game/daily_challenge.dart';
+import '../game/game_config.dart';
+import '../game/music_player.dart';
 import '../game/merge_game.dart';
 import '../theme/app_theme.dart';
 import '../models/car.dart';
@@ -55,6 +58,9 @@ class _GameScreenState extends State<GameScreen> {
       case TutorialHighlight.undoTool: targetKey = _undoToolKey; break;
       case TutorialHighlight.addCardsTool: targetKey = _addCardsToolKey; break;
       case TutorialHighlight.coinsDisplay: targetKey = _toolsKey; break;
+      case TutorialHighlight.homeLevels:
+      case TutorialHighlight.homeParking:
+      case TutorialHighlight.homeShop:
       case TutorialHighlight.none: targetKey = null; break;
     }
     if (targetKey == null) { _currentHighlightRect = null; return; }
@@ -77,12 +83,14 @@ class _GameScreenState extends State<GameScreen> {
 
   /// 教程状态
   bool _tutorialActive = false;
-  List<TutorialStep> _tutorialSteps = [];
+  final List<TutorialStep> _tutorialSteps = const [];
   int _tutorialStepIndex = 0;
 
-  static const int _hammerCost = 20;
-  static const int _undoCost = 30;
-  static const int _addCardsCost = 40;
+  static final int _hammerCost = GameConfig.hammerCost;
+  static final int _undoCost = GameConfig.undoCost;
+  static final int _addCardsCost = GameConfig.addCardsCost;
+  static final int _shuffleCost = GameConfig.shuffleCost;
+  static final int _hintCost = GameConfig.hintCost;
 
   @override
   void initState() {
@@ -91,13 +99,14 @@ class _GameScreenState extends State<GameScreen> {
     _game.onGameOver = _onGameOver;
     _game.onTierProduced = (tier) {
       if (widget.data.collection.add(tier.index)) {
-        widget.data.coins += 5;
+        widget.data.addCoins(GameConfig.collectionNewReward);
         _game.hint.value = '📖 图鉴点亮 ${tier.icon} ${tier.label} +5🪙';
         widget.repo.save(widget.data);
+        _analytics.collectionNew(tier.index);
       }
     };
     _game.onEndlessMilestone = (endlessLevel, reward) {
-      widget.data.coins += reward;
+      widget.data.addCoins(reward);
       _game.hint.value = '🏆 里程碑达成！无尽第 $endlessLevel 档 +$reward 🪙';
       widget.repo.save(widget.data);
     };
@@ -108,12 +117,20 @@ class _GameScreenState extends State<GameScreen> {
     _analytics.levelStart(widget.level);
     _applyBoosters();
 
-    // 教程:前 3 关开启引导
+    // 教程:前 3 关开启引导（2026-08-19 重做轻量版后恢复启用：
+    // 无全屏遮罩、不拦截点击、动作检测 + 按钮双通道推进，永不卡死）。
     final tutorialScript = TutorialScript.getScript(widget.level.id);
-    if (tutorialScript != null && !widget.data.tutorialCompleted.contains(widget.level.id)) {
+    if (tutorialScript != null &&
+        !widget.data.tutorialCompleted.contains(widget.level.id)) {
       _tutorialActive = true;
       _tutorialSteps = tutorialScript;
       _tutorialStepIndex = 0;
+      // 激活后立即（postFrame）计算首步高亮，否则首步只有气泡没有高亮框。
+      _scheduleHighlightUpdate();
+    }
+    // 合成场景 BGM（跟随音效开关；返回首页由 home 的 didPopNext 恢复）。
+    if (widget.data.soundOn) {
+      MusicPlayer.instance.play(MusicPlayer.merge);
     }
   }
 
@@ -126,6 +143,7 @@ class _GameScreenState extends State<GameScreen> {
       setState(() => _tutorialActive = false);
       widget.data.tutorialCompleted.add(widget.level.id);
       widget.repo.save(widget.data);
+      _analytics.tutorialComplete('merge');
     }
   }
 
@@ -141,6 +159,7 @@ class _GameScreenState extends State<GameScreen> {
     setState(() => _tutorialActive = false);
     widget.data.tutorialCompleted.add(widget.level.id);
     widget.repo.save(widget.data);
+    _analytics.tutorialComplete('merge', skipped: true);
   }
 
   void _onPlayerAction(String action, CarTier? tier) {
@@ -167,10 +186,15 @@ class _GameScreenState extends State<GameScreen> {
   void _applyBoosters() {
     final b = widget.data.boosters;
     var used = false;
-    if (widget.level.timeLimitSeconds != null && (b['time'] ?? 0) > 0) {
+    if ((b['time'] ?? 0) > 0) {
       b['time'] = b['time']! - 1;
-      _game.addTime(30);
-      _game.hint.value = '🕐 加时卡生效：+30 秒';
+      if (widget.level.timeLimitSeconds != null) {
+        _game.addTime(30);
+        _game.hint.value = '🕐 加时卡生效：+30 秒';
+      } else {
+        widget.data.addCoins(30);
+        _game.hint.value = '🕐 加时卡（非限时关）转为 +30 🪙';
+      }
       used = true;
     }
     if ((b['cards'] ?? 0) > 0) {
@@ -220,7 +244,7 @@ class _GameScreenState extends State<GameScreen> {
     final isEndless = widget.level.endless;
     final score = _game.score.value;
     final stars = isEndless ? 0 : _calcStars(won);
-    const consolation = 10;
+    final consolation = GameConfig.mergeFailConsolation;
     var reward = won ? _starReward(score, stars) : consolation;
     if (_doubleCoin && won) reward *= 2;
     // 每日挑战：当天首次通关领固定大奖（不影响关卡解锁与星级）。
@@ -229,11 +253,20 @@ class _GameScreenState extends State<GameScreen> {
       final today = _dateString();
       if (widget.data.dailyClearedDate != today) {
         widget.data.dailyClearedDate = today;
-        dailyBonus = DailyChallenge.reward;
+        // #83 每日连胜：昨天也通关过 → +1，否则重置 1；连 3 天起 +50 奖励。
+        final yesterday = _dateString(
+            DateTime.now().subtract(const Duration(days: 1)));
+        final streak = widget.data.dailyLastDate == yesterday
+            ? widget.data.dailyStreak + 1
+            : 1;
+        widget.data.dailyStreak = streak;
+        widget.data.dailyLastDate = today;
+        dailyBonus = DailyChallenge.reward + (streak >= 3 ? 50 : 0);
       }
     }
     reward += dailyBonus;
-    widget.data.coins += reward;
+    if (dailyBonus > 0) _analytics.dailyClear(dailyBonus);
+    widget.data.addCoins(reward);
     if (!isEndless && won && !widget.level.daily) {
       if (widget.level.id >= widget.data.unlockedLevel) {
         widget.data.unlockedLevel = widget.level.id + 1;
@@ -288,12 +321,32 @@ class _GameScreenState extends State<GameScreen> {
           Navigator.of(context).pop();
           Navigator.of(context).pop(true);
         },
+        // 分享战绩：复制文案到剪贴板（零依赖，跨平台；接 SDK 后可换系统分享）。
+        onShare: () {
+          final text = isEndless
+              ? '我在《车水马龙》无尽模式冲到 $score 分！来挑战我 🚀'
+              : won
+                  ? '我在《车水马龙》第 ${widget.level.id} 关拿到 $stars 星！'
+                      '合成车队解锁星辰宇宙，来挑战我 🚗✨'
+                  : '我在《车水马龙》挑战第 ${widget.level.id} 关，'
+                      '你也来试试合成车队 🚗';
+          Clipboard.setData(ClipboardData(text: text));
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              const SnackBar(
+                content: Text('✅ 分享文案已复制，去粘贴给好友吧！'),
+                duration: Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+        },
       ),
     );
   }
 
-  String _dateString() {
-    final n = DateTime.now();
+  String _dateString([DateTime? date]) {
+    final n = date ?? DateTime.now();
     return '${n.year}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
   }
 
@@ -315,10 +368,10 @@ class _GameScreenState extends State<GameScreen> {
     final action = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF232830),
+        backgroundColor: AppColors.surfaceLight,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('暂停中',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+            style: TextStyle(color: AppColors.ink1, fontWeight: FontWeight.w800)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -350,7 +403,7 @@ class _GameScreenState extends State<GameScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Material(
-        color: const Color(0xFF2C2F36),
+        color: AppColors.surfaceLight,
         borderRadius: BorderRadius.circular(10),
         child: InkWell(
           borderRadius: BorderRadius.circular(10),
@@ -359,11 +412,11 @@ class _GameScreenState extends State<GameScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
-                Icon(icon, color: Colors.white70, size: 20),
+                Icon(icon, color: AppColors.ink2, size: 20),
                 const SizedBox(width: 10),
                 Text(label,
                     style: const TextStyle(
-                        color: Colors.white, fontSize: 16)),
+                        color: AppColors.ink1, fontSize: 16)),
               ],
             ),
           ),
@@ -439,30 +492,28 @@ class _GameScreenState extends State<GameScreen> {
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
     return Scaffold(
-      backgroundColor: const Color(0xFF171A1E),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment(0, -0.4),
-            radius: 1.2,
-            colors: [Color(0xFF23303E), Color(0xFF171A1E), Color(0xFF0E1013)],
-          ),
-        ),
-        child: SafeArea(
-          child: Stack(
-            children: [
-              isLandscape
+      backgroundColor: AppColors.bg1,
+      body: GlowBackground(
+        child: Stack(
+          children: [
+            SafeArea(
+              child: isLandscape
                   ? _buildLandscapeLayout()
                   : _buildPortraitLayout(),
-              if (_tutorialActive)
-                TutorialOverlay(
+            ),
+            // 修复：TutorialOverlay 必须放在 SafeArea 外层——高亮 rect 用的是
+            // localToGlobal（全屏坐标），若 overlay 在 SafeArea 内，两者坐标系
+            // 差一个 SafeArea 偏移（状态栏高度），高亮框会整体错位、与界面对不上。
+            if (_tutorialActive)
+              Positioned.fill(
+                child: TutorialOverlay(
                   steps: _tutorialSteps,
                   onComplete: _skipTutorial,
                   onActionDetected: (action) => _notifyTutorialAction(action),
                   highlightRect: _currentHighlightRect,
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
@@ -541,7 +592,7 @@ class _GameScreenState extends State<GameScreen> {
         ValueListenableBuilder<int>(
           valueListenable: _game.score,
           builder: (_, v, _) => _chip(
-            gradient: const [Color(0xFFFFD54F), Color(0xFFFF9800)],
+            gradient: const [AppColors.coinGold1, AppColors.coinGold2],
             shadow: true,
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -550,7 +601,7 @@ class _GameScreenState extends State<GameScreen> {
                 const SizedBox(width: 3),
                 Text('$v',
                     style: const TextStyle(
-                        color: Color(0xFF4E342E),
+                        color: AppColors.coinText,
                         fontWeight: FontWeight.w900,
                         fontSize: 13)),
               ],
@@ -680,6 +731,8 @@ class _GameScreenState extends State<GameScreen> {
       builder: (context, left, _) {
         final next = _game.upcomingStock;
         return Column(
+          // 复用竖屏牌堆的 GlobalKey：教学高亮（stockPile）在横屏也能正确定位。
+          key: _stockBarKey,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
@@ -698,6 +751,11 @@ class _GameScreenState extends State<GameScreen> {
                         child: Image.asset(
                           'assets/vehicles/${next[i].name}.png',
                           fit: BoxFit.contain,
+                          errorBuilder: (_, _, _) => Icon(
+                            Icons.style,
+                            color: AppColors.ink3,
+                            size: 26,
+                          ),
                         ),
                       ),
                     ),
@@ -709,7 +767,7 @@ class _GameScreenState extends State<GameScreen> {
               widget.level.endless ? '无限牌堆' : '牌堆剩 $left 张',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: left > 0 ? Colors.white70 : Colors.white38,
+                color: left > 0 ? AppColors.ink2 : AppColors.ink3,
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
               ),
@@ -727,7 +785,7 @@ class _GameScreenState extends State<GameScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _chip(
-          gradient: const [Color(0xFFFFD54F), Color(0xFFFF9800)],
+          gradient: const [AppColors.coinGold1, AppColors.coinGold2],
           shadow: true,
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -736,7 +794,7 @@ class _GameScreenState extends State<GameScreen> {
               const SizedBox(width: 4),
               Text('$coins',
                   style: const TextStyle(
-                      color: Color(0xFF4E342E),
+                      color: AppColors.coinText,
                       fontWeight: FontWeight.w900,
                       fontSize: 13)),
             ],
@@ -745,6 +803,7 @@ class _GameScreenState extends State<GameScreen> {
         const SizedBox(height: 6),
         if (_hammering)
           _toolButton(
+            key: _hammerToolKey,
             icon: Icons.close,
             label: '取消',
             cost: null,
@@ -753,6 +812,7 @@ class _GameScreenState extends State<GameScreen> {
           )
         else
           _toolButton(
+            key: _hammerToolKey,
             icon: Icons.construction,
             label: '清除',
             cost: _hammerCost,
@@ -761,6 +821,7 @@ class _GameScreenState extends State<GameScreen> {
           ),
         const SizedBox(height: 6),
         _toolButton(
+          key: _undoToolKey,
           icon: Icons.undo,
           label: '撤销',
           cost: _undoCost,
@@ -770,6 +831,7 @@ class _GameScreenState extends State<GameScreen> {
         if (!widget.level.endless) ...[
           const SizedBox(height: 6),
           _toolButton(
+            key: _addCardsToolKey,
             icon: Icons.add_box,
             label: '加牌',
             cost: _addCardsCost,
@@ -777,6 +839,22 @@ class _GameScreenState extends State<GameScreen> {
             enabled: coins >= _addCardsCost && !disabled,
           ),
         ],
+        const SizedBox(height: 6),
+        _toolButton(
+          icon: Icons.shuffle,
+          label: '洗牌',
+          cost: _shuffleCost,
+          onTap: _useShuffle,
+          enabled: coins >= _shuffleCost && !disabled,
+        ),
+        const SizedBox(height: 6),
+        _toolButton(
+          icon: Icons.lightbulb_outline,
+          label: '提示',
+          cost: _hintCost,
+          onTap: _useHint,
+          enabled: coins >= _hintCost && !disabled,
+        ),
       ],
     );
   }
@@ -813,13 +891,14 @@ class _GameScreenState extends State<GameScreen> {
                 ),
               ),
               _chip(
-                gradient: const [Color(0xFF2A2F38), Color(0xFF1F242C)],
+                gradient: const [AppColors.surfaceLight, AppColors.surfaceLight],
+                shadow: true,
                 child: Text(
                   widget.level.endless
                       ? '🌌 无尽模式'
                       : '第 ${widget.level.id} 关 · ${widget.level.name}',
                   style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.ink1,
                       fontWeight: FontWeight.w800,
                       fontSize: 14),
                 ),
@@ -852,7 +931,7 @@ class _GameScreenState extends State<GameScreen> {
               ValueListenableBuilder<int>(
                 valueListenable: _game.score,
                 builder: (_, v, _) => _chip(
-                  gradient: const [Color(0xFFFFD54F), Color(0xFFFF9800)],
+                  gradient: const [AppColors.coinGold1, AppColors.coinGold2],
                   shadow: true,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -863,7 +942,7 @@ class _GameScreenState extends State<GameScreen> {
                       Text(
                         '$v',
                         style: const TextStyle(
-                            color: Color(0xFF4E342E),
+                            color: AppColors.coinText,
                             fontWeight: FontWeight.w900,
                             fontSize: 15),
                       ),
@@ -1067,7 +1146,7 @@ class _GameScreenState extends State<GameScreen> {
                         hint,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                            color: Color(0xFFFFCA28), fontSize: 12),
+                            color: AppColors.coralDeep, fontSize: 12),
                       ),
                     ),
                   Row(
@@ -1085,20 +1164,24 @@ class _GameScreenState extends State<GameScreen> {
                               child: Image.asset(
                                 'assets/vehicles/${next[i].name}.png',
                                 fit: BoxFit.contain,
+                                errorBuilder: (_, _, _) => Icon(
+                                  Icons.style,
+                                  color: AppColors.ink3,
+                                  size: 30,
+                                ),
                               ),
                             ),
                           ),
                         ),
                       const Spacer(),
                       _chip(
-                        gradient: left > 0
-                            ? const [Color(0xFF2A2F38), Color(0xFF1F242C)]
-                            : const [Color(0xFF3A2A2A), Color(0xFF2A1F1F)],
+                        gradient: const [AppColors.surfaceLight, AppColors.surfaceLight],
+                        shadow: true,
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(Icons.style,
-                                size: 15, color: Colors.white54),
+                                size: 15, color: AppColors.ink2),
                             const SizedBox(width: 4),
                             Text(
                               widget.level.endless
@@ -1106,7 +1189,7 @@ class _GameScreenState extends State<GameScreen> {
                                   : (left > 0 ? '牌堆剩 $left 张' : '牌已用完'),
                               style: TextStyle(
                                 color:
-                                    left > 0 ? Colors.white70 : Colors.white38,
+                                    left > 0 ? AppColors.ink2 : AppColors.ink3,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -1128,66 +1211,84 @@ class _GameScreenState extends State<GameScreen> {
   Widget _buildTools() {
     final coins = widget.data.coins;
     final disabled = _finished;
+    // 工具按钮较多（清除/撤销/加牌/洗牌/提示），窄屏横向滚动避免溢出。
     return Padding(
       key: _toolsKey,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-      child: Row(
-        children: [
-          _chip(
-            gradient: const [Color(0xFFFFD54F), Color(0xFFFF9800)],
-            shadow: true,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('💰', style: TextStyle(fontSize: 15)),
-                const SizedBox(width: 4),
-                Text(
-                  '$coins',
-                  style: const TextStyle(
-                      color: Color(0xFF4E342E),
-                      fontWeight: FontWeight.w900,
-                      fontSize: 14),
-                ),
-              ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _chip(
+              gradient: const [AppColors.coinGold1, AppColors.coinGold2],
+              shadow: true,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('💰', style: TextStyle(fontSize: 15)),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$coins',
+                    style: const TextStyle(
+                        color: AppColors.coinText,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 14),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const Spacer(),
-          if (_hammering)
+            const SizedBox(width: 12),
+            if (_hammering)
+              _toolButton(
+                key: _hammerToolKey,
+                icon: Icons.close,
+                label: '取消',
+                cost: null,
+                onTap: _cancelHammer,
+                danger: true,
+              )
+            else
+              _toolButton(
+                key: _hammerToolKey,
+                icon: Icons.construction,
+                label: '清除',
+                cost: _hammerCost,
+                onTap: _useHammer,
+                enabled: coins >= _hammerCost && !disabled,
+              ),
             _toolButton(
-              key: _hammerToolKey,
-              icon: Icons.close,
-              label: '取消',
-              cost: null,
-              onTap: _cancelHammer,
-              danger: true,
-            )
-          else
-            _toolButton(
-              key: _hammerToolKey,
-              icon: Icons.construction,
-              label: '清除',
-              cost: _hammerCost,
-              onTap: _useHammer,
-              enabled: coins >= _hammerCost && !disabled,
+              key: _undoToolKey,
+              icon: Icons.undo,
+              label: '撤销',
+              cost: _undoCost,
+              onTap: _useUndo,
+              enabled: coins >= _undoCost && !disabled && _game.canUndo,
             ),
+            if (!widget.level.endless)
+              _toolButton(
+                key: _addCardsToolKey,
+                icon: Icons.add_box,
+                label: '加牌',
+                cost: _addCardsCost,
+                onTap: _useAddCards,
+                enabled: coins >= _addCardsCost && !disabled,
+              ),
           _toolButton(
-            key: _undoToolKey,
-            icon: Icons.undo,
-            label: '撤销',
-            cost: _undoCost,
-            onTap: _useUndo,
-            enabled: coins >= _undoCost && !disabled && _game.canUndo,
+            icon: Icons.shuffle,
+            label: '洗牌',
+            cost: _shuffleCost,
+            onTap: _useShuffle,
+            enabled: coins >= _shuffleCost && !disabled,
           ),
-          if (!widget.level.endless)
-            _toolButton(
-              key: _addCardsToolKey,
-              icon: Icons.add_box,
-              label: '加牌',
-              cost: _addCardsCost,
-              onTap: _useAddCards,
-              enabled: coins >= _addCardsCost && !disabled,
-            ),
-        ],
+          _toolButton(
+            icon: Icons.lightbulb_outline,
+            label: '提示',
+            cost: _hintCost,
+            onTap: _useHint,
+            enabled: coins >= _hintCost && !disabled,
+          ),
+          ],
+        ),
       ),
     );
   }
@@ -1215,14 +1316,14 @@ class _GameScreenState extends State<GameScreen> {
               colors: enabled
                   ? danger
                       ? const [Color(0xFFE53935), Color(0xFFC62828)]
-                      : const [Color(0xFF3A4452), Color(0xFF262B33)]
-                  : const [Color(0xFF23262B), Color(0xFF1D2024)],
+                      : const [AppColors.surfaceLight, AppColors.surfaceLight]
+                  : const [Color(0xFFE7E0E9), Color(0xFFDCD3E0)],
             ),
             borderRadius: BorderRadius.circular(12),
             boxShadow: enabled
                 ? const [
                     BoxShadow(
-                      color: Color(0x40000000),
+                      color: AppColors.shadow,
                       blurRadius: 6,
                       offset: Offset(0, 2),
                     ),
@@ -1239,15 +1340,15 @@ class _GameScreenState extends State<GameScreen> {
                 children: [
                   Icon(icon,
                       size: 18,
-                      color: enabled ? Colors.white : Colors.white24),
+                      color: enabled ? AppColors.ink1 : AppColors.ink3),
                   const SizedBox(height: 2),
                   Text(
                     cost == null ? label : '$label $cost',
                     style: TextStyle(
                       fontSize: 10,
                       color: enabled
-                          ? const Color(0xFFFFCA28)
-                          : Colors.white30,
+                          ? AppColors.coralDeep
+                          : AppColors.ink3,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -1301,6 +1402,24 @@ class _GameScreenState extends State<GameScreen> {
     _game.addCards(3);
     setState(() {});
   }
+
+  void _useShuffle() {
+    if (_finished || widget.data.coins < _shuffleCost) return;
+    widget.data.coins -= _shuffleCost;
+    _analytics.toolUse('shuffle', _shuffleCost, widget.data.coins);
+    widget.repo.save(widget.data);
+    _game.shuffleBoard();
+    setState(() {});
+  }
+
+  void _useHint() {
+    if (_finished || widget.data.coins < _hintCost) return;
+    widget.data.coins -= _hintCost;
+    _analytics.toolUse('hint', _hintCost, widget.data.coins);
+    widget.repo.save(widget.data);
+    _game.showHint();
+    setState(() {});
+  }
 }
 
 class _ResultDialog extends StatelessWidget {
@@ -1319,11 +1438,14 @@ class _ResultDialog extends StatelessWidget {
   final int? rank;
 
   final int reward;
+  final int consolation;
 
   /// 失败时的安慰金币数（用于提示文案）。
-  final int consolation;
   final VoidCallback onReplay;
   final VoidCallback onHome;
+
+  /// 分享战绩回调（#80，可为空则隐藏分享按钮）。
+  final VoidCallback? onShare;
 
   const _ResultDialog({
     required this.won,
@@ -1339,13 +1461,14 @@ class _ResultDialog extends StatelessWidget {
     required this.consolation,
     required this.onReplay,
     required this.onHome,
+    this.onShare,
   });
 
   @override
   Widget build(BuildContext context) {
     final isEndless = endlessLevel > 0;
     return Dialog(
-      backgroundColor: const Color(0xFF232830),
+      backgroundColor: AppColors.surfaceLight,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
@@ -1359,7 +1482,7 @@ class _ResultDialog extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Color(0xFF2A3D5C), Color(0xFF1B2437)],
+                  colors: [AppColors.coral, AppColors.coralDeep],
                 ),
               ),
               child: Column(
@@ -1406,7 +1529,7 @@ class _ResultDialog extends StatelessWidget {
                   Text(
                     message,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white60),
+                    style: const TextStyle(color: AppColors.ink2),
                   ),
                   const SizedBox(height: 14),
                   Container(
@@ -1414,7 +1537,7 @@ class _ResultDialog extends StatelessWidget {
                         horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFFFFD54F), Color(0xFFFF9800)],
+                        colors: [AppColors.coinGold1, AppColors.coinGold2],
                       ),
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -1423,7 +1546,7 @@ class _ResultDialog extends StatelessWidget {
                           ? '得分 $score  ·  +$reward 🪙'
                           : '得分 $score  ·  安慰 +$consolation 🪙',
                       style: const TextStyle(
-                          color: Color(0xFF4E342E),
+                          color: AppColors.coinText,
                           fontSize: 17,
                           fontWeight: FontWeight.w900),
                     ),
@@ -1434,22 +1557,41 @@ class _ResultDialog extends StatelessWidget {
                       rank != null
                           ? '完成 ${endlessLevel - 1} 档目标 · 榜单第 $rank 名'
                           : '完成 ${endlessLevel - 1} 档目标 · 未进前 10',
-                      style: const TextStyle(color: Colors.white70, fontSize: 14),
+                      style: const TextStyle(color: AppColors.ink2, fontSize: 14),
                     )
                   else
                     Text(
                       '最大连消 x$maxCombo  ·  用时 $elapsedText',
-                      style: const TextStyle(color: Colors.white70, fontSize: 14),
+                      style: const TextStyle(color: AppColors.ink2, fontSize: 14),
                     ),
                   const SizedBox(height: 20),
+                  if (onShare != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: OutlinedButton.icon(
+                        onPressed: onShare,
+                        icon: const Icon(Icons.ios_share, size: 18),
+                        label: const Text('分享战绩',
+                            style: TextStyle(fontWeight: FontWeight.w800)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.grape,
+                          side: BorderSide(
+                              color: AppColors.grape.withValues(alpha: 0.5)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(999)),
+                        ),
+                      ),
+                    ),
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton(
                           onPressed: onHome,
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.white70,
-                            side: const BorderSide(color: Colors.white24),
+                            foregroundColor: AppColors.ink2,
+                            side: BorderSide(color: AppColors.ink3),
                             padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                           child: const Text('返回'),
@@ -1460,7 +1602,7 @@ class _ResultDialog extends StatelessWidget {
                         child: FilledButton(
                           onPressed: onReplay,
                           style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.accent,
+                            backgroundColor: AppColors.coral,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                           child: const Text('再来一局'),

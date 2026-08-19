@@ -54,7 +54,7 @@ final achievements = <Achievement>[
     id: 'clear_30',
     title: '马路老手',
     desc: '累计通关 30 关',
-    reward: 120,
+    reward: 80,
     icon: Icons.route,
     achieved: (d) => _completed(d) >= 30,
   ),
@@ -94,7 +94,7 @@ final achievements = <Achievement>[
     id: 'coins_2000',
     title: '家财万贯',
     desc: '持有 2000 金币',
-    reward: 150,
+    reward: 120,
     icon: Icons.account_balance_wallet,
     achieved: (d) => d.coins >= 2000,
   ),
@@ -160,8 +160,89 @@ final achievements = <Achievement>[
     id: 'park_master',
     title: '泊车大师',
     desc: '解锁第 20 个停车关卡',
-    reward: 200,
+    reward: 100,
     icon: Icons.workspace_premium,
     achieved: (d) => d.parkingUnlocked > 20,
+  ),
+
+  // —— 深化成就（任务78）：章节 / 收集 / 连续 / 里程碑 ——
+  Achievement(
+    id: 'chapter_1_clear',
+    title: '街区新星',
+    desc: '通关第一章（第 1-10 关）',
+    reward: 80,
+    icon: Icons.home_work,
+    achieved: (d) => levels
+        .where((l) => l.id <= 10)
+        .every((l) => (d.bestStars[l.id] ?? 0) > 0),
+  ),
+  Achievement(
+    id: 'chapter_4_clear',
+    title: '天空征服者',
+    desc: '通关第四章（第 1-40 关）',
+    reward: 80,
+    icon: Icons.flight_takeoff,
+    achieved: (d) => levels
+        .where((l) => l.id <= 40)
+        .every((l) => (d.bestStars[l.id] ?? 0) > 0),
+  ),
+  Achievement(
+    id: 'signin_streak_7',
+    title: '铁杆签到党',
+    desc: '连续签到 7 天',
+    reward: 100,
+    icon: Icons.local_fire_department,
+    achieved: (d) => d.signInStreak >= 7,
+  ),
+  Achievement(
+    id: 'collection_ground',
+    title: '陆地霸主',
+    desc: '收集全部 6 款陆地车',
+    reward: 60,
+    icon: Icons.directions_bus,
+    achieved: (d) => CarTier.values
+        .where((t) => t.family == CarFamily.ground)
+        .every((t) => d.collection.contains(t.index)),
+  ),
+  Achievement(
+    id: 'collection_all',
+    title: '终极收藏家',
+    desc: '点亮全部 17 款车型',
+    reward: 100,
+    icon: Icons.collections_bookmark,
+    achieved: (d) => CarTier.values.every((t) => d.collection.contains(t.index)),
+  ),
+  Achievement(
+    id: 'comet_1',
+    title: '彗星追迹者',
+    desc: '合成出彗星',
+    reward: 120,
+    icon: Icons.auto_awesome,
+    achieved: (d) => d.collection.contains(CarTier.comet.index),
+  ),
+  Achievement(
+    id: 'park_star5',
+    title: '三星泊车手',
+    desc: '5 个停车关卡拿到 3 星',
+    reward: 120,
+    icon: Icons.star,
+    achieved: (d) =>
+        d.parkingBestStars.values.where((s) => s >= 3).length >= 5,
+  ),
+  Achievement(
+    id: 'endless_3000',
+    title: '永动机',
+    desc: '无尽模式突破 3000 分',
+    reward: 150,
+    icon: Icons.bolt,
+    achieved: (d) => (d.endlessBest.isEmpty ? 0 : d.endlessBest.first) >= 3000,
+  ),
+  Achievement(
+    id: 'void_1',
+    title: '终极造物',
+    desc: '合成出最高级的反重力车',
+    reward: 200,
+    icon: Icons.rocket_launch,
+    achieved: (d) => d.collection.contains(CarTier.antigrav.index),
   ),
 ];

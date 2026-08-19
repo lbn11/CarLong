@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/achievement.dart';
 import '../save/save_repository.dart';
+import '../theme/app_theme.dart';
 
 class AchievementsScreen extends StatefulWidget {
   final PlayerData data;
@@ -20,7 +21,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
     if (data.claimedAchievements.contains(a.id)) return;
     setState(() {
       data.claimedAchievements.add(a.id);
-      data.coins += a.reward;
+      data.addCoins(a.reward);
     });
     widget.repo.save(data);
   }
@@ -32,51 +33,48 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
         .where((a) => data.claimedAchievements.contains(a.id))
         .length;
     return Scaffold(
-      backgroundColor: const Color(0xFF171A1E),
+      backgroundColor: AppColors.bg1,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1E23),
-        foregroundColor: Colors.white,
+        backgroundColor: AppColors.bg1,
+        foregroundColor: AppColors.ink1,
         title: const Text('成就',
-            style: TextStyle(fontWeight: FontWeight.w900)),
+            style: TextStyle(
+                fontWeight: FontWeight.w900, color: AppColors.ink1)),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Center(
               child: Text('已领 $claimed/${achievements.length}',
-                  style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                  style: const TextStyle(
+                      color: AppColors.ink3, fontSize: 12)),
             ),
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF2A3D5C), Color(0xFF1B2437)],
+      body: GlowBackground(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: AppTheme.card(radius: 16),
+              child: Row(
+                children: [
+                  const Text('💰', style: TextStyle(fontSize: 24)),
+                  const SizedBox(width: 10),
+                  const Text('当前金币',
+                      style: TextStyle(
+                          color: AppColors.ink2,
+                          fontWeight: FontWeight.w700)),
+                  const Spacer(),
+                  Text('$coins',
+                      style: const TextStyle(
+                          color: AppColors.sun,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900)),
+                ],
               ),
-              borderRadius: BorderRadius.circular(16),
             ),
-            child: Row(
-              children: [
-                const Text('💰', style: TextStyle(fontSize: 24)),
-                const SizedBox(width: 10),
-                const Text('当前金币',
-                    style: TextStyle(
-                        color: Colors.white70, fontWeight: FontWeight.w700)),
-                const Spacer(),
-                Text('$coins',
-                    style: const TextStyle(
-                        color: Color(0xFFFFCA28),
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900)),
-              ],
-            ),
-          ),
           const SizedBox(height: 14),
           for (final a in achievements)
             _AchievementTile(
@@ -85,7 +83,8 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
               claimed: data.claimedAchievements.contains(a.id),
               onClaim: () => _claim(a),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -107,24 +106,16 @@ class _AchievementTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final a = achievement;
-    final accent = achieved ? const Color(0xFFFFCA28) : Colors.white30;
+    final accent = achieved ? AppColors.sun : AppColors.ink3;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Container(
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: achieved
-                ? [const Color(0xFF2A2F38), const Color(0xFF1E2229)]
-                : [const Color(0xFF20242A), const Color(0xFF1A1D22)],
-          ),
-          borderRadius: BorderRadius.circular(16),
+        decoration: AppTheme.card(radius: 16).copyWith(
           border: Border.all(
               color: achieved
-                  ? const Color(0x44FFCA28)
-                  : const Color(0xFF2A2F38)),
+                  ? AppColors.sun.withValues(alpha: 0.4)
+                  : AppColors.ink3.withValues(alpha: 0.3)),
         ),
         child: Row(
           children: [
@@ -144,13 +135,13 @@ class _AchievementTile extends StatelessWidget {
                 children: [
                   Text(a.title,
                       style: TextStyle(
-                          color: achieved ? Colors.white : Colors.white38,
+                          color: achieved ? AppColors.ink1 : AppColors.ink3,
                           fontWeight: FontWeight.w800,
                           fontSize: 15)),
                   const SizedBox(height: 2),
                   Text(a.desc,
                       style: TextStyle(
-                          color: achieved ? Colors.white54 : Colors.white24,
+                          color: achieved ? AppColors.ink2 : AppColors.ink3,
                           fontSize: 12)),
                 ],
               ),
@@ -161,12 +152,12 @@ class _AchievementTile extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: const Color(0x2266BB6A),
+                  color: AppColors.mint.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Text('已领取',
                     style: TextStyle(
-                        color: Color(0xFF66BB6A),
+                        color: AppColors.mint,
                         fontSize: 12,
                         fontWeight: FontWeight.w800)),
               )
@@ -174,8 +165,8 @@ class _AchievementTile extends StatelessWidget {
               FilledButton(
                 onPressed: onClaim,
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFCA28),
-                  foregroundColor: const Color(0xFF4E342E),
+                  backgroundColor: AppColors.coral,
+                  foregroundColor: AppColors.ink1,
                   padding: const EdgeInsets.symmetric(
                       horizontal: 12, vertical: 10),
                   shape: RoundedRectangleBorder(
@@ -185,7 +176,8 @@ class _AchievementTile extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.w900)),
               )
             else
-              const Icon(Icons.lock_outline, color: Colors.white24, size: 20),
+              const Icon(Icons.lock_outline,
+                  color: AppColors.ink3, size: 20),
           ],
         ),
       ),

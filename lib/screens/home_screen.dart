@@ -4,10 +4,15 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import '../game/daily_challenge.dart';
+import '../game/game_config.dart';
+import '../game/music_player.dart';
+import '../analytics/analytics.dart';
 import '../models/achievement.dart';
+import '../models/car.dart';
 import '../theme/app_theme.dart';
 import '../models/level.dart';
 import '../save/save_repository.dart';
+import '../widgets/tutorial_overlay.dart';
 import 'achievements_screen.dart';
 import 'collection_screen.dart';
 import 'game_screen.dart';
@@ -26,8 +31,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, RouteAware {
   PlayerData get data => widget.data;
+
+  late final AnalyticsService _analytics;
 
   /// 入场仪式：控制各区块的淡入上浮。
   late final AnimationController _enter;
@@ -36,9 +43,30 @@ class _HomeScreenState extends State<HomeScreen>
   /// 环境氛围：缓慢漂移的背景光晕。
   late final AnimationController _ambient;
 
+  // ===== 首页首启引导 =====
+  /// 首页引导的存档 key（与合成/停车教程区分）。
+  static const int _homeTutorialKey = -2;
+  bool _homeTutorialActive = false;
+  int _homeStepIndex = 0;
+  Rect? _homeHighlightRect;
+  final GlobalKey _levelListKey = GlobalKey();
+  final GlobalKey _parkingEntryKey = GlobalKey();
+  final GlobalKey _shopRowKey = GlobalKey();
+
+  static const List<TutorialStep> _homeSteps = [
+    TutorialStep(
+      text: '👋 欢迎来到车队！点这里选择关卡，'
+          '第一关会手把手教你合成玩法',
+      highlight: TutorialHighlight.homeLevels,
+      blocking: false,
+    ),
+  ];
+
   @override
   void initState() {
     super.initState();
+    _analytics = AnalyticsService(widget.data, widget.repo);
+    _analytics.appLaunch(isFirst: widget.data.analyticsEvents.isEmpty);
     _enter = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1000))
       ..forward();
@@ -46,13 +74,204 @@ class _HomeScreenState extends State<HomeScreen>
     _ambient = AnimationController(
         vsync: this, duration: const Duration(seconds: 16))
       ..repeat();
+    // 首启引导：等首帧布局完成再算高亮矩形（2026-08-19 重做轻量版后恢复）。
+    if (!widget.data.tutorialCompleted.contains(_homeTutorialKey)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _homeTutorialActive = true;
+            _homeStepIndex = 0;
+          });
+          _updateHomeHighlight();
+        }
+      });
+    }
+    // 离线收益：进入首页即结算并更新在线时间戳。
+    _checkOfflineReward();
+    // 首页 BGM（跟随音效开关）。
+    if (widget.data.soundOn) {
+      MusicPlayer.instance.play(MusicPlayer.home);
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route != null) {
+      musicRouteObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void didPopNext() {
+    // 从合成/停车返回首页：恢复首页 BGM。
+    if (widget.data.soundOn) {
+      MusicPlayer.instance.play(MusicPlayer.home);
+    }
   }
 
   @override
   void dispose() {
+    musicRouteObserver.unsubscribe(this);
     _enter.dispose();
     _ambient.dispose();
     super.dispose();
+  }
+
+  /// 离线收益（留存钩子）：离开 30 分钟+ 回来自动领金币。
+  /// 速率 20🪙/小时，上限 8 小时。首次进入（无时间戳）不发放。
+  void _checkOfflineReward() {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final last = data.lastSeenAt;
+    data.lastSeenAt = now;
+    widget.repo.save(data);
+    if (last == null) return;
+    final offlineMs = now - last;
+    if (offlineMs < 30 * 60 * 1000) return;
+    final hours = (offlineMs / 3600000).clamp(0, 8).toDouble();
+    // 离线速率 12🪙/h（上限 8h = 96），防补贴通胀（原 20/h）。
+    final reward = (hours * GameConfig.offlineCoinsPerHour).floor();
+    if (reward <= 0) return;
+    data.addCoins(reward);
+    widget.repo.save(data);
+    _analytics.offlineReward(reward, hours.round());
+    final hoursText = offlineMs >= 2 * 3600000
+        ? '${(offlineMs / 3600000).toStringAsFixed(1)} 小时'
+        : '${(offlineMs / 60000).round()} 分钟';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => Dialog(
+          backgroundColor: AppColors.surfaceLight,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('👋', style: TextStyle(fontSize: 44)),
+                const SizedBox(height: 10),
+                const Text('欢迎回来！',
+                    style: TextStyle(
+                        color: AppColors.ink1,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900)),
+                const SizedBox(height: 8),
+                Text('离线 $hoursText，车队帮你攒了',
+                    style: const TextStyle(color: AppColors.ink2)),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('💰', style: TextStyle(fontSize: 22)),
+                    const SizedBox(width: 6),
+                    Text('+$reward 🪙',
+                        style: const TextStyle(
+                            color: AppColors.coinText,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900)),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.coral,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 40, vertical: 12),
+                  ),
+                  child: const Text('收下啦',
+                      style: TextStyle(fontWeight: FontWeight.w900)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
+  }
+
+  /// 根据当前步骤计算高亮区域（GlobalKey -> 屏幕 Rect）。
+  void _updateHomeHighlight() {
+    if (!_homeTutorialActive ||
+        _homeStepIndex >= _homeSteps.length) {
+      _homeHighlightRect = null;
+      return;
+    }
+    final step = _homeSteps[_homeStepIndex];
+    GlobalKey? target;
+    switch (step.highlight) {
+      case TutorialHighlight.homeLevels:
+        target = _levelListKey;
+        break;
+      case TutorialHighlight.homeParking:
+        target = _parkingEntryKey;
+        break;
+      case TutorialHighlight.homeShop:
+        target = _shopRowKey;
+        break;
+      default:
+        target = null;
+    }
+    Rect? rect;
+    if (target != null) {
+      final ctx = target.currentContext;
+      if (ctx != null) {
+        final box = ctx.findRenderObject() as RenderBox?;
+        if (box != null && box.hasSize && box.attached) {
+          rect = box.localToGlobal(Offset.zero) & box.size;
+        }
+      }
+    }
+    // 修复：关卡入口在首页滚动列表下方，首屏可能不可见。
+    // 引导激活时自动滚动到目标，保证高亮真正在玩家视野内。
+    if (target != null && rect != null) {
+      final targetCtx = target.currentContext;
+      if (targetCtx != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _homeTutorialActive) {
+            Scrollable.ensureVisible(
+              targetCtx,
+              duration: const Duration(milliseconds: 350),
+              alignment: 0.5,
+            );
+          }
+        });
+      }
+    }
+    setState(() => _homeHighlightRect = rect);
+  }
+
+  void _advanceHomeTutorial() {
+    if (_homeStepIndex < _homeSteps.length - 1) {
+      setState(() => _homeStepIndex++);
+      _updateHomeHighlight();
+    } else {
+      // 引导结束：标记完成并直接进入选关页（新玩家衔接 L1 合成教学）。
+      _finishHomeTutorial();
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              LevelSelectScreen(data: data, repo: widget.repo),
+        ),
+      );
+    }
+  }
+
+  void _finishHomeTutorial() {
+    setState(() {
+      _homeTutorialActive = false;
+      _homeHighlightRect = null;
+    });
+    widget.data.tutorialCompleted.add(_homeTutorialKey);
+    widget.repo.save(widget.data);
+    _analytics.tutorialComplete('home');
   }
 
   String _dateFor(DateTime d) =>
@@ -64,7 +283,7 @@ class _HomeScreenState extends State<HomeScreen>
       _dateFor(DateTime.now().subtract(const Duration(days: 1)));
 
   /// 7 日签到固定档位：前 6 天递增，第 7 天大奖。
-  static const List<int> _signInRewards = [10, 15, 20, 25, 30, 40, 80];
+  static const List<int> _signInRewards = GameConfig.signInRewards;
 
   void _onSignIn() {
     final today = _today();
@@ -86,8 +305,9 @@ class _HomeScreenState extends State<HomeScreen>
     data.signInTotal += 1;
     data.signInDay = day;
     final reward = _signInRewards[day - 1];
-    data.coins += reward;
+    data.addCoins(reward);
     widget.repo.save(data);
+    _analytics.signIn(day, reward);
     setState(() {});
     _showDialog(
       day == 7 ? '🎁 签到大奖！+$reward 🪙' : '签到成功！+$reward 🪙',
@@ -105,7 +325,7 @@ class _HomeScreenState extends State<HomeScreen>
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: const Color(0xFF232830),
+        backgroundColor: AppColors.surfaceLight,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -116,13 +336,13 @@ class _HomeScreenState extends State<HomeScreen>
               const SizedBox(height: 12),
               Text(title,
                   style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.ink1,
                       fontSize: 20,
                       fontWeight: FontWeight.w800)),
               const SizedBox(height: 8),
               Text(body,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white60)),
+                  style: const TextStyle(color: AppColors.ink2)),
               const SizedBox(height: 20),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(),
@@ -145,29 +365,31 @@ class _HomeScreenState extends State<HomeScreen>
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF232830),
+          backgroundColor: AppColors.surfaceLight,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text('设置',
               style: TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.w800)),
+                  color: AppColors.ink1, fontWeight: FontWeight.w800)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               SwitchListTile(
                 value: data.soundOn,
                 title: const Text('音效',
-                    style: TextStyle(color: Colors.white)),
+                    style: TextStyle(color: AppColors.ink1)),
                 activeTrackColor: AppColors.accent,
                 onChanged: (v) {
                   setDialogState(() => data.soundOn = v);
                   widget.repo.save(data);
+                  // BGM 跟随音效开关。
+                  MusicPlayer.instance.syncEnabled(v, MusicPlayer.home);
                   setState(() {});
                 },
               ),
               SwitchListTile(
                 value: data.vibrateOn,
                 title: const Text('振动',
-                    style: TextStyle(color: Colors.white)),
+                    style: TextStyle(color: AppColors.ink1)),
                 activeTrackColor: AppColors.accent,
                 onChanged: (v) {
                   setDialogState(() => data.vibrateOn = v);
@@ -180,7 +402,7 @@ class _HomeScreenState extends State<HomeScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('完成', style: TextStyle(color: Colors.white70)),
+              child: const Text('完成', style: TextStyle(color: AppColors.ink2)),
             ),
           ],
         ),
@@ -209,7 +431,7 @@ class _HomeScreenState extends State<HomeScreen>
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: const Color(0xFF232830),
+        backgroundColor: AppColors.surfaceLight,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -218,7 +440,7 @@ class _HomeScreenState extends State<HomeScreen>
             children: [
               const Text('🌌 无尽排行榜',
                   style: TextStyle(
-                      color: Colors.white,
+                      color: AppColors.ink1,
                       fontSize: 20,
                       fontWeight: FontWeight.w800)),
               const SizedBox(height: 16),
@@ -226,7 +448,7 @@ class _HomeScreenState extends State<HomeScreen>
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 16),
                   child: Text('还没有纪录，去无尽模式创造高分吧！',
-                      style: TextStyle(color: Colors.white60)),
+                      style: TextStyle(color: AppColors.ink2)),
                 )
               else
                 for (var i = 0; i < list.length; i++)
@@ -240,7 +462,7 @@ class _HomeScreenState extends State<HomeScreen>
                               style: TextStyle(
                                   color: i == 0
                                       ? const Color(0xFFFFCA28)
-                                      : Colors.white54,
+                                      : AppColors.ink2,
                                   fontWeight: FontWeight.w800)),
                         ),
                         Expanded(
@@ -249,7 +471,7 @@ class _HomeScreenState extends State<HomeScreen>
                             child: LinearProgressIndicator(
                               value: list[i] / (list.first == 0 ? 1 : list.first),
                               minHeight: 8,
-                              backgroundColor: const Color(0xFF2C2F36),
+                              backgroundColor: AppColors.ink3.withValues(alpha: 0.2),
                               color: AppColors.accent,
                             ),
                           ),
@@ -257,7 +479,7 @@ class _HomeScreenState extends State<HomeScreen>
                         const SizedBox(width: 8),
                         Text('${list[i]} 分',
                             style: const TextStyle(
-                                color: Colors.white, fontWeight: FontWeight.w700)),
+                                color: AppColors.ink1, fontWeight: FontWeight.w700)),
                       ],
                     ),
                   ),
@@ -281,17 +503,11 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF171A1E),
+      backgroundColor: AppColors.bg1,
       body: Stack(
         children: [
           Container(
-            decoration: const BoxDecoration(
-              gradient: RadialGradient(
-                center: Alignment(0, -0.5),
-                radius: 1.3,
-                colors: [Color(0xFF23303E), Color(0xFF171A1E), Color(0xFF0E1013)],
-              ),
-            ),
+            decoration: const BoxDecoration(gradient: AppTheme.backgroundGradientLight),
           ),
           Positioned.fill(
             child: IgnorePointer(
@@ -337,6 +553,7 @@ class _HomeScreenState extends State<HomeScreen>
                           anim: _enterAnim,
                           start: 0.58,
                           child: Row(
+                            key: _shopRowKey,
                             children: [
                               Expanded(
                                 child: _buildMiniEntry(
@@ -374,14 +591,26 @@ class _HomeScreenState extends State<HomeScreen>
                         const SizedBox(height: 12),
                         _Reveal(
                           anim: _enterAnim,
+                          start: 0.64,
+                          child: _buildCollectionBanner(),
+                        ),
+                        const SizedBox(height: 12),
+                        _Reveal(
+                          anim: _enterAnim,
                           start: 0.7,
-                          child: _buildLevelListEntry(),
+                          child: KeyedSubtree(
+                            key: _levelListKey,
+                            child: _buildLevelListEntry(),
+                          ),
                         ),
                         const SizedBox(height: 12),
                         _Reveal(
                           anim: _enterAnim,
                           start: 0.82,
-                          child: _buildParkingEntry(),
+                          child: KeyedSubtree(
+                            key: _parkingEntryKey,
+                            child: _buildParkingEntry(),
+                          ),
                         ),
                       ],
                     ),
@@ -390,6 +619,20 @@ class _HomeScreenState extends State<HomeScreen>
               ],
             ),
           ),
+          // 首启引导覆盖层（最顶层，轻量版：不拦截点击，玩家可直接点入口）。
+          if (_homeTutorialActive)
+            Positioned.fill(
+              child: TutorialOverlay(
+                steps: _homeSteps,
+                onComplete: _finishHomeTutorial,
+                onActionDetected: (_) {},
+                highlightRect: _homeHighlightRect,
+                showNext: true,
+                nextLabel: '开始游戏',
+                externalStep: _homeStepIndex,
+                onNextTap: _advanceHomeTutorial,
+              ),
+            ),
         ],
       ),
     );
@@ -404,13 +647,13 @@ class _HomeScreenState extends State<HomeScreen>
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF2A2F38), Color(0xFF1E2229)],
+            colors: [AppColors.surfaceLight, AppColors.surfaceSoft],
           ),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0x335C6BC0)),
+          border: Border.all(color: AppColors.ink3.withValues(alpha: 0.18)),
           boxShadow: const [
             BoxShadow(
-                color: Color(0x33000000), blurRadius: 10, offset: Offset(0, 4)),
+                color: AppColors.shadow, blurRadius: 10, offset: Offset(0, 4)),
           ],
         ),
         child: InkWell(
@@ -428,10 +671,10 @@ class _HomeScreenState extends State<HomeScreen>
                 Container(
                   width: 44,
                   height: 44,
-                  decoration: const BoxDecoration(
-                      color: Color(0x33FFFFFF), shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                      color: AppColors.ink3.withValues(alpha: 0.12), shape: BoxShape.circle),
                   child: const Icon(Icons.local_parking,
-                      color: Colors.white70, size: 24),
+                      color: AppColors.ink2, size: 24),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
@@ -440,21 +683,146 @@ class _HomeScreenState extends State<HomeScreen>
                     children: [
                       Text('停车模式',
                           style: TextStyle(
-                              color: Colors.white,
+                              color: AppColors.ink1,
                               fontWeight: FontWeight.w800,
                               fontSize: 15)),
                       Text('把车辆停到指定车位',
                           style:
-                              TextStyle(color: Colors.white54, fontSize: 12)),
+                              TextStyle(color: AppColors.ink2, fontSize: 12)),
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: Colors.white38, size: 20),
+                const Icon(Icons.chevron_right, color: AppColors.ink3, size: 20),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  /// 收藏召回（留存钩子）：图鉴收集进度 + 全图鉴大奖。
+  /// 已点亮 X/17 驱动"还差几个"的收集欲；集齐后一次性大奖 500🪙。
+  Widget _buildCollectionBanner() {
+    final collected = data.collection.length;
+    final total = CarTier.values.length;
+    final complete = collected >= total;
+    final claimed = data.collectionRewardClaimed;
+    return Material(
+      color: Colors.transparent,
+      child: Ink(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [AppColors.surfaceLight, AppColors.surfaceSoft],
+          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.ink3.withValues(alpha: 0.18)),
+          boxShadow: const [
+            BoxShadow(
+                color: AppColors.shadow, blurRadius: 10, offset: Offset(0, 4)),
+          ],
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => CollectionScreen(data: data, repo: widget.repo),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.grape.withValues(alpha: 0.14),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.emoji_transportation,
+                      color: AppColors.grape, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text('图鉴收集',
+                              style: TextStyle(
+                                  color: AppColors.ink1,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15)),
+                          const Spacer(),
+                          Text('$collected/$total',
+                              style: const TextStyle(
+                                  color: AppColors.grape,
+                                  fontWeight: FontWeight.w900)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: LinearProgressIndicator(
+                          value: total == 0 ? 0 : collected / total,
+                          minHeight: 8,
+                          backgroundColor:
+                              AppColors.ink3.withValues(alpha: 0.2),
+                          color: AppColors.grape,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      if (complete && !claimed)
+                        FilledButton(
+                          onPressed: _claimCollectionReward,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFFFFB23E),
+                            foregroundColor: const Color(0xFF7A4A12),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 4),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(999)),
+                            textStyle: const TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w900),
+                          ),
+                          child: const Text('🎉 领取全图鉴大奖 +500 🪙'),
+                        )
+                      else
+                        Text(
+                          complete
+                              ? '全图鉴达成！恭喜收藏家 🏆'
+                              : '还差 ${total - collected} 个点亮，去合成/停车解锁新车吧！',
+                          style: const TextStyle(
+                              color: AppColors.ink2, fontSize: 12),
+                        ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right,
+                    color: AppColors.ink3, size: 20),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _claimCollectionReward() {
+    if (data.collectionRewardClaimed) return;
+    data.collectionRewardClaimed = true;
+    data.addCoins(GameConfig.collectionGrandReward);
+    widget.repo.save(data);
+    setState(() {});
+    _showDialog(
+      '🎉 全图鉴大奖 +500 🪙',
+      '集齐全部 17 款车辆，收藏家之名当之无愧！',
+      Icons.emoji_events,
+      const Color(0xFFFFB23E),
     );
   }
 
@@ -469,13 +837,13 @@ class _HomeScreenState extends State<HomeScreen>
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF2A2F38), Color(0xFF1E2229)],
+            colors: [AppColors.surfaceLight, AppColors.surfaceSoft],
           ),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0x335C6BC0)),
+          border: Border.all(color: AppColors.ink3.withValues(alpha: 0.18)),
           boxShadow: const [
             BoxShadow(
-                color: Color(0x33000000), blurRadius: 10, offset: Offset(0, 4)),
+                color: AppColors.shadow, blurRadius: 10, offset: Offset(0, 4)),
           ],
         ),
         child: InkWell(
@@ -493,10 +861,10 @@ class _HomeScreenState extends State<HomeScreen>
                 Container(
                   width: 44,
                   height: 44,
-                  decoration: const BoxDecoration(
-                      color: Color(0x33FFFFFF), shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                      color: AppColors.ink3.withValues(alpha: 0.12), shape: BoxShape.circle),
                   child: const Icon(Icons.grid_view_rounded,
-                      color: Colors.white70, size: 24),
+                      color: AppColors.ink2, size: 24),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -505,17 +873,17 @@ class _HomeScreenState extends State<HomeScreen>
                     children: [
                       const Text('全部关卡',
                           style: TextStyle(
-                              color: Colors.white,
+                              color: AppColors.ink1,
                               fontWeight: FontWeight.w800,
                               fontSize: 15)),
                       const SizedBox(height: 2),
                       Text('已完成 $completed/${levels.length} 关',
                           style: const TextStyle(
-                              color: Colors.white54, fontSize: 12)),
+                              color: AppColors.ink2, fontSize: 12)),
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: Colors.white38, size: 28),
+                const Icon(Icons.chevron_right, color: AppColors.ink3, size: 28),
               ],
             ),
           ),
@@ -533,16 +901,19 @@ class _HomeScreenState extends State<HomeScreen>
       color: Colors.transparent,
       child: Ink(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF3A2E4A), Color(0xFF241E30)],
+            colors: [
+              Color.lerp(Colors.white, accent, 0.16)!,
+              Color.lerp(Colors.white, accent, 0.08)!,
+            ],
           ),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0x33B39DDB)),
+          border: Border.all(color: accent.withValues(alpha: 0.35)),
           boxShadow: const [
             BoxShadow(
-                color: Color(0x33000000), blurRadius: 10, offset: Offset(0, 4)),
+                color: AppColors.shadow, blurRadius: 10, offset: Offset(0, 4)),
           ],
         ),
         child: InkWell(
@@ -556,7 +927,7 @@ class _HomeScreenState extends State<HomeScreen>
                   width: 46,
                   height: 46,
                   decoration: BoxDecoration(
-                    color: const Color(0x33B39DDB),
+                    color: accent.withValues(alpha: 0.30),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.calendar_today,
@@ -569,17 +940,19 @@ class _HomeScreenState extends State<HomeScreen>
                     children: [
                       const Text('每日挑战',
                           style: TextStyle(
-                              color: Colors.white,
+                              color: AppColors.ink1,
                               fontWeight: FontWeight.w800,
                               fontSize: 15)),
                       const SizedBox(height: 2),
                       Text(
                         cleared
-                            ? '今日已完成 · 大奖已领取'
-                            : '完成今日挑战，领 +${DailyChallenge.reward} 🪙',
+                            ? '今日已完成 · 连续挑战 ${data.dailyStreak} 天'
+                            : data.dailyStreak >= 2
+                                ? '连续挑战 ${data.dailyStreak} 天 · 完成领 +${DailyChallenge.reward + 50} 🪙'
+                                : '完成今日挑战，领 +${DailyChallenge.reward} 🪙',
                         style: TextStyle(
                             color:
-                                cleared ? const Color(0xFF66BB6A) : Colors.white54,
+                                cleared ? const Color(0xFF66BB6A) : AppColors.ink2,
                             fontSize: 12),
                       ),
                     ],
@@ -643,13 +1016,13 @@ class _HomeScreenState extends State<HomeScreen>
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF2A2F38), Color(0xFF1E2229)],
+            colors: [AppColors.surfaceLight, AppColors.surfaceSoft],
           ),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0x335C6BC0)),
+          border: Border.all(color: AppColors.ink3.withValues(alpha: 0.18)),
           boxShadow: const [
             BoxShadow(
-                color: Color(0x33000000), blurRadius: 10, offset: Offset(0, 4)),
+                color: AppColors.shadow, blurRadius: 10, offset: Offset(0, 4)),
           ],
         ),
         child: InkWell(
@@ -675,7 +1048,7 @@ class _HomeScreenState extends State<HomeScreen>
                     children: [
                       Text(title,
                           style: const TextStyle(
-                              color: Colors.white,
+                              color: AppColors.ink1,
                               fontWeight: FontWeight.w800,
                               fontSize: 15)),
                       const SizedBox(height: 2),
@@ -683,12 +1056,12 @@ class _HomeScreenState extends State<HomeScreen>
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                              color: Colors.white54, fontSize: 11)),
+                              color: AppColors.ink2, fontSize: 11)),
                     ],
                   ),
                 ),
                 const Icon(Icons.chevron_right,
-                    color: Colors.white38, size: 22),
+                    color: AppColors.ink3, size: 22),
               ],
             ),
           ),
@@ -714,8 +1087,8 @@ class _HomeScreenState extends State<HomeScreen>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color.lerp(const Color(0xFF2A2F38), accent, 0.18)!,
-            const Color(0xFF1E2229),
+            Color.lerp(Colors.white, accent, 0.16)!,
+            Color.lerp(Colors.white, accent, 0.08)!,
           ],
         ),
         borderRadius: BorderRadius.circular(22),
@@ -760,7 +1133,7 @@ class _HomeScreenState extends State<HomeScreen>
                       )
                     : const Center(
                         child: Icon(Icons.grid_view,
-                            size: 42, color: Colors.white70)),
+                            size: 42, color: AppColors.ink2)),
               ),
             ),
           ),
@@ -779,7 +1152,7 @@ class _HomeScreenState extends State<HomeScreen>
                     child: Text(
                       isFresh ? '启程时刻' : '继续挑战',
                       style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.ink1,
                           fontWeight: FontWeight.w800,
                           fontSize: 11),
                     ),
@@ -798,7 +1171,7 @@ class _HomeScreenState extends State<HomeScreen>
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.ink1,
                       fontSize: 24,
                       fontWeight: FontWeight.w900)),
               const SizedBox(height: 3),
@@ -806,7 +1179,7 @@ class _HomeScreenState extends State<HomeScreen>
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                      color: Colors.white60, fontSize: 13)),
+                      color: AppColors.ink2, fontSize: 13)),
               const SizedBox(height: 14),
               Row(
                 children: [
@@ -818,11 +1191,11 @@ class _HomeScreenState extends State<HomeScreen>
                           children: [
                             const Text('总进度',
                                 style: TextStyle(
-                                    color: Colors.white54, fontSize: 11)),
+                                    color: AppColors.ink2, fontSize: 11)),
                             const Spacer(),
                             Text('$completed/${levels.length} 关',
                                 style: const TextStyle(
-                                    color: Colors.white70,
+                                    color: AppColors.ink2,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700)),
                           ],
@@ -833,7 +1206,7 @@ class _HomeScreenState extends State<HomeScreen>
                           child: LinearProgressIndicator(
                             value: progress,
                             minHeight: 6,
-                            backgroundColor: const Color(0x33FFFFFF),
+                            backgroundColor: AppColors.ink3.withValues(alpha: 0.12),
                             color: accent,
                           ),
                         ),
@@ -875,43 +1248,30 @@ class _HomeScreenState extends State<HomeScreen>
               children: [
                 ShaderMask(
                   shaderCallback: (rect) => const LinearGradient(
-                    colors: [Color(0xFFFFD54F), Color(0xFFFF9800)],
+                    colors: [AppColors.coral, AppColors.coralDeep, AppColors.grape],
                   ).createShader(rect),
                   child: const Text('车水马龙',
                       style: TextStyle(
                           fontSize: 30,
                           fontWeight: FontWeight.w900,
-                          color: Colors.white,
+                          color: AppColors.ink1,
                           height: 1.1)),
                 ),
                 const SizedBox(height: 2),
                 const Text('Merge Fleet · 合成车队，解锁星辰宇宙',
                     style: TextStyle(
-                        color: Colors.white38,
+                        color: AppColors.ink3,
                         fontSize: 11,
                         letterSpacing: 1)),
               ],
             ),
           ),
           IconButton(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => CollectionScreen(data: data, repo: widget.repo),
-              ),
-            ),
-            tooltip: '图鉴',
-            icon: const Icon(Icons.menu_book, color: Colors.white70),
-            style: IconButton.styleFrom(
-              backgroundColor: const Color(0x22FFFFFF),
-            ),
-          ),
-          const SizedBox(width: 4),
-          IconButton(
             onPressed: _showSettings,
             tooltip: '设置',
-            icon: const Icon(Icons.settings, color: Colors.white70),
+            icon: const Icon(Icons.settings, color: AppColors.ink2),
             style: IconButton.styleFrom(
-              backgroundColor: const Color(0x22FFFFFF),
+              backgroundColor: AppColors.ink3.withValues(alpha: 0.14),
             ),
           ),
           const SizedBox(width: 4),
@@ -921,12 +1281,40 @@ class _HomeScreenState extends State<HomeScreen>
               gradient: const LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFFFFD54F), Color(0xFFFF9800)],
+                colors: [Color(0xFFB39DDB), Color(0xFF7E57C2)],
               ),
               borderRadius: BorderRadius.circular(20),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x55FF9800),
+                  color: Color(0x557E57C2),
+                  blurRadius: 10,
+                  offset: Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                const Text('🚗', style: TextStyle(fontSize: 15)),
+                const SizedBox(width: 4),
+                Text('车库 ${data.collection.length}/17',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900, color: Colors.white)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [AppColors.coinGold1, AppColors.coinGold2],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0xFF66B23E),
                   blurRadius: 10,
                   offset: Offset(0, 3),
                 ),
@@ -938,7 +1326,7 @@ class _HomeScreenState extends State<HomeScreen>
                 const SizedBox(width: 4),
                 Text('${data.coins}',
                     style: const TextStyle(
-                        fontWeight: FontWeight.w900, color: Color(0xFF4E342E))),
+                        fontWeight: FontWeight.w900, color: AppColors.coinText)),
               ],
             ),
           ),
@@ -955,15 +1343,18 @@ class _HomeScreenState extends State<HomeScreen>
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF2A3D5C), Color(0xFF1B2437)],
+          colors: [
+            Color.lerp(Colors.white, const Color(0xFFFFCA28), 0.16)!,
+            Color.lerp(Colors.white, const Color(0xFFFFCA28), 0.08)!,
+          ],
         ),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0x335C6BC0)),
+        border: Border.all(color: const Color(0x55FFCA28)),
         boxShadow: const [
-          BoxShadow(color: Color(0x33000000), blurRadius: 10, offset: Offset(0, 4)),
+          BoxShadow(color: AppColors.shadow, blurRadius: 10, offset: Offset(0, 4)),
         ],
       ),
       child: Row(
@@ -985,14 +1376,14 @@ class _HomeScreenState extends State<HomeScreen>
                 Text(
                   '连续签到 ${data.signInStreak} 天',
                   style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.ink1,
                       fontWeight: FontWeight.w800,
                       fontSize: 15),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   signedToday ? '明天再来可领 +$nextReward 🪙' : '今日签到立得 +$nextReward 🪙',
-                  style: const TextStyle(color: Colors.white60, fontSize: 12),
+                  style: const TextStyle(color: AppColors.ink2, fontSize: 12),
                 ),
                 const SizedBox(height: 6),
                 ClipRRect(
@@ -1000,7 +1391,7 @@ class _HomeScreenState extends State<HomeScreen>
                   child: LinearProgressIndicator(
                     value: progress,
                     minHeight: 5,
-                    backgroundColor: const Color(0x33FFFFFF),
+                    backgroundColor: AppColors.ink3.withValues(alpha: 0.12),
                     color: const Color(0xFFFFCA28),
                   ),
                 ),
@@ -1013,7 +1404,7 @@ class _HomeScreenState extends State<HomeScreen>
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFFFFCA28),
               disabledBackgroundColor: const Color(0x33333333),
-              disabledForegroundColor: Colors.white38,
+              disabledForegroundColor: AppColors.ink3,
               foregroundColor: const Color(0xFF4E342E),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               shape: RoundedRectangleBorder(
@@ -1033,16 +1424,19 @@ class _HomeScreenState extends State<HomeScreen>
       color: Colors.transparent,
       child: Ink(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
+            gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF2E2A55), Color(0xFF1B1B33)],
+            colors: [
+              Color.lerp(Colors.white, const Color(0xFFB39DDB), 0.16)!,
+              Color.lerp(Colors.white, const Color(0xFFB39DDB), 0.08)!,
+            ],
           ),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0x335C6BC0)),
+          border: Border.all(color: const Color(0x55B39DDB)),
           boxShadow: const [
             BoxShadow(
-                color: Color(0x33000000), blurRadius: 10, offset: Offset(0, 4)),
+                color: AppColors.shadow, blurRadius: 10, offset: Offset(0, 4)),
           ],
         ),
         child: InkWell(
@@ -1056,7 +1450,7 @@ class _HomeScreenState extends State<HomeScreen>
                   width: 44,
                   height: 44,
                   decoration: const BoxDecoration(
-                    color: Color(0x33B39DDB),
+                    color: Color(0x44B39DDB),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.auto_awesome,
@@ -1069,7 +1463,7 @@ class _HomeScreenState extends State<HomeScreen>
                     children: [
                       const Text('无尽模式',
                           style: TextStyle(
-                              color: Colors.white,
+                              color: AppColors.ink1,
                               fontWeight: FontWeight.w800,
                               fontSize: 15)),
                       const SizedBox(height: 2),
@@ -1078,7 +1472,7 @@ class _HomeScreenState extends State<HomeScreen>
                         style: TextStyle(
                             color: best > 0
                                 ? const Color(0xFFFFCA28)
-                                : Colors.white54,
+                                : AppColors.ink2,
                             fontSize: 12),
                       ),
                     ],

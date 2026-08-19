@@ -31,7 +31,13 @@ enum CarTier {
   ufo(13, '星舰', '🛰️', Color(0xFF3F51B5), CarFamily.space),
   maglev(14, '磁悬浮', '🚝', Color(0xFF00BFA5), CarFamily.rail),
   station(15, '空间站', '🛸', Color(0xFF7E57C2), CarFamily.space),
-  comet(16, '彗星', '☄️', Color(0xFFC2185B), CarFamily.space);
+  comet(16, '彗星', '☄️', Color(0xFFC2185B), CarFamily.space),
+  // 任务93：comet 之后追加 5 档未来载具（保持前 17 档 index 不变，存量存档安全）。
+  warp(17, '曲速车', '⚡', Color(0xFF3F5AFE), CarFamily.space),
+  hover(18, '悬浮车', '💨', Color(0xFF00B8D4), CarFamily.space),
+  cruiser(19, '巡洋舰', '🛫', Color(0xFF7C4DFF), CarFamily.space),
+  mecha(20, '机甲', '🤖', Color(0xFFFF6E40), CarFamily.space),
+  antigrav(21, '反重力', '🪐', Color(0xFFFF4081), CarFamily.space);
 
   final int tierIndex;
   final String label;

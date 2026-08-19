@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.merge_fleet"
+    namespace = "com.carlong.mergefleet"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -17,7 +17,7 @@ android {
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         // 上架 Google Play 前必须换成自己的反向域名（如 com.yourdomain.merge_fleet）。
-        applicationId = "com.example.merge_fleet"
+        applicationId = "com.carlong.mergefleet"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

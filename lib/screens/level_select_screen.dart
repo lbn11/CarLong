@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
 import '../models/level.dart';
 import '../save/save_repository.dart';
 import 'game_screen.dart';
@@ -40,10 +41,10 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
     final completed =
         levels.where((l) => (data.bestStars[l.id] ?? 0) > 0).length;
     return Scaffold(
-      backgroundColor: const Color(0xFF171A1E),
+      backgroundColor: AppColors.bg1,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1E23),
-        foregroundColor: Colors.white,
+        backgroundColor: AppColors.bg1,
+        foregroundColor: AppColors.ink1,
         title: const Text('选择关卡',
             style: TextStyle(fontWeight: FontWeight.w900)),
         actions: [
@@ -52,33 +53,86 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
             child: Center(
               child: Text('已完成 $completed/${levels.length}',
                   style: const TextStyle(
-                      color: Colors.white54, fontSize: 12)),
+                      color: AppColors.ink3, fontSize: 12)),
             ),
           ),
         ],
       ),
-      body: GridView.builder(
-        padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 1.15,
+      body: GlowBackground(
+        child: CustomScrollView(
+          slivers: [
+            for (final chapter in levelChapters) ..._chapterSlivers(chapter),
+          ],
         ),
-        itemCount: levels.length,
-        itemBuilder: (context, index) {
-          final level = levels[index];
-          final unlocked = index < data.unlockedLevel;
-          return LevelCard(
-            level: level,
-            unlocked: unlocked,
-            best: data.bestScores[level.id] ?? 0,
-            bestStars: data.bestStars[level.id] ?? 0,
-            onTap: unlocked ? () => _openLevel(level) : null,
-          );
-        },
       ),
     );
+  }
+
+  /// 单章渲染：章节标题条 + 该章关卡网格。
+  List<Widget> _chapterSlivers(LevelChapter chapter) {
+    final idx = levelChapters.indexOf(chapter);
+    final endId =
+        idx + 1 < levelChapters.length ? levelChapters[idx + 1].startId : 1 << 30;
+    final cl = levels.where((l) => l.id >= chapter.startId && l.id < endId).toList();
+    return [
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 18, 16, 10),
+          child: Row(
+            children: [
+              Container(
+                width: 4,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: AppColors.coral,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(chapter.title,
+                      style: const TextStyle(
+                          color: AppColors.ink1,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 2),
+                  Text(chapter.subtitle,
+                      style: const TextStyle(
+                          color: AppColors.ink3, fontSize: 12)),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        sliver: SliverGrid(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1.15,
+          ),
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              final level = cl[index];
+              final unlocked = level.id <= data.unlockedLevel;
+              return LevelCard(
+                level: level,
+                unlocked: unlocked,
+                best: data.bestScores[level.id] ?? 0,
+                bestStars: data.bestStars[level.id] ?? 0,
+                onTap: unlocked ? () => _openLevel(level) : null,
+              );
+            },
+            childCount: cl.length,
+          ),
+        ),
+      ),
+    ];
   }
 }
 
@@ -105,26 +159,15 @@ class LevelCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: Ink(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: unlocked
-                ? const [Color(0xFF2A2F38), Color(0xFF1E2229)]
-                : const [Color(0xFF20242A), Color(0xFF1A1D22)],
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: unlocked
-                ? _accent.withValues(alpha: 0.35)
-                : const Color(0xFF2A2F38),
-          ),
-          boxShadow: unlocked
-              ? const [
-                  BoxShadow(color: Color(0x33000000), blurRadius: 8, offset: Offset(0, 3)),
-                ]
-              : null,
-        ),
+        decoration: unlocked
+            ? AppTheme.tierCard(_accent)
+            : BoxDecoration(
+                color: AppColors.surfaceSoft,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppColors.ink3.withValues(alpha: 0.4),
+                ),
+              ),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: onTap,
@@ -146,15 +189,15 @@ class LevelCard extends StatelessWidget {
                           ),
                           child: Text(
                             '第 ${level.id} 关',
-                            style: const TextStyle(
-                                color: Colors.white,
+                            style: TextStyle(
+                                color: AppTheme.tierInk(_accent),
                                 fontWeight: FontWeight.w700,
                                 fontSize: 10),
                           ),
                         ),
                         const Spacer(),
                         if (!unlocked)
-                          const Icon(Icons.lock, color: Colors.white24, size: 16)
+                          const Icon(Icons.lock, color: AppColors.ink3, size: 16)
                         else
                           Row(
                             mainAxisSize: MainAxisSize.min,
@@ -176,7 +219,7 @@ class LevelCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: unlocked
                               ? _accent.withValues(alpha: 0.16)
-                              : const Color(0x14FFFFFF),
+                              : AppColors.ink3.withValues(alpha: 0.25),
                           shape: BoxShape.circle,
                         ),
                         child: Center(
@@ -194,8 +237,8 @@ class LevelCard extends StatelessWidget {
                               : Icon(Icons.grid_view,
                                   size: 26,
                                   color: unlocked
-                                      ? const Color(0xFFFFFFFF)
-                                      : const Color(0x55FFFFFF)),
+                                      ? AppColors.ink2
+                                      : AppColors.ink3),
                         ),
                       ),
                     ),
@@ -205,7 +248,7 @@ class LevelCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.ink1,
                           fontSize: 14,
                           fontWeight: FontWeight.w800),
                     ),
@@ -214,8 +257,8 @@ class LevelCard extends StatelessWidget {
                       best > 0 ? '最佳 $best 分' : '未通关',
                       style: TextStyle(
                           color: best > 0
-                              ? const Color(0xFFFFCA28)
-                              : Colors.white38,
+                              ? AppColors.sun
+                              : AppColors.ink3,
                           fontSize: 11,
                           fontWeight: FontWeight.w700),
                     ),

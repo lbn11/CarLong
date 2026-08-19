@@ -525,6 +525,44 @@ class MergeGame extends FlameGame {
     _refreshGoal();
   }
 
+  /// 洗牌重排（金币道具）：重排棋盘卡片位置，可解除死局（即"复活"）。
+  void shuffleBoard() {
+    if (_ended) return;
+    board.shuffleTiles();
+    _syncSpritesFromBoard();
+    _refreshGoal();
+    feedback.play(Sfx.merge);
+    feedback.tap();
+    hint.value = board.isDeadlocked
+        ? '😵 重排后仍是死局，换个思路或再试一次'
+        : '🔀 棋盘已重排，寻找新组合！';
+  }
+
+  /// 提示一步（金币道具）：高亮一个可合并的操作。
+  void showHint() {
+    if (_ended) return;
+    final m = board.hintMove();
+    if (m == null) {
+      hint.value = '😅 暂时没有可合并的卡片';
+      feedback.play(Sfx.error);
+      return;
+    }
+    _findStack(m.fc, m.fr)?.pulse();
+    _findStack(m.tc, m.tr)?.pulse();
+    final from = board.at(m.fc, m.fr);
+    final to = board.at(m.tc, m.tr);
+    if (from != null && to != null && from.tier == to.tier) {
+      hint.value = '💡 把 ${from.tier.icon} 拖到 ${to.tier.icon} 上合并！';
+    } else if (to != null && to.isWildcard) {
+      hint.value = '💡 把 ${from!.tier.icon} 拖到万能卡上！';
+    } else if (from != null && from.isBomb && to != null && to.isBomb) {
+      hint.value = '💡 把炸弹拖到一起，集满 3 颗引爆！';
+    } else {
+      hint.value = '💡 把这张卡拖到那张卡上！';
+    }
+    feedback.tap();
+  }
+
   /// 把棋盘上的卡片精灵全部重建（撤销后同步显示），并高亮最高阶卡。
   void _syncSpritesFromBoard() {
     for (final s in _stackSprites) {
@@ -606,6 +644,7 @@ class MergeGame extends FlameGame {
 
     _undoStack.add((snap: board.snapshot(), bonus: _bonusScore));
     if (_undoStack.length > _maxUndo) _undoStack.removeAt(0);
+    final mergesBefore = board.totalMerges;
 
     final result = board.move(fc, fr, tc, tr);
     if (!result.valid) {
@@ -720,6 +759,11 @@ class MergeGame extends FlameGame {
       );
       feedback.play(Sfx.merge);
       feedback.tap();
+    }
+    // 修复：非升级合并（2 张同档）也算"合成动作"，供新手教学推进
+    // （L1 教程"拖两张合并"不升级，若只在 upgraded 时回调会卡住）。
+    if (!result.upgraded && board.totalMerges > mergesBefore) {
+      onPlayerAction?.call('merge', board.at(tc, tr)?.tier);
     }
     final goalHit = level.endless
         ? (result.upgraded && (board.at(tc, tr)?.tier == _endlessTarget))
@@ -915,7 +959,7 @@ class CellSprite extends PositionComponent with TapCallbacks {
   double _lastSize = -1;
   RRect _rr = RRect.fromRectAndRadius(Rect.zero, const Radius.circular(0));
   RRect _inset = RRect.fromRectAndRadius(Rect.zero, const Radius.circular(0));
-  late final Paint _base = Paint()..color = const Color(0xFF22262C);
+  late final Paint _base = Paint()..color = const Color(0xFFF1EAEF);
   Paint? _topShade;
   Paint? _bottomLight;
 
@@ -1284,8 +1328,10 @@ class StackSprite extends PositionComponent
   late final Paint _shadow = Paint()
     ..color = const Color(0x4D000000)
     ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
-  late final Paint _border = Paint()
-    ..color = const Color(0x50FFFFFF)
+  // 车型色同色投影：让"每车一色卡"在奶油底上更醒目（特殊卡仍用中性 _shadow）。
+  late final Paint _tierShadow = Paint()
+    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+  final Paint _border = Paint()
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1.4;
   late final Paint _selBorder = Paint()
@@ -1315,8 +1361,8 @@ class StackSprite extends PositionComponent
         end: Alignment.bottomCenter,
         colors: isVehicle
             ? [
-                Color.lerp(const Color(0xFF2A313C), data.tier.color, 0.18)!,
-                Color.lerp(const Color(0xFF161B22), data.tier.color, 0.10)!,
+                Color.lerp(data.tier.color, const Color(0xFFFFFFFF), 0.66)!,
+                Color.lerp(data.tier.color, const Color(0xFFFFFFFF), 0.82)!,
               ]
             // 特殊卡（万能卡/炸弹）用中性玻璃底，不再染车型色，
             // 避免被误认成普通车卡（它们的底层 tier 默认是 bike）。
@@ -1325,6 +1371,10 @@ class StackSprite extends PositionComponent
                 Color(0xFF161B22),
               ],
       ).createShader(rect);
+    if (isVehicle) {
+      _border.color = data.tier.color.withValues(alpha: 0.6);
+      _tierShadow.color = data.tier.color.withValues(alpha: 0.22);
+    }
     // 特殊卡专属描边：万能卡彩虹环，炸弹橙色危险环。
     if (data.isWildcard) {
       _ring
@@ -1391,13 +1441,13 @@ class StackSprite extends PositionComponent
       );
     }
 
-    // 柔和投影(单层)
+    // 柔和投影(单层)：普通车用同色投影强化身份色，特殊卡用中性投影。
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         rr.outerRect.translate(0, 3.5),
         rr.tlRadius,
       ),
-      _shadow,
+      (data.isBomb || data.isWildcard) ? _shadow : _tierShadow,
     );
 
     // 卡面渐变:上亮下深
@@ -1445,21 +1495,7 @@ class StackSprite extends PositionComponent
     } else {
       final img = game.vehicleImages[data.tier];
       if (img != null) {
-        // 车型色光晕，让车模更立体（与停车卡槽风格一致）。
-        final glow = Paint()
-          ..shader = RadialGradient(
-            center: const Alignment(0.5, 0.42),
-            radius: 0.72,
-            colors: [
-              data.tier.color.withValues(alpha: 0.22),
-              data.tier.color.withValues(alpha: 0.0),
-            ],
-          ).createShader(
-              Rect.fromCenter(center: Offset.zero, width: box, height: box));
-        canvas.drawRect(
-          Rect.fromLTWH(-box / 2, -box / 2, box, box),
-          glow,
-        );
+        // 浅色卡面：取消车型色光晕，避免出现"色块状"内背景（仅靠卡面渐变+车型描边就能区分身份）。
         // 以 contain 方式把整张车模图缩放进 box，居中绘制。
         final s = box / max(img.width, img.height);
         canvas.save();

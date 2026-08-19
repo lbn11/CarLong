@@ -1,4 +1,43 @@
 import 'car.dart';
+import '../services/level_data_generator.dart';
+
+/// 章节（叙事包装）：按关卡 id 每 10 关一章，共 7 章。
+class LevelChapter {
+  final String title;
+  final String subtitle;
+  final int startId;
+
+  const LevelChapter(this.title, this.subtitle, this.startId);
+}
+
+/// 合成模式章节表（L1-200 分 14 章：手写 7 章 + 生成 7 章，按 id 区间）。
+const List<LevelChapter> levelChapters = [
+  LevelChapter('第一章 · 街区起步', '从一辆自行车开始你的车队', 1),
+  LevelChapter('第二章 · 城市干线', '车流渐密，货运繁忙', 11),
+  LevelChapter('第三章 · 轨道时代', '高铁地铁，四通八达', 21),
+  LevelChapter('第四章 · 天空征途', '客机战机，冲向云端', 31),
+  LevelChapter('第五章 · 星际探索', '穿梭星辰大海', 41),
+  LevelChapter('第六章 · 星港试炼', '终极枢纽的考验', 51),
+  LevelChapter('第七章 · 机关极限', '限步传送，大师关卡', 61),
+  LevelChapter('第八章 · 地铁线', '城市地下，疾驰如风', 71),
+  LevelChapter('第九章 · 航空港', '跑道尽头是天空', 90),
+  LevelChapter('第十章 · 星际前哨', '第一座深空驿站', 110),
+  LevelChapter('第十一章 · 深空巡航', '远离太阳系', 130),
+  LevelChapter('第十二章 · 时空裂隙', '扭曲的宇宙结构', 150),
+  LevelChapter('第十三章 · 宇宙尽头', '边缘之外的黑暗', 170),
+  LevelChapter('第十四章 · 彗星计划', '终极的一跃', 190),
+];
+
+/// 关卡 id 所属章节（按 startId 取最后一个 <= id 的章）。
+LevelChapter chapterForId(int levelId) {
+  LevelChapter? last;
+  for (final c in levelChapters) {
+    if (levelId >= c.startId) {
+      last = c;
+    }
+  }
+  return last ?? levelChapters.first;
+}
 
 /// 关卡目标类型。
 enum GoalType {
@@ -182,7 +221,8 @@ const endlessLevel = LevelDefinition(
   endless: true,
 );
 
-const levels = <LevelDefinition>[
+/// 手写主线关卡（L1-70，7 章），70 关之后由 [LevelDataGenerator] 程序化扩展。
+const _handLevels = <LevelDefinition>[
   LevelDefinition(
     id: 1,
     name: '清晨路段',
@@ -221,6 +261,7 @@ const levels = <LevelDefinition>[
     rows: 4,
     stockSize: 38,
     targetTier: CarTier.truck,
+    highTierBias: 1,
     targetCount: 2,
   ),
   LevelDefinition(
@@ -230,6 +271,7 @@ const levels = <LevelDefinition>[
     rows: 5,
     stockSize: 34,
     targetTier: CarTier.train,
+    highTierBias: 1,
     targetCount: 1,
   ),
   LevelDefinition(
@@ -253,6 +295,7 @@ const levels = <LevelDefinition>[
     rows: 4,
     stockSize: 20,
     targetTier: CarTier.taxi,
+    highTierBias: 1,
     targetCount: 3,
     timeLimitSeconds: 60,
   ),
@@ -263,6 +306,7 @@ const levels = <LevelDefinition>[
     rows: 4,
     stockSize: 34,
     targetTier: CarTier.truck,
+    highTierBias: 1,
     targetCount: 3,
     obstacles: [
       ObstacleSpec(ObstacleType.ice, 0, 1),
@@ -292,6 +336,7 @@ const levels = <LevelDefinition>[
     rows: 5,
     stockSize: 40,
     targetTier: CarTier.train,
+    highTierBias: 2,
     targetCount: 3,
     timeLimitSeconds: 120,
     obstacles: [
@@ -318,6 +363,7 @@ const levels = <LevelDefinition>[
     rows: 4,
     stockSize: 26,
     targetTier: CarTier.bus,
+    highTierBias: 1,
     targetCount: 2,
     obstacles: [
       ObstacleSpec(ObstacleType.ice, 1, 1),
@@ -331,6 +377,7 @@ const levels = <LevelDefinition>[
     rows: 5,
     stockSize: 30,
     targetTier: CarTier.truck,
+    highTierBias: 1,
     targetCount: 2,
     obstacles: [
       ObstacleSpec(ObstacleType.ice, 0, 0, layers: 2),
@@ -344,6 +391,7 @@ const levels = <LevelDefinition>[
     rows: 4,
     stockSize: 24,
     targetTier: CarTier.truck,
+    highTierBias: 1,
     targetCount: 1,
     timeLimitSeconds: 60,
     obstacles: [
@@ -371,6 +419,7 @@ const levels = <LevelDefinition>[
     rows: 5,
     stockSize: 32,
     targetTier: CarTier.train,
+    highTierBias: 1,
     targetCount: 2,
     obstacles: [
       ObstacleSpec(ObstacleType.ice, 1, 3),
@@ -385,6 +434,7 @@ const levels = <LevelDefinition>[
     rows: 5,
     stockSize: 38,
     targetTier: CarTier.rocket,
+    highTierBias: 1,
     targetCount: 1,
     obstacles: [
       ObstacleSpec(ObstacleType.block, 2, 2),
@@ -414,6 +464,7 @@ const levels = <LevelDefinition>[
     rows: 5,
     stockSize: 40,
     targetTier: CarTier.train,
+    highTierBias: 2,
     targetCount: 3,
     timeLimitSeconds: 120,
     obstacles: [
@@ -429,6 +480,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 44,
     targetTier: CarTier.metro,
+    highTierBias: 2,
     targetCount: 2,
     obstacles: [
       ObstacleSpec(ObstacleType.ice, 0, 5, layers: 3),
@@ -444,6 +496,7 @@ const levels = <LevelDefinition>[
     rows: 5,
     stockSize: 36,
     targetTier: CarTier.train,
+    highTierBias: 1,
     targetCount: 2,
     obstacles: [
       ObstacleSpec(ObstacleType.ice, 1, 1),
@@ -457,6 +510,7 @@ const levels = <LevelDefinition>[
     rows: 5,
     stockSize: 36,
     targetTier: CarTier.tanker,
+    highTierBias: 2,
     targetCount: 2,
     obstacles: [
       ObstacleSpec(ObstacleType.lock, 2, 2),
@@ -486,6 +540,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 42,
     targetTier: CarTier.metro,
+    highTierBias: 2,
     targetCount: 2,
     obstacles: [
       ObstacleSpec(ObstacleType.ice, 0, 2),
@@ -499,6 +554,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 44,
     targetTier: CarTier.metro,
+    highTierBias: 4,
     targetCount: 3,
     obstacles: [
       ObstacleSpec(ObstacleType.block, 2, 1),
@@ -512,6 +568,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 44,
     targetTier: CarTier.plane,
+    highTierBias: 1,
     targetCount: 1,
     obstacles: [
       ObstacleSpec(ObstacleType.block, 2, 2),
@@ -541,6 +598,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 46,
     targetTier: CarTier.plane,
+    highTierBias: 2,
     targetCount: 2,
     timeLimitSeconds: 150,
     obstacles: [
@@ -556,7 +614,8 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 48,
     targetTier: CarTier.metro,
-    targetCount: 4,
+    highTierBias: 4,
+    targetCount: 2,
     obstacles: [
       ObstacleSpec(ObstacleType.ice, 0, 0, layers: 3),
       ObstacleSpec(ObstacleType.ice, 4, 5, layers: 3),
@@ -570,6 +629,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 40,
     targetTier: CarTier.plane,
+    highTierBias: 3,
     targetCount: 2,
     timeLimitSeconds: 120,
     obstacles: [
@@ -585,6 +645,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 46,
     targetTier: CarTier.tanker,
+    highTierBias: 2,
     targetCount: 3,
     obstacles: [
       ObstacleSpec(ObstacleType.ice, 1, 1),
@@ -598,6 +659,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 50,
     targetTier: CarTier.jet,
+    highTierBias: 1,
     targetCount: 1,
     obstacles: [
       ObstacleSpec(ObstacleType.block, 2, 2),
@@ -627,6 +689,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 52,
     targetTier: CarTier.jet,
+    highTierBias: 2,
     targetCount: 2,
     obstacles: [
       ObstacleSpec(ObstacleType.ice, 1, 0, layers: 3),
@@ -641,6 +704,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 44,
     targetTier: CarTier.jet,
+    highTierBias: 3,
     targetCount: 2,
     timeLimitSeconds: 150,
     obstacles: [
@@ -656,6 +720,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 54,
     targetTier: CarTier.shuttle,
+    highTierBias: 1,
     targetCount: 1,
     obstacles: [
       ObstacleSpec(ObstacleType.block, 2, 2),
@@ -670,6 +735,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 56,
     targetTier: CarTier.jet,
+    highTierBias: 3,
     targetCount: 3,
     obstacles: [
       ObstacleSpec(ObstacleType.ice, 0, 5, layers: 3),
@@ -702,6 +768,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 58,
     targetTier: CarTier.shuttle,
+    highTierBias: 3,
     targetCount: 2,
     obstacles: [
       ObstacleSpec(ObstacleType.block, 1, 1),
@@ -717,6 +784,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 56,
     targetTier: CarTier.shuttle,
+    highTierBias: 2,
     targetCount: 2,
     timeLimitSeconds: 180,
     obstacles: [
@@ -733,6 +801,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 58,
     targetTier: CarTier.shuttle,
+    highTierBias: 2,
     targetCount: 2,
     obstacles: [
       ObstacleSpec(ObstacleType.ice, 0, 0, layers: 3),
@@ -763,7 +832,8 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 60,
     targetTier: CarTier.jet,
-    targetCount: 4,
+    highTierBias: 4,
+    targetCount: 2,
     obstacles: [
       ObstacleSpec(ObstacleType.block, 2, 2),
       ObstacleSpec(ObstacleType.block, 3, 3),
@@ -778,6 +848,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 58,
     targetTier: CarTier.shuttle,
+    highTierBias: 2,
     targetCount: 2,
     timeLimitSeconds: 150,
     obstacles: [
@@ -794,6 +865,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 60,
     targetTier: CarTier.shuttle,
+    highTierBias: 4,
     targetCount: 3,
     obstacles: [
       ObstacleSpec(ObstacleType.ice, 1, 4, layers: 3),
@@ -809,6 +881,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 62,
     targetTier: CarTier.shuttle,
+    highTierBias: 3,
     targetCount: 3,
     timeLimitSeconds: 200,
     obstacles: [
@@ -842,7 +915,8 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 62,
     targetTier: CarTier.jet,
-    targetCount: 5,
+    highTierBias: 4,
+    targetCount: 2,
     obstacles: [
       ObstacleSpec(ObstacleType.block, 2, 2),
       ObstacleSpec(ObstacleType.block, 3, 3),
@@ -857,6 +931,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 64,
     targetTier: CarTier.shuttle,
+    highTierBias: 3,
     targetCount: 3,
     obstacles: [
       ObstacleSpec(ObstacleType.block, 0, 5),
@@ -873,6 +948,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 66,
     targetTier: CarTier.shuttle,
+    highTierBias: 7,
     targetCount: 4,
     obstacles: [
       ObstacleSpec(ObstacleType.block, 1, 1),
@@ -890,6 +966,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 70,
     targetTier: CarTier.ufo,
+    highTierBias: 1,
     targetCount: 1,
     timeLimitSeconds: 180,
     obstacles: [
@@ -952,6 +1029,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 42,
     targetTier: CarTier.truck,
+    highTierBias: 1,
     targetCount: 3,
     movesLimit: 45,
     obstacles: [
@@ -966,6 +1044,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 46,
     targetTier: CarTier.metro,
+    highTierBias: 3,
     targetCount: 3,
     movesLimit: 55,
     obstacles: [
@@ -1077,6 +1156,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 62,
     targetTier: CarTier.metro,
+    highTierBias: 1,
     targetCount: 2,
     fogCells: 6,
     obstacles: [
@@ -1092,6 +1172,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 66,
     targetTier: CarTier.plane,
+    highTierBias: 1,
     targetCount: 1,
     obstacles: [
       ObstacleSpec(ObstacleType.teleport, 0, 0),
@@ -1109,6 +1190,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 68,
     targetTier: CarTier.rocket,
+    highTierBias: 1,
     targetCount: 2,
     wildcards: 4,
     obstacles: [
@@ -1123,6 +1205,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 64,
     targetTier: CarTier.tanker,
+    highTierBias: 1,
     targetCount: 2,
     bombs: 3,
     timeLimitSeconds: 120,
@@ -1171,6 +1254,7 @@ const levels = <LevelDefinition>[
     rows: 6,
     stockSize: 72,
     targetTier: CarTier.plane,
+    highTierBias: 2,
     targetCount: 3,
     wildcards: 2,
     fogCells: 6,
@@ -1202,4 +1286,12 @@ const levels = <LevelDefinition>[
       ObstacleSpec(ObstacleType.block, 3, 1),
     ],
   ),
+];
+
+/// 完整主线关卡表：手写 L1-70 + 生成 L71-200（共 200 关）。
+/// 生成器纯函数、确定性，接入后 [levels] 数量从 70 → 200，
+/// 图鉴/成就/选关/解锁等按 levels.length 自适应的逻辑自动跟随。
+final List<LevelDefinition> levels = <LevelDefinition>[
+  ..._handLevels,
+  ...LevelDataGenerator.levels71To200(),
 ];
