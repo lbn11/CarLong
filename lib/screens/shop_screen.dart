@@ -35,9 +35,17 @@ class _ShopScreenState extends State<ShopScreen> {
   final _rng = Random();
 
   static const _boosterMeta = <String, ({String name, IconData icon, Color color})>{
+    // 合并模式 boosters (existing)
     'time': (name: '加时卡', icon: Icons.schedule, color: AppColors.sky),
     'cards': (name: '补卡卡', icon: Icons.inventory_2, color: AppColors.mint),
     'double': (name: '双倍卡', icon: Icons.casino, color: AppColors.sun),
+    // 停车模式专用道具
+    'bomb': (name: '炸弹', icon: Icons.whatshot, color: const Color(0xFFFF7043)),
+    'spring': (name: '弹簧', icon: Icons.open_with, color: const Color(0xFF66BB6A)),
+    'balloon': (name: '气球飞越', icon: Icons.location_on, color: const Color(0xFF42A5F5)),
+    'key': (name: '钥匙', icon: Icons.vpn_key, color: const Color(0xFFFFCA28)),
+    'hammer': (name: '锤子', icon: Icons.build, color: const Color(0xFF8D6E63)),
+    'doubleMove': (name: '双倍移动', icon: Icons.compare_arrows, color: const Color(0xFFAB47BC)),
   };
 
   String _today() {
@@ -507,7 +515,7 @@ class _ShopScreenState extends State<ShopScreen> {
                   ],
                   const SizedBox(height: 4),
                   const Text(
-                    '消耗品来自金币宝箱与停车模式三星奖励，商店不再直接出售。',
+                    '消耗品来自金币宝箱与停车模式三星奖励。停车道具仅在停车模式可用。',
                     style: TextStyle(color: AppColors.ink3, fontSize: 11),
                   ),
                 ],
@@ -515,7 +523,7 @@ class _ShopScreenState extends State<ShopScreen> {
             ),
             const SizedBox(height: 6),
             const Text(
-              '小提示：关卡内还可以用金币直接购买清除、撤销、加牌、洗牌重排与提示。',
+              '小提示：停车关卡内可使用道具辅助通关。合并关卡内可用金币购买清除、撤销等。',
               style: TextStyle(color: AppColors.ink3, fontSize: 12),
             ),
           ],

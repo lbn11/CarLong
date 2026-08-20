@@ -48,6 +48,11 @@ class _ParkingScreenState extends State<ParkingScreen> {
   /// 提示目标落点的整块格集合（长条车为多格），用于青色高亮。
   List<(int, int)> _hintCells = const [];
 
+  /// 当前激活的道具模式（null = 未激活）。
+  String? _activeItem;
+  /// 双倍移动：第一次移动后允许再移动一次。
+  bool _doubleMoveActive = false;
+
   @override
   void initState() {
     super.initState();
@@ -83,6 +88,12 @@ class _ParkingScreenState extends State<ParkingScreen> {
   void _handleCellTap(int row, int col) {
     if (_game.hasWon || _game.hasLost) return;
 
+    // 道具使用
+    if (_activeItem != null) {
+      _useItemOnCell(row, col);
+      return;
+    }
+
     if (_selectedVehicle != null) {
       // 沿车身方向滑到点击侧最远可达处（长条车只能沿轴滑动）。
       final moved = _game.slideTo(_selectedVehicle!, row, col);
@@ -103,6 +114,12 @@ class _ParkingScreenState extends State<ParkingScreen> {
     } else {
       final v = _game.vehicleAt(row, col);
       if (v != null && !v.parked) {
+        // 道具使用在车辆上
+        if (_activeItem == 'spring' || _activeItem == 'balloon' || _activeItem == 'doubleMove') {
+          _selectedVehicle = v.index;
+          _useItemOnCell(v.row, v.col);
+          return;
+        }
         setState(() => _selectedVehicle = v.index);
         _audio.play(Sfx.tick);
         unawaited(_audio.tap());
@@ -185,11 +202,15 @@ class _ParkingScreenState extends State<ParkingScreen> {
       _boosterKey = null;
       _hintVehicle = null;
       _hintCells = const [];
+      _activeItem = null;
+      _doubleMoveActive = false;
     });
   }
 
   void _undo() {
     if (!_game.canUndo) return;
+    _activeItem = null;
+    _doubleMoveActive = false;
     _game.undo();
     _audio.play(Sfx.undo);
   }
@@ -670,6 +691,106 @@ class _ParkingScreenState extends State<ParkingScreen> {
     );
   }
 
+  Widget _buildItemButton(String key, String icon, String label, Color color) {
+    final count = widget.data.boosters[key] ?? 0;
+    return GestureDetector(
+      onTap: count > 0 ? () => _activateItem(key) : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: count > 0 ? color.withValues(alpha: 0.15) : AppColors.surfaceLight,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: _activeItem == key ? color : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(icon, style: const TextStyle(fontSize: 16)),
+            Text(
+              '$label ×$count',
+              style: TextStyle(
+                fontSize: 9,
+                color: count > 0 ? AppColors.ink2 : AppColors.ink3,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _activateItem(String key) {
+    final count = widget.data.boosters[key] ?? 0;
+    if (count <= 0) return;
+    
+    setState(() {
+      _activeItem = (_activeItem == key) ? null : key; // Toggle
+      _selectedVehicle = null;
+      _hintVehicle = null;
+      _hintCells = [];
+    });
+  }
+
+  void _useItemOnCell(int row, int col) {
+    if (_activeItem == null) return;
+    final key = _activeItem!;
+    final count = widget.data.boosters[key] ?? 0;
+    if (count <= 0) return;
+    
+    bool used = false;
+    int? removedIdx;
+    
+    switch (key) {
+      case 'bomb':
+        removedIdx = _game.useBomb(row, col);
+        used = removedIdx >= 0;
+        break;
+      case 'spring':
+        if (_selectedVehicle != null) {
+          final pos = _game.useSpring(_selectedVehicle!);
+          used = pos.$1 >= 0;
+          _selectedVehicle = null;
+        }
+        break;
+      case 'balloon':
+        if (_selectedVehicle != null) {
+          final pos = _game.useBalloon(_selectedVehicle!, row, col);
+          used = pos.$1 >= 0;
+          _selectedVehicle = null;
+        }
+        break;
+      case 'key':
+        used = _game.useKey(row, col);
+        break;
+      case 'hammer':
+        removedIdx = _game.useHammer(row, col);
+        used = removedIdx >= 0;
+        break;
+      case 'doubleMove':
+        if (_selectedVehicle != null) {
+          _doubleMoveActive = true;
+          used = true; // Will be consumed on next move
+        }
+        break;
+    }
+    
+    if (used) {
+      widget.data.boosters[key] = count - 1;
+      widget.repo.save(widget.data);
+      _audio.play(Sfx.place);
+      setState(() {});
+    }
+    
+    // Clear item mode after use (except spring/balloon/doubleMove which need vehicle selection first)
+    if (key != 'spring' && key != 'balloon' && key != 'doubleMove') {
+      setState(() => _activeItem = null);
+    }
+  }
+
   Widget _buildActionBar() {
     return Padding(
       padding: const EdgeInsets.all(8),
@@ -678,6 +799,21 @@ class _ParkingScreenState extends State<ParkingScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+          // 道具按钮（仅在停车模式可用）
+          if (!_game.hasWon && !_game.hasLost) ...[
+            _buildItemButton('bomb', '💣', '炸弹', Color(0xFFFF7043)),
+            const SizedBox(width: 6),
+            _buildItemButton('spring', '🌀', '弹簧', Color(0xFF66BB6A)),
+            const SizedBox(width: 6),
+            _buildItemButton('balloon', '🎈', '气球', Color(0xFF42A5F5)),
+            const SizedBox(width: 6),
+            _buildItemButton('key', '🔑', '钥匙', Color(0xFFFFCA28)),
+            const SizedBox(width: 6),
+            _buildItemButton('hammer', '🔨', '锤子', Color(0xFF8D6E63)),
+            const SizedBox(width: 6),
+            _buildItemButton('doubleMove', '↔️', '双倍', Color(0xFFAB47BC)),
+            const SizedBox(width: 12),
+          ],
           ElevatedButton.icon(
             onPressed: _game.canUndo ? _undo : null,
             icon: const Icon(Icons.undo),

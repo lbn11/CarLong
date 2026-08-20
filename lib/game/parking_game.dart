@@ -537,6 +537,150 @@ class ParkingGame extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 使用炸弹道具：移除指定位置的车辆。
+  /// 返回被移除的车辆索引，无车返回 -1。
+  int useBomb(int targetRow, int targetCol) {
+    if (_won || _lost) return -1;
+    final idx = _grid[targetRow][targetCol].vehicleIndex;
+    if (idx == null) return -1;
+    final v = _vehicles[idx];
+    if (v.parked) return -1; // 不能炸已停车的车
+
+    _undoStack.add(ParkingAction(
+      vehicleIndex: idx,
+      fromRow: v.row,
+      fromCol: v.col,
+      toRow: v.row,
+      toCol: v.col,
+    ));
+
+    _vacate(v, v.row, v.col);
+    // Mark as removed by setting a very high row/col and parked=true to prevent further interaction
+    _vehicles[idx] = v.copyWith(row: -100, col: -100, parked: true);
+
+    _moves++;
+    _checkWin();
+    if (!_won) _checkLose();
+    notifyListeners();
+    return idx;
+  }
+
+  /// 使用弹簧道具：将指定车辆向前弹射3格。
+  /// 返回实际移动到的新位置。
+  (int, int) useSpring(int vehicleIndex) {
+    if (_won || _lost) return (-1, -1);
+    final v = _vehicles[vehicleIndex];
+    if (v.parked) return (v.row, v.col);
+
+    int bestRow = v.row;
+    int bestCol = v.col;
+
+    if (v._canHoriz) {
+      // Try right (3 cells)
+      for (var c = v.col + 1; c <= v.col + 3 && c < level.cols; c++) {
+        if (canMoveTo(vehicleIndex, v.row, c)) {
+          bestCol = c;
+        } else break;
+      }
+      // Try left (3 cells) - if right didn't move far, try left
+      if (bestCol == v.col) {
+        for (var c = v.col - 1; c >= v.col - 3 && c >= 0; c--) {
+          if (canMoveTo(vehicleIndex, v.row, c)) {
+            bestCol = c;
+          } else break;
+        }
+      }
+    }
+    if (v._canVert && bestCol == v.col) {
+      // Try down (3 cells)
+      for (var r = v.row + 1; r <= v.row + 3 && r < level.rows; r++) {
+        if (canMoveTo(vehicleIndex, r, v.col)) {
+          bestRow = r;
+        } else break;
+      }
+      // Try up
+      if (bestRow == v.row) {
+        for (var r = v.row - 1; r >= v.row - 3 && r >= 0; r--) {
+          if (canMoveTo(vehicleIndex, r, v.col)) {
+            bestRow = r;
+          } else break;
+        }
+      }
+    }
+
+    if (bestRow == v.row && bestCol == v.col) return (v.row, v.col);
+    moveVehicle(vehicleIndex, bestRow, bestCol);
+    return (bestRow, bestCol);
+  }
+
+  /// 使用气球飞越：将车辆传送到任意空路面格。
+  /// 返回目标位置，无合法目标返回 (-1, -1)。
+  (int, int) useBalloon(int vehicleIndex, int targetRow, int targetCol) {
+    if (_won || _lost) return (-1, -1);
+    final v = _vehicles[vehicleIndex];
+    if (v.parked) return (v.row, v.col);
+
+    // Check target is valid empty road
+    for (final (r, c) in _cellsAt(v, targetRow, targetCol)) {
+      if (r < 0 || r >= level.rows || c < 0 || c >= level.cols) return (v.row, v.col);
+      final cell = _grid[r][c];
+      if (cell.type != ParkingCellType.road) return (v.row, v.col);
+      if (cell.vehicleIndex != null && cell.vehicleIndex != vehicleIndex) return (v.row, v.col);
+    }
+
+    _undoStack.add(ParkingAction(
+      vehicleIndex: vehicleIndex,
+      fromRow: v.row,
+      fromCol: v.col,
+      toRow: targetRow,
+      toCol: targetCol,
+    ));
+
+    _vacate(v, v.row, v.col);
+    _vehicles[vehicleIndex] = v.copyWith(row: targetRow, col: targetCol);
+    _occupy(_vehicles[vehicleIndex], targetRow, targetCol);
+
+    _moves++;
+    _checkWin();
+    if (!_won) _checkLose();
+    notifyListeners();
+    return (targetRow, targetCol);
+  }
+
+  /// 使用钥匙道具：清除指定位置的障碍物。
+  /// 返回是否成功清除。
+  bool useKey(int targetRow, int targetCol) {
+    if (_won || _lost) return false;
+    final cell = _grid[targetRow][targetCol];
+    if (!cell.isObstacle) return false;
+
+    // Convert obstacle to road
+    _grid[targetRow][targetCol] = ParkingCell(type: ParkingCellType.road);
+    notifyListeners();
+    return true;
+  }
+
+  /// 使用锤子道具：移除指定位置的车辆。
+  /// 返回被移除的车辆索引，无车返回 -1。
+  int useHammer(int targetRow, int targetCol) {
+    return useBomb(targetRow, targetCol); // Same effect as bomb
+  }
+
+  /// 使用双倍移动：移动车辆，但不消耗步数（等于免费移动一次）。
+  bool useDoubleMove(int vehicleIndex, int toRow, int toCol) {
+    if (_won || _lost) return false;
+    final v = _vehicles[vehicleIndex];
+    if (v.parked) return false;
+
+    // Temporarily prevent move count increment
+    final movesBefore = _moves;
+    final result = moveVehicle(vehicleIndex, toRow, toCol);
+    if (result) {
+      _moves = movesBefore; // Undo the move count
+    }
+    return result;
+  }
+
   /// 重置关卡
   void reset() {
     _timer?.cancel();
