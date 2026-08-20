@@ -3,27 +3,25 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-import '../models/car.dart';
+import '../models/vehicle.dart';
 
-/// 用 Canvas 绘制 8 种车辆的"玩具车"风格剪影(侧视图, 车头朝左)。
+/// 用 Canvas 绘制 50 种交通工具的"玩具车"风格剪影(侧视图, 车头朝左)。
 /// 采用奶油色渐变车身 + 顶部镜面高光 + 大轮胎 + 柔和高光点，
 /// 营造类似 3D 渲染玩具车的圆润光泽质感。车体用等级色系，识别度高。
 void paintVehicleIcon(
   Canvas canvas,
-  CarTier tier,
+  VehicleType vehicle,
   double size, {
   Color body = const Color(0xFFFFFFFF),
   Color? shade,
 }) {
-  // 用启动时量好的外接框，把视觉中心平移到 (50,50)，
-  // 保证在卡片/格子里始终居中。量不到（异常）时退回原样绘制。
-  final bounds = _tierBounds[tier];
+  final bounds = _tierBounds[vehicle];
   canvas.save();
   canvas.scale(size / 100);
   if (bounds != null) {
     canvas.translate(50 - bounds.center.dx, 50 - bounds.center.dy);
   }
-  _paintTier(canvas, tier, body);
+  _paintVehicle(canvas, vehicle, body);
   canvas.restore();
 }
 
@@ -136,59 +134,120 @@ void paintWildcardIcon(Canvas canvas, double size) {
   canvas.restore();
 }
 
-void _paintTier(Canvas canvas, CarTier tier, Color body) {
-  switch (tier) {
-    case CarTier.bike:
+void _paintVehicle(Canvas canvas, VehicleType vehicle, Color body) {
+  switch (vehicle) {
+    // ── 陆地 (0-11): 复用现有绘制 ──
+    case VehicleType.bicycle:
       _drawBike(canvas, body);
-    case CarTier.scooter:
+    case VehicleType.scooter:
       _drawScooter(canvas, body);
-    case CarTier.car:
+    case VehicleType.sedan:
       _drawCar(canvas, body);
-    case CarTier.taxi:
+    case VehicleType.taxi:
       _drawTaxi(canvas, body);
-    case CarTier.bus:
+    case VehicleType.bus:
       _drawBus(canvas, body);
-    case CarTier.truck:
+    case VehicleType.motorcycle:
+      _drawScooter(canvas, body);
+    case VehicleType.suv:
       _drawTruck(canvas, body);
-    case CarTier.train:
-      _drawTrain(canvas, body);
-    case CarTier.rocket:
-      _drawRocket(canvas, body);
-    case CarTier.tanker:
+    case VehicleType.van:
+      _drawBus(canvas, body);
+    case VehicleType.ambulance:
+      _drawBus(canvas, body);
+    case VehicleType.police:
+      _drawCar(canvas, body);
+    case VehicleType.firetruck:
+      _drawTruck(canvas, body);
+    case VehicleType.limousine:
+      _drawCar(canvas, body);
+    // ── 重工 (12-19): 复用卡车/油罐绘制 ──
+    case VehicleType.truck:
+      _drawTruck(canvas, body);
+    case VehicleType.tanker:
       _drawTanker(canvas, body);
-    case CarTier.metro:
-      _drawMetro(canvas, body);
-    case CarTier.plane:
-      _drawPlane(canvas, body);
-    case CarTier.jet:
-      _drawJet(canvas, body);
-    case CarTier.shuttle:
-      _drawShuttle(canvas, body);
-    case CarTier.ufo:
-      _drawUfo(canvas, body);
-    case CarTier.maglev:
-      _drawMaglev(canvas, body);
-    case CarTier.station:
-      _drawStation(canvas, body);
-    case CarTier.comet:
-      _drawComet(canvas, body);
-    // 任务93 新档：PNG 是主视觉，此处兜底剪影复用最接近的绘制。
-    case CarTier.warp:
-      _drawRocket(canvas, body);
-    case CarTier.hover:
-      _drawUfo(canvas, body);
-    case CarTier.cruiser:
-      _drawShuttle(canvas, body);
-    case CarTier.mecha:
+    case VehicleType.bulldozer:
       _drawTruck(canvas, body);
-    case CarTier.antigrav:
+    case VehicleType.crane:
+      _drawTruck(canvas, body);
+    case VehicleType.excavator:
+      _drawTruck(canvas, body);
+    case VehicleType.dumptruck:
+      _drawTruck(canvas, body);
+    case VehicleType.forklift:
+      _drawTruck(canvas, body);
+    case VehicleType.cementmixer:
+      _drawTanker(canvas, body);
+    // ── 轨道 (20-27): 复用列车/高铁绘制 ──
+    case VehicleType.tram:
+      _drawTrain(canvas, body);
+    case VehicleType.lightrail:
+      _drawTrain(canvas, body);
+    case VehicleType.subway:
+      _drawMetro(canvas, body);
+    case VehicleType.highspeed:
+      _drawMetro(canvas, body);
+    case VehicleType.maglev:
+      _drawMaglev(canvas, body);
+    case VehicleType.monorail:
+      _drawMetro(canvas, body);
+    case VehicleType.steam:
+      _drawTrain(canvas, body);
+    case VehicleType.hyperloop:
+      _drawMaglev(canvas, body);
+    // ── 船舶 (28-35): 复用火箭/UFO绘制（飞行器视觉） ──
+    case VehicleType.dinghy:
+      _drawUfo(canvas, body);
+    case VehicleType.fishing:
+      _drawUfo(canvas, body);
+    case VehicleType.ferry:
+      _drawShuttle(canvas, body);
+    case VehicleType.sailboat:
+      _drawUfo(canvas, body);
+    case VehicleType.speedboat:
+      _drawUfo(canvas, body);
+    case VehicleType.barge:
+      _drawShuttle(canvas, body);
+    case VehicleType.warship:
+      _drawShuttle(canvas, body);
+    case VehicleType.carrier:
+      _drawShuttle(canvas, body);
+    // ── 航空 (36-43): 复用飞机/战机绘制 ──
+    case VehicleType.glider:
+      _drawPlane(canvas, body);
+    case VehicleType.helicopter:
+      _drawPlane(canvas, body);
+    case VehicleType.drone:
+      _drawJet(canvas, body);
+    case VehicleType.airliner:
+      _drawPlane(canvas, body);
+    case VehicleType.fighter:
+      _drawJet(canvas, body);
+    case VehicleType.cargo:
+      _drawPlane(canvas, body);
+    case VehicleType.seaplane:
+      _drawPlane(canvas, body);
+    case VehicleType.stealth:
+      _drawJet(canvas, body);
+    // ── 星际 (44-49): 复用火箭/航天飞机/空间站绘制 ──
+    case VehicleType.rocket:
+      _drawRocket(canvas, body);
+    case VehicleType.spaceShuttle:
+      _drawShuttle(canvas, body);
+    case VehicleType.spaceStation:
+      _drawStation(canvas, body);
+    case VehicleType.lunar:
+      _drawRocket(canvas, body);
+    case VehicleType.starship:
+      _drawShuttle(canvas, body);
+    case VehicleType.warpShip:
       _drawUfo(canvas, body);
   }
 }
 
 /// 每种车型绘制内容的外接框缓存（64×64 坐标，启动预计算更快）。
 /// 由 [precomputeVehicleBounds] 在启动时一次性量好。
-final Map<CarTier, Rect> _tierBounds = <CarTier, Rect>{};
+final Map<VehicleType, Rect> _tierBounds = <VehicleType, Rect>{};
 
 /// 离屏渲染分辨率（启动预计算用，越小越快）。
 const int _boundsRes = 64;
@@ -196,11 +255,11 @@ const int _boundsRes = 64;
 /// 把每种车型离屏渲染到 64×64，扫描不透明像素得到真实内容外接框。
 /// 在 runApp 前 await 调用，确保首帧就有精确的居中数据。
 Future<void> precomputeVehicleBounds() async {
-  for (final tier in CarTier.values) {
+  for (final vehicle in VehicleType.values) {
     try {
       final recorder = ui.PictureRecorder();
       final canvas = Canvas(recorder);
-      _paintTier(canvas, tier, const Color(0xFFFFFFFF));
+      _paintVehicle(canvas, vehicle, const Color(0xFFFFFFFF));
       final image = await recorder.endRecording().toImage(_boundsRes, _boundsRes);
       final data = await image.toByteData(
         format: ui.ImageByteFormat.rawStraightRgba,
@@ -220,7 +279,7 @@ Future<void> precomputeVehicleBounds() async {
         }
       }
       if (maxX >= 0) {
-        _tierBounds[tier] = Rect.fromLTRB(
+        _tierBounds[vehicle] = Rect.fromLTRB(
           minX.toDouble(),
           minY.toDouble(),
           (maxX + 1).toDouble(),
@@ -1420,13 +1479,13 @@ void _drawComet(Canvas c, Color base) {
 
 /// Flutter 侧的车图标组件(纯图标, 无卡面)。
 class VehicleIcon extends StatelessWidget {
-  final CarTier tier;
+  final VehicleType vehicle;
   final double size;
   final Color color;
 
   const VehicleIcon({
     super.key,
-    required this.tier,
+    required this.vehicle,
     required this.size,
     this.color = const Color(0xFFFFFFFF),
   });
@@ -1435,43 +1494,43 @@ class VehicleIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomPaint(
       size: Size.square(size),
-      painter: _VehicleIconPainter(tier: tier, color: color),
+      painter: _VehicleIconPainter(vehicle: vehicle, color: color),
     );
   }
 }
 
 class _VehicleIconPainter extends CustomPainter {
-  final CarTier tier;
+  final VehicleType vehicle;
   final Color color;
 
-  _VehicleIconPainter({required this.tier, required this.color});
+  _VehicleIconPainter({required this.vehicle, required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
-    paintVehicleIcon(canvas, tier, size.shortestSide, body: color);
+    paintVehicleIcon(canvas, vehicle, size.shortestSide, body: color);
   }
 
   @override
   bool shouldRepaint(_VehicleIconPainter oldDelegate) =>
-      oldDelegate.tier != tier || oldDelegate.color != color;
+      oldDelegate.vehicle != vehicle || oldDelegate.color != color;
 }
 
 /// 与棋盘卡面完全一致的迷你卡(牌堆预览/主页用小卡)。
 class VehicleCard extends StatelessWidget {
-  final CarTier tier;
+  final VehicleType vehicle;
   final double size;
   final bool enabled;
 
   const VehicleCard({
     super.key,
-    required this.tier,
+    required this.vehicle,
     this.size = 46,
     this.enabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = tier.color;
+    final color = vehicle.color;
     final radius = size * 0.28;
     return Container(
       width: size,
@@ -1523,7 +1582,7 @@ class VehicleCard extends StatelessWidget {
           Center(
             child: Opacity(
               opacity: enabled ? 1 : 0.4,
-              child: VehicleIcon(tier: tier, size: size * 0.66, color: color),
+              child: VehicleIcon(vehicle: vehicle, size: size * 0.66, color: color),
             ),
           ),
         ],

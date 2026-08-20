@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'game_config.dart';
-import '../models/car.dart';
+import '../models/vehicle.dart';
 import '../models/level.dart';
 
 /// 每日挑战：按日期确定性生成一关，每天一个，首次通关领大奖。
@@ -18,7 +18,7 @@ class DailyChallenge {
     final rng = Random(seed);
 
     // 目标等级取 bus(4)..train(6)，保证当天可完成、又有变化。
-    final targetTier = CarTier.values[4 + rng.nextInt(3)];
+    final targetTier = VehicleType.values[4 + rng.nextInt(3)];
     final targetCount = 1 + rng.nextInt(2);
     // 约三分之一的日子限时。
     final timed = rng.nextInt(3) == 0;

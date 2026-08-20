@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import '../models/car.dart';
+import '../models/vehicle.dart';
 import '../models/level.dart';
 
 /// 一次移动的结果。
@@ -153,7 +153,7 @@ class BoardLogic {
   }
 
   /// 在随机空格放入指定等级的卡片。跳过障碍格。满盘返回 null。
-  ({int col, int row})? placeTier(CarTier tier) {
+  ({int col, int row})? placeTier(VehicleType tier) {
     if (isFull) return null;
     final empties = <({int col, int row})>[];
     for (var c = 0; c < cols; c++) {
@@ -175,7 +175,7 @@ class BoardLogic {
     final cell = _randomEmptyCell();
     if (cell == null) return null;
     _grid[_idx(cell.col, cell.row)] =
-        StackData(CarTier.bike, isWildcard: true);
+        StackData(VehicleType.bicycle, isWildcard: true);
     return cell;
   }
 
@@ -183,7 +183,7 @@ class BoardLogic {
   ({int col, int row})? placeBomb() {
     final cell = _randomEmptyCell();
     if (cell == null) return null;
-    _grid[_idx(cell.col, cell.row)] = StackData(CarTier.bike, isBomb: true);
+    _grid[_idx(cell.col, cell.row)] = StackData(VehicleType.bicycle, isBomb: true);
     return cell;
   }
 
@@ -207,23 +207,26 @@ class BoardLogic {
       col >= 0 && col < cols && row >= 0 && row < rows &&
       _fogged[_idx(col, row)];
 
-  /// 揭开 (c,r) 及其四邻的迷雾（落子/移动后触发）。
-  void revealNear(int c, int r) {
+  /// 揭开 (c,r) 及其 range 范围内的迷雾（落子/移动后触发）。
+  void revealNear(int c, int r, {int range = 1}) {
     if (c < 0 || c >= cols || r < 0 || r >= rows) return;
     _fogged[_idx(c, r)] = false;
-    for (final (dc, dr) in [(1, 0), (-1, 0), (0, 1), (0, -1)]) {
-      final nc = c + dc, nr = r + dr;
-      if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) continue;
-      _fogged[_idx(nc, nr)] = false;
+    for (var dc = -range; dc <= range; dc++) {
+      for (var dr = -range; dr <= range; dr++) {
+        if (dc == 0 && dr == 0) continue;
+        final nc = c + dc, nr = r + dr;
+        if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) continue;
+        _fogged[_idx(nc, nr)] = false;
+      }
     }
   }
 
   /// 按出生权重生成一个随机等级。
-  CarTier randomTier() => _weightedTier();
+  VehicleType randomTier() => _weightedTier();
 
   /// 在 0..maxTierIndex 之间按降序权重随机（无尽模式动态权重）。
-  CarTier weightedTierUpTo(int maxTierIndex) {
-    final maxIdx = maxTierIndex.clamp(0, CarTier.values.length - 1);
+  VehicleType weightedTierUpTo(int maxTierIndex) {
+    final maxIdx = maxTierIndex.clamp(0, VehicleType.values.length - 1);
     final weights = List.generate(maxIdx + 1, (i) => maxIdx - i + 1);
     var total = 0;
     for (final w in weights) {
@@ -232,19 +235,19 @@ class BoardLogic {
     var roll = _random.nextInt(total);
     for (var i = 0; i < weights.length; i++) {
       roll -= weights[i];
-      if (roll < 0) return CarTier.fromIndex(i);
+      if (roll < 0) return VehicleType.fromId(i);
     }
-    return CarTier.bike;
+    return VehicleType.bicycle;
   }
 
   /// 棋盘上等级最高的卡片（撤销后高亮用）。空盘返回 null。
-  ({int col, int row, CarTier tier})? highest() {
+  ({int col, int row, VehicleType tier})? highest() {
     var bestIdx = -1;
     var bestTier = -1;
     for (var i = 0; i < _grid.length; i++) {
       final s = _grid[i];
-      if (s != null && s.tier.index > bestTier) {
-        bestTier = s.tier.index;
+      if (s != null && s.tier.id > bestTier) {
+        bestTier = s.tier.id;
         bestIdx = i;
       }
     }
@@ -255,13 +258,13 @@ class BoardLogic {
 
   /// 移除棋盘上等级最低的一张卡片（腾位置用）。
   /// 返回被移除的格子与等级；空盘返回 null。
-  ({int col, int row, CarTier tier})? removeLowest() {
+  ({int col, int row, VehicleType tier})? removeLowest() {
     var bestIdx = -1;
-    var bestTier = CarTier.values.length;
+    var bestTier = VehicleType.values.length;
     for (var i = 0; i < _grid.length; i++) {
       final s = _grid[i];
-      if (s != null && s.tier.index < bestTier) {
-        bestTier = s.tier.index;
+      if (s != null && s.tier.id < bestTier) {
+        bestTier = s.tier.id;
         bestIdx = i;
       }
     }
@@ -331,8 +334,11 @@ class BoardLogic {
     }
     if (fc == tc && fr == tr) return const MoveResult();
     if (!_usable(tc, tr)) {
-      // 传送出口本身是传送门时允许停靠（卡片从传送门内钻出来）。
-      if (!teleported || obstacleAt(tc, tr)?.type != ObstacleType.teleport) {
+      // flyOver 能力：忽略障碍物，允许降落
+      final moverAbility = from.tier.stats.ability;
+      if (moverAbility == SpecialAbility.flyOver) {
+        // 允许移动到障碍格
+      } else if (!teleported || obstacleAt(tc, tr)?.type != ObstacleType.teleport) {
         return const MoveResult();
       }
     }
@@ -423,7 +429,7 @@ class BoardLogic {
       producedCount++;
       produced = true;
     }
-    final meltedIce = _meltAdjacentIce(tc, tr);
+    final meltedIce = _meltAdjacentIce(tc, tr, mover: target.tier);
     return MoveResult(
       valid: true,
       upgraded: upgraded,
@@ -459,17 +465,41 @@ class BoardLogic {
     return cleared;
   }
 
-  /// 合并后消融 (c,r) 四邻的冰块，返回完全融化（层数归零）的格子。
-  List<({int col, int row})> _meltAdjacentIce(int c, int r) {
+  /// 合并后消融 (c,r) 四邻的障碍，返回完全融化/移除的格子。
+  /// 若 mover 具有 breakIce / breakChain / clearRock 能力，
+  /// 则直接清除相邻格对应类型的障碍（不逐层递减）。
+  List<({int col, int row})> _meltAdjacentIce(int c, int r,
+      {VehicleType? mover}) {
     final melted = <({int col, int row})>[];
+    final ability = mover?.stats.ability;
     for (final (dc, dr) in [(1, 0), (-1, 0), (0, 1), (0, -1)]) {
       final nc = c + dc, nr = r + dr;
       if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) continue;
       for (final o in _obstacles) {
-        if (o.col == nc &&
-            o.row == nr &&
+        if (o.col != nc || o.row != nr) continue;
+        if (ability == SpecialAbility.breakIce &&
             o.type == ObstacleType.ice &&
             o.layers > 0) {
+          o.layers = 0;
+          o.removed = true;
+          melted.add((col: nc, row: nr));
+          break;
+        }
+        if (ability == SpecialAbility.breakChain &&
+            o.type == ObstacleType.lock &&
+            !o.removed) {
+          o.removed = true;
+          melted.add((col: nc, row: nr));
+          break;
+        }
+        if (ability == SpecialAbility.clearRock &&
+            o.type == ObstacleType.block &&
+            !o.removed) {
+          o.removed = true;
+          melted.add((col: nc, row: nr));
+          break;
+        }
+        if (o.type == ObstacleType.ice && o.layers > 0) {
           o.layers--;
           if (o.layers <= 0) melted.add((col: nc, row: nr));
           break;
@@ -498,7 +528,7 @@ class BoardLogic {
   bool get hasPossibleMove {
     var wildcards = 0;
     var bombs = 0;
-    final normalByTier = <CarTier, int>{};
+    final normalByTier = <VehicleType, int>{};
     for (final s in _grid) {
       if (s == null || s.isEmpty) continue;
       if (s.isWildcard) {
@@ -528,7 +558,7 @@ class BoardLogic {
 
   /// BFS 搜索：从 (col,row) 出发，能否到达任意同等级卡。
   /// 空格可通过，障碍 / 其他卡片阻挡。
-  bool _canReachSameTier(int col, int row, CarTier tier) {
+  bool _canReachSameTier(int col, int row, VehicleType tier) {
     final visited = <int>{};
     final queue = <int>[_idx(col, row)];
     visited.add(_idx(col, row));
@@ -679,7 +709,7 @@ class BoardLogic {
     return null;
   }
 
-  CarTier _weightedTier() {
+  VehicleType _weightedTier() {
     var total = 0;
     for (final w in _spawnWeights) {
       total += w;
@@ -687,9 +717,9 @@ class BoardLogic {
     var roll = _random.nextInt(total);
     for (var i = 0; i < _spawnWeights.length; i++) {
       roll -= _spawnWeights[i];
-      if (roll < 0) return CarTier.fromIndex(i);
+      if (roll < 0) return VehicleType.fromId(i);
     }
-    return CarTier.bike;
+    return VehicleType.bicycle;
   }
 
   int _idx(int c, int r) => r * cols + c;

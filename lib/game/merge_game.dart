@@ -8,7 +8,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/widgets.dart' hide View;
 
 import '../logic/board_logic.dart';
-import '../models/car.dart';
+import '../models/vehicle.dart';
 import '../models/level.dart';
 import 'audio_feedback.dart';
 import 'vehicle_icons.dart';
@@ -55,7 +55,7 @@ class MergeGame extends FlameGame {
 
   /// 预加载的 17 张车模 PNG（ui.Image），供方块绘制真实车模；
   /// 加载失败或缺图时，方块会降级回 canvas 剪影。
-  final Map<CarTier, ui.Image> vehicleImages = {};
+  final Map<VehicleType, ui.Image> vehicleImages = {};
 
   final ValueNotifier<int> score = ValueNotifier<int>(0);
   final ValueNotifier<int> produced = ValueNotifier<int>(0);
@@ -79,7 +79,7 @@ class MergeGame extends FlameGame {
   void Function(bool won)? onGameOver;
 
   /// 合成出新等级时回调（图鉴收集：首次点亮）。
-  void Function(CarTier tier)? onTierProduced;
+  void Function(VehicleType tier)? onTierProduced;
 
   /// 无尽模式里程碑达成回调（每 5 档，参数：档位、奖励金币）。
   void Function(int endlessLevel, int reward)? onEndlessMilestone;
@@ -98,18 +98,18 @@ class MergeGame extends FlameGame {
   double elapsedTime = 0;
 
   /// 无尽模式动态目标。
-  late CarTier _endlessTarget = level.targetTier ?? CarTier.taxi;
+  late VehicleType _endlessTarget = level.targetTier ?? VehicleType.taxi;
   int _endlessNeed = 3;
   int _endlessProduced = 0;
-  CarTier get endlessTarget => _endlessTarget;
+  VehicleType get endlessTarget => _endlessTarget;
   int get endlessNeed => _endlessNeed;
 
   final List<CellSprite> _cellSprites = [];
   final List<StackSprite> _stackSprites = [];
-  final List<CarTier> _deck = [];
+  final List<VehicleType> _deck = [];
 
   /// 无尽模式真实的下几张牌（预览与实际出牌共用，保证一致）。
-  final List<CarTier> _upcoming = [];
+  final List<VehicleType> _upcoming = [];
   final List<({BoardSnapshot snap, int bonus})> _undoStack = [];
   ({int col, int row})? _selected;
   bool _ended = false;
@@ -127,7 +127,7 @@ class MergeGame extends FlameGame {
   void Function()? onHammerUsed;
 
   /// 玩家操作回调(教程用): action = draw / move / merge / hammer
-  void Function(String action, CarTier? tier)? onPlayerAction;
+  void Function(String action, VehicleType? tier)? onPlayerAction;
 
   static const int _maxUndo = 30;
 
@@ -138,10 +138,10 @@ class MergeGame extends FlameGame {
   MergeGame(this.level) : board = BoardLogic(level);
 
   /// 牌堆接下来的几张（用于 UI 预览）。无尽模式按当前目标动态生成。
-  List<CarTier> get upcomingStock {
+  List<VehicleType> get upcomingStock {
     if (!level.endless) return _deck.take(3).toList();
     while (_upcoming.length < 3) {
-      _upcoming.add(board.weightedTierUpTo((_endlessTarget.tierIndex - 1).clamp(0, CarTier.values.length - 1)));
+      _upcoming.add(board.weightedTierUpTo((_endlessTarget.id - 1).clamp(0, VehicleType.values.length - 1)));
     }
     return List.unmodifiable(_upcoming);
   }
@@ -184,7 +184,7 @@ class MergeGame extends FlameGame {
     _spawnFloat(
       level.cols ~/ 2,
       level.rows ~/ 2,
-      '🎯 目标升级！下一档 ${_endlessTarget.icon} ${_endlessTarget.label}',
+      '🎯 目标升级！下一档 ${_endlessTarget.icon} ${_endlessTarget.name}',
       color: const Color(0xFFFFCA28),
       fontSize: 18,
       dy: -_cellSize * 0.8,
@@ -197,7 +197,7 @@ class MergeGame extends FlameGame {
       fontSize: 22,
       dy: -_cellSize * 1.4,
     );
-    hint.value = '达成目标！目标升级为 ${_endlessTarget.icon} ${_endlessTarget.label}';
+    hint.value = '达成目标！目标升级为 ${_endlessTarget.icon} ${_endlessTarget.name}';
     feedback.play(Sfx.bonus);
   }
 
@@ -217,7 +217,7 @@ class MergeGame extends FlameGame {
     super.onLoad();
     // 预加载 17 张车模 PNG，供方块绘制真实车模。
     // 用 rootBundle 直接加载，规避 Flame images 缓存默认前缀 assets/images/ 导致的路径翻倍。
-    for (final tier in CarTier.values) {
+    for (final tier in VehicleType.values) {
       try {
         final bytes =
             await rootBundle.load('assets/vehicles/${tier.name}.png');
@@ -238,7 +238,7 @@ class MergeGame extends FlameGame {
     final seedCount = (level.cols * level.rows ~/ 4).clamp(1, 4);
     for (var i = 0; i < seedCount; i++) {
       final cell = level.endless
-          ? board.placeTier(board.weightedTierUpTo((_endlessTarget.tierIndex - 1).clamp(0, CarTier.values.length - 1)))
+          ? board.placeTier(board.weightedTierUpTo((_endlessTarget.id - 1).clamp(0, VehicleType.values.length - 1)))
           : board.placeTier(board.randomTier());
       if (cell == null) break;
       _addStack(cell.col, cell.row);
@@ -418,7 +418,7 @@ class MergeGame extends FlameGame {
       _stackSprites.remove(sprite);
       sprite.removePuff();
     }
-    hint.value = '自动清理了一辆 ${removed.tier.icon} ${removed.tier.label}，腾出位置';
+    hint.value = '自动清理了一辆 ${removed.tier.icon} ${removed.tier.name}，腾出位置';
     feedback.play(Sfx.error);
     _refreshGoal();
   }
@@ -653,10 +653,12 @@ class MergeGame extends FlameGame {
     }
     _consumeMove();
 
-    // 落子揭开附近迷雾。
+    // 落子揭开附近迷雾（sonar 能力扩大侦察范围）。
     final wasFogged = board.isFogged(fc, fr) || board.isFogged(tc, tr);
-    board.revealNear(fc, fr);
-    board.revealNear(tc, tr);
+    final moverTier = from.tier;
+    final sonarRange = moverTier.stats.ability == SpecialAbility.sonar ? 2 : 1;
+    board.revealNear(fc, fr, range: sonarRange);
+    board.revealNear(tc, tr, range: sonarRange);
     if (wasFogged) {
       onPlayerAction?.call('reveal', null);
     }
@@ -737,6 +739,33 @@ class MergeGame extends FlameGame {
         ));
       }
       hint.value = '❄ 冰块融化，格子空出来了';
+    }
+
+    // 特殊能力激活提示。
+    final ability = moverTier.stats.ability;
+    if (ability == SpecialAbility.breakIce && result.meltedIce.isNotEmpty) {
+      _spawnFloat(tc, tr, '🔥 破冰！',
+          color: const Color(0xFF81D4FA), fontSize: 16, dy: -_cellSize * 0.5);
+    } else if (ability == SpecialAbility.breakChain) {
+      _spawnFloat(tc, tr, '🔓 解锁！',
+          color: const Color(0xFFE8C86A), fontSize: 16, dy: -_cellSize * 0.5);
+    } else if (ability == SpecialAbility.clearRock) {
+      _spawnFloat(tc, tr, '💥 碎石！',
+          color: const Color(0xFF90A4AE), fontSize: 16, dy: -_cellSize * 0.5);
+    } else if (ability == SpecialAbility.flyOver) {
+      _spawnFloat(tc, tr, '✈️ 飞越！',
+          color: const Color(0xFF90CAF9), fontSize: 16, dy: -_cellSize * 0.5);
+    } else if (ability == SpecialAbility.teleport) {
+      _spawnFloat(tc, tr, '⚡ 传送！',
+          color: const Color(0xFFB39DDB), fontSize: 16, dy: -_cellSize * 0.5);
+    } else if (ability == SpecialAbility.warp) {
+      _spawnFloat(tc, tr, '🌀 曲速！',
+          color: const Color(0xFF7E57C2), fontSize: 16, dy: -_cellSize * 0.5);
+    }
+
+    if (ability == SpecialAbility.sonar && sonarRange > 1) {
+      _spawnFloat(fc, fr, '📡 侦察！',
+          color: const Color(0xFF80CBC4), fontSize: 16, dy: -_cellSize * 0.5);
     }
 
     if (result.upgraded) {
@@ -1477,6 +1506,7 @@ class StackSprite extends PositionComponent
 
     _drawIcon(canvas);
     if (data.count == 2) _drawBadge(canvas);
+    _drawAbilityBadge(canvas);
 
     // 迷雾覆盖：隐藏卡面。
     if (game.board.isFogged(col, row)) {
@@ -1541,6 +1571,55 @@ class StackSprite extends PositionComponent
       fontSize: size.x * 0.22,
       color: const Color(0xFFFFD54F),
       center: Offset(size.x * 0.74, size.y * 0.86),
+    );
+  }
+
+  /// 右上角能力标识小徽章（非 none 时绘制半透明深底药丸 + 能力文字）。
+  void _drawAbilityBadge(Canvas canvas) {
+    final ability = data.tier.stats.ability;
+    if (ability == SpecialAbility.none) return;
+    final label = ability.label;
+    final fontSize = size.x * 0.15;
+    final tp = TextPainter(
+      text: TextSpan(
+        text: label,
+        style: TextStyle(
+          fontSize: fontSize,
+          color: const Color(0xFFFFFFFF),
+          fontFamily: 'Noto Sans SC',
+        ),
+      ),
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final padX = fontSize * 0.35;
+    final padY = fontSize * 0.18;
+    final pillW = tp.width + padX * 2;
+    final pillH = tp.height + padY * 2;
+    final pillCx = size.x - pillW / 2 - 3;
+    final pillCy = pillH / 2 + 3;
+    final pillRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: Offset(pillCx, pillCy),
+        width: pillW,
+        height: pillH,
+      ),
+      Radius.circular(pillH / 2),
+    );
+    canvas.drawRRect(
+      pillRect,
+      Paint()..color = const Color(0xAA1A1E24),
+    );
+    canvas.drawRRect(
+      pillRect,
+      Paint()
+        ..color = const Color(0x55FFFFFF)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.8,
+    );
+    tp.paint(
+      canvas,
+      Offset(pillCx - tp.width / 2, pillCy - tp.height / 2),
     );
   }
 

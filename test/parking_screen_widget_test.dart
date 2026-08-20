@@ -1,6 +1,6 @@
+import 'package:merge_fleet/models/vehicle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:merge_fleet/models/car.dart';
 import 'package:merge_fleet/models/parking_level.dart';
 import 'package:merge_fleet/save/save_repository.dart';
 import 'package:merge_fleet/screens/parking_screen.dart';
@@ -33,9 +33,9 @@ void main() {
       cols: 4,
       grid: _grid(4),
       vehicles: [
-        VehicleSpawn(col: 0, row: 0, tier: CarTier.car),
+        VehicleSpawn(col: 0, row: 0, tier: VehicleType.sedan),
       ],
-      targetTier: CarTier.car,
+      targetTier: VehicleType.sedan,
     );
     final data = PlayerData()..tutorialCompleted.add(-1); // 跳过教学，避免延迟回调
     await tester.pumpWidget(MaterialApp(
@@ -58,9 +58,9 @@ void main() {
       cols: 4,
       grid: _grid(4),
       vehicles: [
-        VehicleSpawn(col: 1, row: 3, tier: CarTier.car),
+        VehicleSpawn(col: 1, row: 3, tier: VehicleType.sedan),
       ],
-      targetTier: CarTier.car,
+      targetTier: VehicleType.sedan,
     );
     final data = PlayerData()..tutorialCompleted.add(-1); // 跳过教学，避免延迟回调
     await tester.pumpWidget(MaterialApp(
@@ -81,7 +81,7 @@ void main() {
     expect(find.text('停车成功!'), findsOneWidget);
 
     // 接入校验：胜利后目标车型点亮图鉴、最佳星级落盘、解锁下一关。
-    expect(data.collection.contains(CarTier.car.index), isTrue);
+    expect(data.collection.contains(VehicleType.sedan.index), isTrue);
     expect(data.parkingBestStars[1], greaterThan(0));
     expect(data.parkingUnlocked, greaterThanOrEqualTo(2));
   });

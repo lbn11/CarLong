@@ -1,7 +1,7 @@
+import 'package:merge_fleet/models/vehicle.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:merge_fleet/game/parking_game.dart';
-import 'package:merge_fleet/models/car.dart';
 import 'package:merge_fleet/models/parking_level.dart';
 
 /// 最小停车关卡（4x4）：
@@ -22,10 +22,10 @@ ParkingLevel _miniLevel({int? movesLimit, int? timeLimit}) {
     cols: 4,
     grid: grid,
     vehicles: [
-      VehicleSpawn(col: 0, row: 3, tier: CarTier.car, count: 1),
-      VehicleSpawn(col: 1, row: 3, tier: CarTier.bike, count: 1),
+      VehicleSpawn(col: 0, row: 3, tier: VehicleType.sedan, count: 1),
+      VehicleSpawn(col: 1, row: 3, tier: VehicleType.bicycle, count: 1),
     ],
-    targetTier: CarTier.car,
+    targetTier: VehicleType.sedan,
     movesLimit: movesLimit,
     timeLimit: timeLimit,
   );
@@ -33,7 +33,7 @@ ParkingLevel _miniLevel({int? movesLimit, int? timeLimit}) {
 
 /// 把 bike 从 (1,3) 让路到 (1,2)（纵向一格），不再挡住 car 第 3 行去路。
 void _moveBikeAside(ParkingGame game) {
-  final filler = game.vehicles.firstWhere((v) => v.tier == CarTier.bike);
+  final filler = game.vehicles.firstWhere((v) => v.tier == VehicleType.bicycle);
   expect(game.canMoveTo(filler.index, 2, 1), isTrue,
       reason: 'bike 应能纵向让路到 (1,2)');
   game.moveVehicle(filler.index, 2, 1);
@@ -44,7 +44,7 @@ void main() {
     test('目标车可以停进停车位并判胜', () {
       final game = ParkingGame(_miniLevel());
       final target =
-          game.vehicles.firstWhere((v) => v.tier == CarTier.car);
+          game.vehicles.firstWhere((v) => v.tier == VehicleType.sedan);
       _moveBikeAside(game);
       // car 从 (0,3) 直线滑到停车位 (3,3)。
       expect(game.canMoveTo(target.index, 3, 3), isTrue);
@@ -56,7 +56,7 @@ void main() {
     test('非目标车不能占用停车位', () {
       final game = ParkingGame(_miniLevel());
       final filler =
-          game.vehicles.firstWhere((v) => v.tier == CarTier.bike);
+          game.vehicles.firstWhere((v) => v.tier == VehicleType.bicycle);
       // bike 与目标同处第 3 行，可路径直达停车位，但等级不符应被拒绝。
       expect(game.canMoveTo(filler.index, 3, 3), isFalse);
     });
@@ -80,7 +80,7 @@ void main() {
     test('直线移动：不能直接斜向移动', () {
       final game = ParkingGame(_miniLevel());
       final target =
-          game.vehicles.firstWhere((v) => v.tier == CarTier.car);
+          game.vehicles.firstWhere((v) => v.tier == VehicleType.sedan);
       // 从 (0,3) 斜向到 (1,2) 不合法（非直线）。
       expect(game.canMoveTo(target.index, 1, 2), isFalse);
     });
@@ -89,7 +89,7 @@ void main() {
       final game = ParkingGame(_miniLevel());
       _moveBikeAside(game);
       final target =
-          game.vehicles.firstWhere((v) => v.tier == CarTier.car);
+          game.vehicles.firstWhere((v) => v.tier == VehicleType.sedan);
       game.moveVehicle(target.index, 3, 3);
       expect(game.hasWon, isTrue);
       expect(game.moves, 2);
@@ -102,7 +102,7 @@ void main() {
       // 初始 bike 挡住 car，首步应建议移动 bike 让路。
       expect(hint, isNotNull);
       final filler =
-          game.vehicles.firstWhere((v) => v.tier == CarTier.bike);
+          game.vehicles.firstWhere((v) => v.tier == VehicleType.bicycle);
       expect(hint!.vehicleIndex, filler.index);
       // hint 不应消耗步数、不应改变 hasWon。
       expect(game.moves, 0);
@@ -117,7 +117,7 @@ void main() {
       final game = ParkingGame(_miniLevel());
       _moveBikeAside(game);
       final target =
-          game.vehicles.firstWhere((v) => v.tier == CarTier.car);
+          game.vehicles.firstWhere((v) => v.tier == VehicleType.sedan);
       game.moveVehicle(target.index, 3, 3);
       expect(game.hasWon, isTrue);
       expect(game.hint(), isNull);

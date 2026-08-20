@@ -1,7 +1,7 @@
+import 'package:merge_fleet/models/vehicle.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:merge_fleet/game/parking_game.dart';
 import 'package:merge_fleet/logic/parking_solver.dart';
-import 'package:merge_fleet/models/car.dart';
 import 'package:merge_fleet/models/parking_level.dart';
 import 'package:merge_fleet/services/parking_generator.dart';
 
@@ -28,12 +28,12 @@ void main() {
           VehicleSpawn(
             col: 0,
             row: 0,
-            tier: CarTier.car,
+            tier: VehicleType.sedan,
             length: 2,
             orientation: ParkingOrientation.horizontal,
           ),
         ],
-        targetTier: CarTier.car,
+        targetTier: VehicleType.sedan,
       );
       final g = ParkingGame(level);
       // 向右滑到 anchor col2（占 (0,2),(0,3)）。
@@ -56,12 +56,12 @@ void main() {
           VehicleSpawn(
             col: 0,
             row: 0,
-            tier: CarTier.car,
+            tier: VehicleType.sedan,
             length: 2,
             orientation: ParkingOrientation.vertical,
           ),
         ],
-        targetTier: CarTier.car,
+        targetTier: VehicleType.sedan,
       );
       final g = ParkingGame(level);
       expect(g.canMoveTo(0, 2, 0), isTrue); // 向下
@@ -79,12 +79,12 @@ void main() {
           VehicleSpawn(
             col: 0,
             row: 0,
-            tier: CarTier.car,
+            tier: VehicleType.sedan,
             length: 2,
             orientation: ParkingOrientation.horizontal,
           ),
         ],
-        targetTier: CarTier.car,
+        targetTier: VehicleType.sedan,
       );
       final g = ParkingGame(level);
       expect(g.cellAt(0, 0).vehicleIndex, 0);
@@ -115,13 +115,13 @@ void main() {
           VehicleSpawn(
             col: 0,
             row: 0,
-            tier: CarTier.car,
+            tier: VehicleType.sedan,
             length: 2,
             orientation: ParkingOrientation.horizontal,
           ),
-          VehicleSpawn(col: 3, row: 0, tier: CarTier.bike), // 挡在 (0,3)
+          VehicleSpawn(col: 3, row: 0, tier: VehicleType.bicycle), // 挡在 (0,3)
         ],
-        targetTier: CarTier.car,
+        targetTier: VehicleType.sedan,
       );
       final g = ParkingGame(level);
       // 滑到 anchor col2（(0,2),(0,3)）会被 bike 挡住。
@@ -142,13 +142,13 @@ void main() {
           VehicleSpawn(
             col: 0,
             row: 3,
-            tier: CarTier.bike,
+            tier: VehicleType.bicycle,
             length: 2,
             orientation: ParkingOrientation.horizontal,
           ),
-          VehicleSpawn(col: 0, row: 0, tier: CarTier.car),
+          VehicleSpawn(col: 0, row: 0, tier: VehicleType.sedan),
         ],
-        targetTier: CarTier.car,
+        targetTier: VehicleType.sedan,
       );
       final g = ParkingGame(level);
       // bike 滑到 anchor2 (3,2),(3,3) 会压住停车位且非目标 => 不可。
@@ -167,12 +167,12 @@ void main() {
           VehicleSpawn(
             col: 0,
             row: 3,
-            tier: CarTier.car,
+            tier: VehicleType.sedan,
             length: 2,
             orientation: ParkingOrientation.horizontal,
           ),
         ],
-        targetTier: CarTier.car,
+        targetTier: VehicleType.sedan,
       );
       final g = ParkingGame(level);
       expect(g.hasWon, isFalse);
@@ -191,12 +191,12 @@ void main() {
           VehicleSpawn(
             col: 0,
             row: 4,
-            tier: CarTier.car,
+            tier: VehicleType.sedan,
             length: 2,
             orientation: ParkingOrientation.horizontal,
           ),
         ],
-        targetTier: CarTier.car,
+        targetTier: VehicleType.sedan,
       );
       final g = ParkingGame(level); // 占 (4,0),(4,1)，停车位 (4,3)
       expect(g.moveVehicle(0, 4, 2), isTrue); // 滑到 (4,2),(4,3) 压住车位
@@ -216,12 +216,12 @@ void main() {
           VehicleSpawn(
             col: 0,
             row: 4,
-            tier: CarTier.car,
+            tier: VehicleType.sedan,
             length: 2,
             orientation: ParkingOrientation.horizontal,
           ),
         ],
-        targetTier: CarTier.car,
+        targetTier: VehicleType.sedan,
       );
       final g = ParkingGame(level);
       // 点击 (4,3)（右侧空格），车应滑到 anchor2 覆盖车位并获胜。
@@ -237,9 +237,9 @@ void main() {
         cols: 4,
         grid: _grid(4),
         vehicles: [
-          VehicleSpawn(col: 0, row: 0, tier: CarTier.car),
+          VehicleSpawn(col: 0, row: 0, tier: VehicleType.sedan),
         ],
-        targetTier: CarTier.car,
+        targetTier: VehicleType.sedan,
       );
       final g = ParkingGame(level);
       expect(g.slideTo(0, 0, 3), isTrue); // 横移到 col3
@@ -261,12 +261,12 @@ void main() {
           VehicleSpawn(
             col: 0,
             row: 0,
-            tier: CarTier.car,
+            tier: VehicleType.sedan,
             length: 2,
             orientation: ParkingOrientation.horizontal,
           ),
         ],
-        targetTier: CarTier.car,
+        targetTier: VehicleType.sedan,
       );
       final g = ParkingGame(level);
       expect(g.slideTo(0, 3, 0), isFalse); // 横向车不能纵向滑
@@ -285,19 +285,19 @@ void main() {
           VehicleSpawn(
             col: 0,
             row: 4,
-            tier: CarTier.car,
+            tier: VehicleType.sedan,
             length: 2,
             orientation: ParkingOrientation.horizontal,
           ),
           VehicleSpawn(
             col: 2,
             row: 3,
-            tier: CarTier.bike,
+            tier: VehicleType.bicycle,
             length: 2,
             orientation: ParkingOrientation.vertical,
           ),
         ],
-        targetTier: CarTier.car,
+        targetTier: VehicleType.sedan,
       );
       // 挡块占 (3,2),(4,2) 堵住底部行车道；必须先上移挡块，目标才能滑入 (4,3)。
       final moves = ParkingSolver.minMoves(level);
@@ -315,12 +315,12 @@ void main() {
           VehicleSpawn(
             col: 0,
             row: 4,
-            tier: CarTier.car,
+            tier: VehicleType.sedan,
             length: 2,
             orientation: ParkingOrientation.horizontal,
           ),
         ],
-        targetTier: CarTier.car,
+        targetTier: VehicleType.sedan,
       );
       expect(ParkingSolver.minMoves(level), 1);
     });
@@ -336,19 +336,19 @@ void main() {
           VehicleSpawn(
             col: 0,
             row: 4,
-            tier: CarTier.car,
+            tier: VehicleType.sedan,
             length: 2,
             orientation: ParkingOrientation.horizontal,
           ),
           VehicleSpawn(
             col: 2,
             row: 3,
-            tier: CarTier.bike,
+            tier: VehicleType.bicycle,
             length: 2,
             orientation: ParkingOrientation.vertical,
           ),
         ],
-        targetTier: CarTier.car,
+        targetTier: VehicleType.sedan,
       );
       final g = ParkingGame(level);
       final before = g.vehicles.map((v) => (v.row, v.col)).toList();

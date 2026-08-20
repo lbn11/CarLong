@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import '../logic/parking_solver.dart';
-import '../models/car.dart';
+import '../models/vehicle.dart';
 import '../models/parking_level.dart';
 import 'parking_chapters.dart';
 
@@ -104,7 +104,7 @@ class ParkingLevelGenerator {
     Random rng, {
     required int id,
     required int size,
-    required CarTier tier,
+    required VehicleType tier,
     required int obstacleCount,
     required int fillCount,
   }) {
@@ -127,12 +127,12 @@ class ParkingLevelGenerator {
     // 填充车使用"除目标档之外的所有档位"，逐个取不同档位，使每辆车颜色/图标都不同，
     // 还原"不同车不同颜色"的观感；同时保证没有任何填充车能冒充目标车开进停车位。
     final otherTiers = [
-      for (var i = 0; i < CarTier.values.length; i++)
-        if (i != tier.index) CarTier.values[i]
+      for (var i = 0; i < VehicleType.values.length; i++)
+        if (i != tier.id) VehicleType.values[i]
     ];
     otherTiers.shuffle(rng); // 确定性：同 id 同一关配色稳定可复现
     var fillerCursor = 0;
-    CarTier nextFillerTier() =>
+    VehicleType nextFillerTier() =>
         otherTiers[fillerCursor++ % otherTiers.length];
 
     // 目标车：size>=5 时放 2 格横车在停车行（经典 Rush Hour 红车），起点不压停车位；
@@ -303,7 +303,7 @@ class ParkingLevelGenerator {
   static ParkingLevel _fallbackLevel(
     int id,
     int size,
-    CarTier tier,
+    VehicleType tier,
   ) {
     final grid = List.generate(
       size,
@@ -328,7 +328,7 @@ class ParkingLevelGenerator {
       VehicleSpawn(
         col: 1,
         row: pr - 1,
-        tier: CarTier.fromIndex((tier.index + 1) % CarTier.values.length),
+        tier: VehicleType.fromId((tier.id + 1) % VehicleType.values.length),
         length: 2,
         orientation: ParkingOrientation.vertical,
       ),
@@ -337,7 +337,7 @@ class ParkingLevelGenerator {
         VehicleSpawn(
           col: pc,
           row: pr - 1,
-          tier: CarTier.fromIndex((tier.index + 2) % CarTier.values.length),
+          tier: VehicleType.fromId((tier.id + 2) % VehicleType.values.length),
           length: 2,
           orientation: ParkingOrientation.vertical,
         ),
@@ -368,5 +368,5 @@ class ParkingLevelGenerator {
 
 
   /// 车型分段与 [ParkingChapters] 保持一致，便于停车章节与合成图鉴联动。
-  static CarTier _tierForLevel(int id) => ParkingChapters.tierForId(id);
+  static VehicleType _tierForLevel(int id) => ParkingChapters.tierForId(id);
 }

@@ -1,9 +1,9 @@
+import 'package:merge_fleet/models/vehicle.dart';
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:merge_fleet/logic/board_logic.dart';
-import 'package:merge_fleet/models/car.dart';
 import 'package:merge_fleet/models/level.dart';
 
 void main() {
@@ -15,18 +15,18 @@ void main() {
       rows: 4,
       stockSize: 10,
       goalType: GoalType.produce,
-      targetTier: CarTier.car,
+      targetTier: VehicleType.sedan,
       targetCount: 1,
     );
     final b = BoardLogic(level, random: Random(1));
-    b.placeAt(0, 0, StackData(CarTier.bike, isWildcard: true));
-    b.placeAt(1, 0, StackData(CarTier.car));
+    b.placeAt(0, 0, StackData(VehicleType.bicycle, isWildcard: true));
+    b.placeAt(1, 0, StackData(VehicleType.sedan));
     final r = b.move(0, 0, 1, 0);
     expect(r.valid, true);
     final dst = b.at(1, 0);
     expect(dst, isNotNull);
     expect(dst!.count, 2);
-    expect(dst.tier, CarTier.car);
+    expect(dst.tier, VehicleType.sedan);
     expect(dst.isWildcard, false);
     // 源格清空
     expect(b.at(0, 0), isNull);
@@ -40,17 +40,17 @@ void main() {
       rows: 4,
       stockSize: 10,
       goalType: GoalType.produce,
-      targetTier: CarTier.taxi,
+      targetTier: VehicleType.taxi,
       targetCount: 1,
     );
     final b = BoardLogic(level, random: Random(2));
-    b.placeAt(0, 0, StackData(CarTier.bike));
-    b.placeAt(1, 0, StackData(CarTier.car, isWildcard: true));
+    b.placeAt(0, 0, StackData(VehicleType.bicycle));
+    b.placeAt(1, 0, StackData(VehicleType.sedan, isWildcard: true));
     final r = b.move(0, 0, 1, 0);
     expect(r.valid, true);
     final dst = b.at(1, 0);
     expect(dst, isNotNull);
-    expect(dst!.tier, CarTier.bike);
+    expect(dst!.tier, VehicleType.bicycle);
     expect(dst.count, 2);
     expect(dst.isWildcard, false);
   });
@@ -67,10 +67,10 @@ void main() {
       targetCount: 1,
     );
     final b = BoardLogic(level, random: Random(3));
-    b.placeAt(1, 1, StackData(CarTier.bike, isBomb: true));
-    b.placeAt(2, 1, StackData(CarTier.bike, isBomb: true, count: 2));
-    b.placeAt(0, 0, StackData(CarTier.car));
-    b.placeAt(3, 3, StackData(CarTier.taxi));
+    b.placeAt(1, 1, StackData(VehicleType.bicycle, isBomb: true));
+    b.placeAt(2, 1, StackData(VehicleType.bicycle, isBomb: true, count: 2));
+    b.placeAt(0, 0, StackData(VehicleType.sedan));
+    b.placeAt(3, 3, StackData(VehicleType.taxi));
     final r = b.move(1, 1, 2, 1);
     expect(r.detonated, true);
     expect(r.detonatedAt, (col: 2, row: 1));
@@ -96,13 +96,13 @@ void main() {
       targetCount: 1,
     );
     final b = BoardLogic(level, random: Random(4));
-    b.placeAt(0, 0, StackData(CarTier.bike, isBomb: true));
-    b.placeAt(1, 1, StackData(CarTier.taxi));
+    b.placeAt(0, 0, StackData(VehicleType.bicycle, isBomb: true));
+    b.placeAt(1, 1, StackData(VehicleType.taxi));
     final r = b.move(0, 0, 1, 1);
     expect(r.valid, true);
     expect(r.detonated, false);
     expect(b.at(1, 1)!.isBomb, true);
-    expect(b.at(0, 0)!.tier, CarTier.taxi);
+    expect(b.at(0, 0)!.tier, VehicleType.taxi);
   });
 
   test('传送门改道到配对格', () {
@@ -113,7 +113,7 @@ void main() {
       rows: 5,
       stockSize: 10,
       goalType: GoalType.produce,
-      targetTier: CarTier.car,
+      targetTier: VehicleType.sedan,
       targetCount: 1,
       obstacles: [
         ObstacleSpec(ObstacleType.teleport, 1, 1),
@@ -121,13 +121,13 @@ void main() {
       ],
     );
     final b = BoardLogic(level, random: Random(5));
-    b.placeAt(1, 2, StackData(CarTier.bike));
+    b.placeAt(1, 2, StackData(VehicleType.bicycle));
     final r = b.move(1, 2, 1, 1);
     expect(r.valid, true);
     expect(r.teleported, true);
     // 卡片出现在出口 (3,3)
     expect(b.at(3, 3), isNotNull);
-    expect(b.at(3, 3)!.tier, CarTier.bike);
+    expect(b.at(3, 3)!.tier, VehicleType.bicycle);
     // 传送门格不可停靠
     expect(b.at(1, 1), isNull);
   });
@@ -140,7 +140,7 @@ void main() {
       rows: 5,
       stockSize: 10,
       goalType: GoalType.produce,
-      targetTier: CarTier.car,
+      targetTier: VehicleType.sedan,
       targetCount: 1,
       fogCells: 5,
     );
@@ -183,7 +183,7 @@ void main() {
       rows: 5,
       stockSize: 10,
       goalType: GoalType.produce,
-      targetTier: CarTier.car,
+      targetTier: VehicleType.sedan,
       targetCount: 1,
       fogCells: 4,
     );
@@ -213,23 +213,23 @@ void main() {
     );
     // 无任何可合并 → false
     final b1 = BoardLogic(level, random: Random(8));
-    b1.placeAt(0, 0, StackData(CarTier.bike));
-    b1.placeAt(1, 1, StackData(CarTier.car));
+    b1.placeAt(0, 0, StackData(VehicleType.bicycle));
+    b1.placeAt(1, 1, StackData(VehicleType.sedan));
     expect(b1.hasPossibleMove, false);
     // 一张万能卡 + 一张普通卡 → true
     final b2 = BoardLogic(level, random: Random(9));
-    b2.placeAt(0, 0, StackData(CarTier.bike, isWildcard: true));
-    b2.placeAt(1, 1, StackData(CarTier.car));
+    b2.placeAt(0, 0, StackData(VehicleType.bicycle, isWildcard: true));
+    b2.placeAt(1, 1, StackData(VehicleType.sedan));
     expect(b2.hasPossibleMove, true);
     // 两张炸弹 → true
     final b3 = BoardLogic(level, random: Random(10));
-    b3.placeAt(0, 0, StackData(CarTier.bike, isBomb: true));
-    b3.placeAt(1, 1, StackData(CarTier.bike, isBomb: true));
+    b3.placeAt(0, 0, StackData(VehicleType.bicycle, isBomb: true));
+    b3.placeAt(1, 1, StackData(VehicleType.bicycle, isBomb: true));
     expect(b3.hasPossibleMove, true);
     // 一张炸弹 + 一张普通 → false（只交换不合并）
     final b4 = BoardLogic(level, random: Random(11));
-    b4.placeAt(0, 0, StackData(CarTier.bike, isBomb: true));
-    b4.placeAt(1, 1, StackData(CarTier.car));
+    b4.placeAt(0, 0, StackData(VehicleType.bicycle, isBomb: true));
+    b4.placeAt(1, 1, StackData(VehicleType.sedan));
     expect(b4.hasPossibleMove, false);
   });
 }

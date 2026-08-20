@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../models/level.dart';
 import '../save/save_repository.dart';
+import '../widgets/vehicle_image.dart';
 import 'game_screen.dart';
 
 /// 完整关卡选择页：从首页「全部关卡」进入。
@@ -228,10 +229,7 @@ class LevelCard extends StatelessWidget {
                                   padding: const EdgeInsets.all(7),
                                   child: Opacity(
                                     opacity: unlocked ? 1.0 : 0.4,
-                                    child: Image.asset(
-                                      'assets/vehicles/${level.targetTier!.name}.png',
-                                      fit: BoxFit.contain,
-                                    ),
+                                    child: VehicleImage(vehicle: level.targetTier!, size: 40),
                                   ),
                                 )
                               : Icon(Icons.grid_view,

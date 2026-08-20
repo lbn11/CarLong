@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../save/save_repository.dart';
-import 'car.dart';
+import 'vehicle.dart';
 import 'level.dart';
 
 /// 一个成就定义。达成条件基于现有存档字段计算，无需额外埋点。
@@ -72,7 +72,7 @@ final achievements = <Achievement>[
     desc: '合成出第一辆高铁',
     reward: 80,
     icon: Icons.train,
-    achieved: (d) => d.collection.contains(CarTier.metro.index),
+    achieved: (d) => d.collection.contains(VehicleType.subway.id),
   ),
   Achievement(
     id: 'plane_1',
@@ -80,7 +80,7 @@ final achievements = <Achievement>[
     desc: '合成出第一架飞机',
     reward: 100,
     icon: Icons.flight,
-    achieved: (d) => d.collection.contains(CarTier.plane.index),
+    achieved: (d) => d.collection.contains(VehicleType.airliner.id),
   ),
   Achievement(
     id: 'coins_500',
@@ -200,9 +200,9 @@ final achievements = <Achievement>[
     desc: '收集全部 6 款陆地车',
     reward: 60,
     icon: Icons.directions_bus,
-    achieved: (d) => CarTier.values
-        .where((t) => t.family == CarFamily.ground)
-        .every((t) => d.collection.contains(t.index)),
+    achieved: (d) => VehicleType.values
+        .where((t) => t.category == VehicleCategory.land)
+        .every((t) => d.collection.contains(t.id)),
   ),
   Achievement(
     id: 'collection_all',
@@ -210,7 +210,7 @@ final achievements = <Achievement>[
     desc: '点亮全部 17 款车型',
     reward: 100,
     icon: Icons.collections_bookmark,
-    achieved: (d) => CarTier.values.every((t) => d.collection.contains(t.index)),
+    achieved: (d) => VehicleType.values.every((t) => d.collection.contains(t.id)),
   ),
   Achievement(
     id: 'comet_1',
@@ -218,7 +218,7 @@ final achievements = <Achievement>[
     desc: '合成出彗星',
     reward: 120,
     icon: Icons.auto_awesome,
-    achieved: (d) => d.collection.contains(CarTier.comet.index),
+    achieved: (d) => d.collection.contains(VehicleType.starship.id),
   ),
   Achievement(
     id: 'park_star5',
@@ -243,6 +243,6 @@ final achievements = <Achievement>[
     desc: '合成出最高级的反重力车',
     reward: 200,
     icon: Icons.rocket_launch,
-    achieved: (d) => d.collection.contains(CarTier.antigrav.index),
+    achieved: (d) => d.collection.contains(VehicleType.warpShip.id),
   ),
 ];

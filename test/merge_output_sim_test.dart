@@ -1,7 +1,7 @@
+import 'package:merge_fleet/models/vehicle.dart';
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:merge_fleet/models/car.dart';
 import 'package:merge_fleet/models/level.dart';
 
 /// 正式回归测试（任务70）：合成链产出耐刷性。
@@ -27,7 +27,7 @@ void main() {
       }
 
       final draws = <int>[];
-      final nTiers = CarTier.values.length;
+      final nTiers = VehicleType.values.length;
       final cap = lvl.targetTier!.index;
       for (var sim = 0; sim < 240; sim++) {
         final count = List<int>.filled(nTiers, 0);

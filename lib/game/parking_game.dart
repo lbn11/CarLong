@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../logic/parking_solver.dart';
-import '../models/car.dart';
 import '../models/parking_level.dart';
+import '../models/vehicle.dart';
 
 /// 棋盘格子状态
 class ParkingCell {
@@ -37,7 +37,7 @@ class ParkingCell {
 /// 车辆状态
 class VehicleState {
   final int index;
-  final CarTier tier;
+  final VehicleType tier;
   final String label;
   int row;
   int col;
@@ -244,6 +244,18 @@ class ParkingGame extends ChangeNotifier {
       return false;
     }
 
+    // teleport ability: can jump to any empty cell (ignoring slide direction rules)
+    if (v.tier.stats.ability == SpecialAbility.teleport) {
+      for (final (r, c) in _cellsAt(v, toRow, toCol)) {
+        if (r < 0 || r >= level.rows || c < 0 || c >= level.cols) return false;
+        final cell = _grid[r][c];
+        if (!cell.isRoad && !cell.isParking) return false;
+        if (cell.vehicleIndex != null && cell.vehicleIndex != vehicleIndex) return false;
+        if (cell.isParking && v.tier != level.targetTier) return false;
+      }
+      return true;
+    }
+
     // 必须沿直线滑动（单格车四向，长条车仅沿车身轴）。
     if (toRow != v.row && toCol != v.col) return false;
     if (v.length > 1) {
@@ -263,7 +275,18 @@ class ParkingGame extends ChangeNotifier {
         return false;
       }
       final cell = _grid[r][c];
-      if (!cell.isRoad && !cell.isParking) return false;
+      if (!cell.isRoad && !cell.isParking) {
+        // flyOver: can pass through obstacle cells
+        if (v.tier.stats.ability == SpecialAbility.flyOver && cell.isObstacle) {
+          continue;
+        }
+        // waterWalk/amphibious: can pass through water obstacles
+        if ((v.tier.stats.ability == SpecialAbility.waterWalk ||
+             v.tier.stats.ability == SpecialAbility.amphibious) && cell.isObstacle) {
+          continue;
+        }
+        return false;
+      }
       if (cell.vehicleIndex != null && cell.vehicleIndex != vehicleIndex) {
         return false;
       }
@@ -316,7 +339,10 @@ class ParkingGame extends ChangeNotifier {
     final v = _vehicles[vehicleIndex];
     if (v.parked) return false;
 
-    if (v._canHoriz && tapRow == v.row && tapCol != v.col) {
+    // turn ability: long-bar vehicles can slide in any direction
+    final canTurn = v.tier.stats.ability == SpecialAbility.turn;
+
+    if ((v._canHoriz || canTurn) && tapRow == v.row && tapCol != v.col) {
       final dir = tapCol > v.col ? 1 : -1;
       // 目标 anchor：让车头（dir>0 时为右端）对齐到点击列；dir<0 时左端对齐。
       final desired = (v.length > 1 && dir > 0)
@@ -331,7 +357,7 @@ class ParkingGame extends ChangeNotifier {
       }
       if (best == v.col) return false;
       return moveVehicle(vehicleIndex, v.row, best);
-    } else if (v._canVert && tapCol == v.col && tapRow != v.row) {
+    } else if ((v._canVert || canTurn) && tapCol == v.col && tapRow != v.row) {
       final dir = tapRow > v.row ? 1 : -1;
       final desired = (v.length > 1 && dir > 0)
           ? tapRow - (v.length - 1)
@@ -379,8 +405,18 @@ class ParkingGame extends ChangeNotifier {
   bool _hasAnyMove() {
     for (final v in _vehicles) {
       if (v.parked) continue;
-      // 长条车只能沿车身轴；单格车四向。
-      final dirs = (v._canHoriz && v._canVert)
+      // teleport: can jump to any cell, so always has a move if board has space
+      if (v.tier.stats.ability == SpecialAbility.teleport) {
+        for (var r = 0; r < level.rows; r++) {
+          for (var c = 0; c < level.cols; c++) {
+            if (canMoveTo(v.index, r, c)) return true;
+          }
+        }
+        continue;
+      }
+      // turn ability: long-bar vehicles can slide in any direction
+      final canTurn = v.tier.stats.ability == SpecialAbility.turn;
+      final dirs = (v._canHoriz && v._canVert) || canTurn
           ? const [
               (0, 1),
               (0, -1),

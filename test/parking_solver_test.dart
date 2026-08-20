@@ -1,6 +1,6 @@
+import 'package:merge_fleet/models/vehicle.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:merge_fleet/logic/parking_solver.dart';
-import 'package:merge_fleet/models/car.dart';
 import 'package:merge_fleet/models/parking_level.dart';
 import 'package:merge_fleet/services/parking_generator.dart';
 
@@ -21,9 +21,9 @@ void main() {
         cols: 4,
         grid: _grid(4, {(3, 3): ParkingCellType.parking}),
         vehicles: [
-          VehicleSpawn(col: 0, row: 3, tier: CarTier.car),
+          VehicleSpawn(col: 0, row: 3, tier: VehicleType.sedan),
         ],
-        targetTier: CarTier.car,
+        targetTier: VehicleType.sedan,
       );
       expect(ParkingSolver.minMoves(lvl), 1);
     });
@@ -38,9 +38,9 @@ void main() {
         vehicles: [
           // 目标车在 (row1,col1)；停车位在 (row4,col3)。
           // 一步 = 沿直线滑到任意可达终点：先纵移到 (4,1)，再横移到 (4,3) => 2 步。
-          VehicleSpawn(col: 1, row: 1, tier: CarTier.car),
+          VehicleSpawn(col: 1, row: 1, tier: VehicleType.sedan),
         ],
-        targetTier: CarTier.car,
+        targetTier: VehicleType.sedan,
       );
       expect(ParkingSolver.minMoves(lvl), 2);
     });
@@ -53,10 +53,10 @@ void main() {
         name: 't',
         grid: _grid(5, {(4, 3): ParkingCellType.parking}),
         vehicles: [
-          VehicleSpawn(col: 0, row: 4, tier: CarTier.car), // 目标车在停车行左端
-          VehicleSpawn(col: 2, row: 4, tier: CarTier.bike), // 挡在去停车位的路上
+          VehicleSpawn(col: 0, row: 4, tier: VehicleType.sedan), // 目标车在停车行左端
+          VehicleSpawn(col: 2, row: 4, tier: VehicleType.bicycle), // 挡在去停车位的路上
         ],
-        targetTier: CarTier.car,
+        targetTier: VehicleType.sedan,
       );
       final moves = ParkingSolver.minMoves(lvl);
       expect(moves, greaterThan(1));
@@ -75,9 +75,9 @@ void main() {
           (3, 2): ParkingCellType.obstacle,
         }),
         vehicles: [
-          VehicleSpawn(col: 0, row: 0, tier: CarTier.car),
+          VehicleSpawn(col: 0, row: 0, tier: VehicleType.sedan),
         ],
-        targetTier: CarTier.car,
+        targetTier: VehicleType.sedan,
       );
       expect(ParkingSolver.solve(lvl), isNull);
     });
@@ -90,9 +90,9 @@ void main() {
         cols: 4,
         grid: _grid(4, {(3, 3): ParkingCellType.parking}),
         vehicles: [
-          VehicleSpawn(col: 3, row: 3, tier: CarTier.car),
+          VehicleSpawn(col: 3, row: 3, tier: VehicleType.sedan),
         ],
-        targetTier: CarTier.car,
+        targetTier: VehicleType.sedan,
       );
       expect(ParkingSolver.minMoves(lvl), 0);
     });
@@ -106,9 +106,9 @@ void main() {
         grid: _grid(4, {(3, 3): ParkingCellType.parking}),
         vehicles: [
           // 目标车在 (row0,col3)，停车位同列 => 一次竖直滑动直达。
-          VehicleSpawn(col: 3, row: 0, tier: CarTier.car),
+          VehicleSpawn(col: 3, row: 0, tier: VehicleType.sedan),
         ],
-        targetTier: CarTier.car,
+        targetTier: VehicleType.sedan,
       );
       expect(ParkingSolver.minMoves(lvl), 1);
     });

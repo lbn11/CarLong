@@ -8,10 +8,11 @@ import '../game/game_config.dart';
 import '../game/music_player.dart';
 import '../game/merge_game.dart';
 import '../theme/app_theme.dart';
-import '../models/car.dart';
+import '../models/vehicle.dart';
 import '../models/level.dart';
 import '../save/save_repository.dart';
 import '../widgets/tutorial_overlay.dart';
+import '../widgets/vehicle_image.dart';
 
 class GameScreen extends StatefulWidget {
   final LevelDefinition level;
@@ -83,7 +84,7 @@ class _GameScreenState extends State<GameScreen> {
 
   /// 教程状态
   bool _tutorialActive = false;
-  final List<TutorialStep> _tutorialSteps = const [];
+  List<TutorialStep> _tutorialSteps = const [];
   int _tutorialStepIndex = 0;
 
   static final int _hammerCost = GameConfig.hammerCost;
@@ -100,7 +101,7 @@ class _GameScreenState extends State<GameScreen> {
     _game.onTierProduced = (tier) {
       if (widget.data.collection.add(tier.index)) {
         widget.data.addCoins(GameConfig.collectionNewReward);
-        _game.hint.value = '📖 图鉴点亮 ${tier.icon} ${tier.label} +5🪙';
+        _game.hint.value = '📖 图鉴点亮 ${tier.icon} ${tier.name} +5🪙';
         widget.repo.save(widget.data);
         _analytics.collectionNew(tier.index);
       }
@@ -162,7 +163,7 @@ class _GameScreenState extends State<GameScreen> {
     _analytics.tutorialComplete('merge', skipped: true);
   }
 
-  void _onPlayerAction(String action, CarTier? tier) {
+  void _onPlayerAction(String action, VehicleType? tier) {
     switch (action) {
       case 'draw':
         _notifyTutorialAction(TutorialAction.draw);
@@ -484,7 +485,7 @@ class _GameScreenState extends State<GameScreen> {
     }
     final produced = _game.produced.value;
     final remain = (level.targetCount - produced).clamp(0, 999);
-    return '还差 $remain 辆 ${level.targetTier!.icon} ${level.targetTier!.label}';
+    return '还差 $remain 辆 ${level.targetTier!.icon} ${level.targetTier!.name}';
   }
 
   @override
@@ -658,9 +659,7 @@ class _GameScreenState extends State<GameScreen> {
               SizedBox(
                   width: 16,
                   height: 16,
-                  child: Image.asset(
-                      'assets/vehicles/${_game.endlessTarget.name}.png',
-                      fit: BoxFit.contain)),
+                  child: VehicleImage(vehicle: _game.endlessTarget, size: 16)),
               const SizedBox(width: 4),
               Text('$v / ${_game.endlessNeed}',
                   style: const TextStyle(
@@ -682,9 +681,7 @@ class _GameScreenState extends State<GameScreen> {
               SizedBox(
                   width: 16,
                   height: 16,
-                  child: Image.asset(
-                      'assets/vehicles/${widget.level.targetTier!.name}.png',
-                      fit: BoxFit.contain)),
+                  child: VehicleImage(vehicle: widget.level.targetTier!, size: 16)),
               const SizedBox(width: 4),
               Text('$v / ${widget.level.targetCount}',
                   style: const TextStyle(
@@ -748,15 +745,7 @@ class _GameScreenState extends State<GameScreen> {
                       child: SizedBox(
                         width: 34,
                         height: 34,
-                        child: Image.asset(
-                          'assets/vehicles/${next[i].name}.png',
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, _, _) => Icon(
-                            Icons.style,
-                            color: AppColors.ink3,
-                            size: 26,
-                          ),
-                        ),
+                        child: VehicleImage(vehicle: next[i], size: 34),
                       ),
                     ),
                   ),
@@ -994,9 +983,7 @@ class _GameScreenState extends State<GameScreen> {
                           SizedBox(
                               width: 20,
                               height: 20,
-                              child: Image.asset(
-                                  'assets/vehicles/${_game.endlessTarget.name}.png',
-                                  fit: BoxFit.contain)),
+                              child: VehicleImage(vehicle: _game.endlessTarget, size: 20)),
                           const SizedBox(width: 6),
                           Text(
                             '$v / ${_game.endlessNeed}',
@@ -1023,9 +1010,7 @@ class _GameScreenState extends State<GameScreen> {
                               SizedBox(
                                   width: 20,
                                   height: 20,
-                                  child: Image.asset(
-                                      'assets/vehicles/${widget.level.targetTier!.name}.png',
-                                      fit: BoxFit.contain)),
+                                  child: VehicleImage(vehicle: widget.level.targetTier!, size: 20)),
                               const SizedBox(width: 6),
                               Text(
                                 '$v / ${widget.level.targetCount}',
@@ -1161,15 +1146,7 @@ class _GameScreenState extends State<GameScreen> {
                             child: SizedBox(
                               width: 46,
                               height: 46,
-                              child: Image.asset(
-                                'assets/vehicles/${next[i].name}.png',
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, _, _) => Icon(
-                                  Icons.style,
-                                  color: AppColors.ink3,
-                                  size: 30,
-                                ),
-                              ),
+                              child: VehicleImage(vehicle: next[i], size: 46),
                             ),
                           ),
                         ),

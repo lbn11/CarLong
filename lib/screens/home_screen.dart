@@ -8,11 +8,12 @@ import '../game/game_config.dart';
 import '../game/music_player.dart';
 import '../analytics/analytics.dart';
 import '../models/achievement.dart';
-import '../models/car.dart';
+import '../models/vehicle.dart';
 import '../theme/app_theme.dart';
 import '../models/level.dart';
 import '../save/save_repository.dart';
 import '../widgets/tutorial_overlay.dart';
+import '../widgets/vehicle_image.dart';
 import 'achievements_screen.dart';
 import 'collection_screen.dart';
 import 'game_screen.dart';
@@ -705,7 +706,7 @@ class _HomeScreenState extends State<HomeScreen>
   /// 已点亮 X/17 驱动"还差几个"的收集欲；集齐后一次性大奖 500🪙。
   Widget _buildCollectionBanner() {
     final collected = data.collection.length;
-    final total = CarTier.values.length;
+    final total = VehicleType.values.length;
     final complete = collected >= total;
     final claimed = data.collectionRewardClaimed;
     return Material(
@@ -1125,10 +1126,7 @@ class _HomeScreenState extends State<HomeScreen>
                     ? Center(
                         child: Padding(
                           padding: const EdgeInsets.all(14),
-                          child: Image.asset(
-                            'assets/vehicles/${level.targetTier!.name}.png',
-                            fit: BoxFit.contain,
-                          ),
+                          child: VehicleImage(vehicle: level.targetTier!, size: 42),
                         ),
                       )
                     : const Center(

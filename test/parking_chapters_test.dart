@@ -1,19 +1,19 @@
+import 'package:merge_fleet/models/vehicle.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:merge_fleet/models/car.dart';
 import 'package:merge_fleet/services/parking_chapters.dart';
 
 void main() {
   group('ParkingChapters 双向联动', () {
     test('tierForId 分段与生成器一致', () {
-      expect(ParkingChapters.tierForId(1), CarTier.bike);
-      expect(ParkingChapters.tierForId(45), CarTier.bike);
-      expect(ParkingChapters.tierForId(46), CarTier.scooter);
-      expect(ParkingChapters.tierForId(90), CarTier.scooter);
-      expect(ParkingChapters.tierForId(91), CarTier.car);
-      expect(ParkingChapters.tierForId(773), CarTier.warp);
-      expect(ParkingChapters.tierForId(819), CarTier.hover);
-      expect(ParkingChapters.tierForId(955), CarTier.antigrav);
-      expect(ParkingChapters.tierForId(1000), CarTier.antigrav);
+      expect(ParkingChapters.tierForId(1), VehicleType.bicycle);
+      expect(ParkingChapters.tierForId(45), VehicleType.bicycle);
+      expect(ParkingChapters.tierForId(46), VehicleType.scooter);
+      expect(ParkingChapters.tierForId(90), VehicleType.scooter);
+      expect(ParkingChapters.tierForId(91), VehicleType.sedan);
+      expect(ParkingChapters.tierForId(773), VehicleType.warpShip);
+      expect(ParkingChapters.tierForId(819), VehicleType.starship);
+      expect(ParkingChapters.tierForId(955), VehicleType.warpShip);
+      expect(ParkingChapters.tierForId(1000), VehicleType.warpShip);
     });
 
     test('单车章节始终可进入（新玩家起步）', () {
@@ -29,7 +29,7 @@ void main() {
     test('合成收集该档 → 解锁对应停车章节（可跳章）', () {
       final scooter = ParkingChapters.chapterForId(46);
       expect(
-          ParkingChapters.isAccessible(scooter, {CarTier.scooter.index}, {}),
+          ParkingChapters.isAccessible(scooter, {VehicleType.scooter.index}, {}),
           isTrue);
     });
 

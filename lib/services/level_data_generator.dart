@@ -1,4 +1,4 @@
-import '../models/car.dart';
+import '../models/vehicle.dart';
 import '../models/level.dart';
 
 /// 主线关卡数据生成器（71-200 关）：在 70 关手写表之后程序化扩展。
@@ -37,8 +37,8 @@ class LevelDataGenerator {
 
   /// 自动 bias：目标档越高、目标数越多，偏置越大。
   /// 经验校准（#70 搜索结论）：x1 低中档 0-2，x1 高档 4-6，x2/x3 再 +2~3。
-  static int _autoBias(CarTier tier, int count) {
-    final depth = tier.index - 4; // bus(4) 起算
+  static int _autoBias(VehicleType tier, int count) {
+    final depth = tier.id - 4; // bus(4) 起算
     final base = depth <= 0
         ? 0
         : (depth <= 2
@@ -50,14 +50,14 @@ class LevelDataGenerator {
     return base + countBonus;
   }
 
-  static CarTier _tierForLevel(int id) {
-    if (id < 90) return CarTier.bus;
-    if (id < 110) return CarTier.truck;
-    if (id < 130) return CarTier.train;
-    if (id < 150) return CarTier.metro;
-    if (id < 170) return CarTier.jet;
-    if (id < 190) return CarTier.shuttle;
-    return CarTier.ufo;
+  static VehicleType _tierForLevel(int id) {
+    if (id < 90) return VehicleType.bus;
+    if (id < 110) return VehicleType.truck;
+    if (id < 130) return VehicleType.highspeed;
+    if (id < 150) return VehicleType.subway;
+    if (id < 170) return VehicleType.fighter;
+    if (id < 190) return VehicleType.spaceShuttle;
+    return VehicleType.warpShip;
   }
 
   static String _chapterName(int id) {

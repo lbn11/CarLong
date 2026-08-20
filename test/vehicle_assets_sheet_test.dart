@@ -1,15 +1,15 @@
+import 'package:merge_fleet/models/vehicle.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:merge_fleet/models/car.dart';
 
 void main() {
   testWidgets('vehicle asset contact sheet', (tester) async {
     // 只收录已有 PNG 的档位（任务93：新档车模未生成时自动跳过，
     // PNG 补齐后自然扩到 22 张，不会因缺图红屏/崩溃）。
     final tiers = [
-      for (final t in CarTier.values)
+      for (final t in VehicleType.values)
         if (File('assets/vehicles/${t.name}.png').existsSync()) t,
     ];
     final cards = <Widget>[];
@@ -48,7 +48,7 @@ void main() {
               ),
               const SizedBox(height: 6),
               Text(
-                tier.label,
+                tier.name,
                 style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
             ],

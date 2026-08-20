@@ -1,4 +1,4 @@
-import '../models/car.dart';
+import 'vehicle.dart';
 
 /// 停车模式格子类型
 enum ParkingCellType {
@@ -26,7 +26,7 @@ enum ParkingOrientation {
 class VehicleSpawn {
   final int col;
   final int row;
-  final CarTier tier;
+  final VehicleType tier;
   final int count;
 
   /// 占用格数（1 = 单格车；>=2 = 长条车，沿 [orientation] 延伸）。
@@ -67,7 +67,7 @@ class VehicleSpawn {
   factory VehicleSpawn.fromJson(Map<String, dynamic> json) => VehicleSpawn(
         col: json['col'] as int,
         row: json['row'] as int,
-        tier: CarTier.fromIndex(json['tier'] as int),
+        tier: VehicleType.fromId(json['tier'] as int),
         count: json['count'] as int? ?? 1,
         length: json['length'] as int? ?? 1,
         orientation: ParkingOrientation
@@ -83,7 +83,7 @@ class ParkingLevel {
   final int cols;
   final List<List<ParkingCellType>> grid;
   final List<VehicleSpawn> vehicles;
-  final CarTier targetTier;
+  final VehicleType targetTier;
   final int? timeLimit;
   final int? movesLimit;
   final int? minMoves; // 求解器算出的最短步数（标定难度用，无解为 null）
@@ -108,7 +108,7 @@ class ParkingLevel {
     int? cols,
     List<List<ParkingCellType>>? grid,
     List<VehicleSpawn>? vehicles,
-    CarTier? targetTier,
+    VehicleType? targetTier,
     int? timeLimit,
     int? movesLimit,
     int? minMoves,
@@ -155,7 +155,7 @@ class ParkingLevel {
         vehicles: (json['vehicles'] as List)
             .map((v) => VehicleSpawn.fromJson(v as Map<String, dynamic>))
             .toList(),
-        targetTier: CarTier.fromIndex(json['targetTier'] as int),
+        targetTier: VehicleType.fromId(json['targetTier'] as int),
         timeLimit: json['timeLimit'] as int?,
         movesLimit: json['movesLimit'] as int?,
         minMoves: json['minMoves'] as int?,

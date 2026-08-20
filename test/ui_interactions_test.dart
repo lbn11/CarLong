@@ -1,6 +1,6 @@
+import 'package:merge_fleet/models/vehicle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:merge_fleet/models/car.dart';
 import 'package:merge_fleet/save/save_repository.dart';
 import 'package:merge_fleet/screens/collection_screen.dart';
 import 'package:merge_fleet/screens/shop_screen.dart';
@@ -37,7 +37,7 @@ void main() {
   });
 
   testWidgets('图鉴：点击卡片弹出车型详情', (tester) async {
-    final data = PlayerData(collection: {CarTier.bike.index});
+    final data = PlayerData(collection: {VehicleType.bicycle.index});
     final repo = SaveRepository();
     await tester.pumpWidget(MaterialApp(
       home: CollectionScreen(data: data, repo: repo),

@@ -1,6 +1,6 @@
+import 'package:merge_fleet/models/vehicle.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:merge_fleet/logic/board_logic.dart';
-import 'package:merge_fleet/models/car.dart';
 import 'package:merge_fleet/models/level.dart';
 import 'package:merge_fleet/save/save_repository.dart';
 
@@ -17,7 +17,7 @@ void main() {
     test('上限为 0 时恒为最低级', () {
       final board = BoardLogic(endlessLevel);
       for (var i = 0; i < 50; i++) {
-        expect(board.weightedTierUpTo(0), CarTier.bike);
+        expect(board.weightedTierUpTo(0), VehicleType.bicycle);
       }
     });
   });
@@ -25,11 +25,11 @@ void main() {
   group('BoardLogic highest', () {
     test('返回棋盘最高等级卡片', () {
       final board = BoardLogic(endlessLevel);
-      board.placeAt(0, 0, StackData(CarTier.car));
-      board.placeAt(1, 1, StackData(CarTier.train));
-      board.placeAt(2, 2, StackData(CarTier.bus));
+      board.placeAt(0, 0, StackData(VehicleType.sedan));
+      board.placeAt(1, 1, StackData(VehicleType.highspeed));
+      board.placeAt(2, 2, StackData(VehicleType.bus));
       final top = board.highest()!;
-      expect(top.tier, CarTier.train);
+      expect(top.tier, VehicleType.highspeed);
       expect(top.col, 1);
       expect(top.row, 1);
     });

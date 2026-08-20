@@ -1,4 +1,4 @@
-import 'car.dart';
+import 'vehicle.dart';
 import '../services/level_data_generator.dart';
 
 /// 章节（叙事包装）：按关卡 id 每 10 关一章，共 7 章。
@@ -109,7 +109,7 @@ class LevelDefinition {
   final GoalType goalType;
 
   /// 目标等级（produce 目标使用；clearBoard 目标为 null）。
-  final CarTier? targetTier;
+  final VehicleType? targetTier;
   final int targetCount;
 
   /// 限时秒数（null = 不限时）。可与任意目标类型叠加。
@@ -165,10 +165,10 @@ class LevelDefinition {
   /// 避免"抽到目标卡却在棋盘上却不计数"的困惑（producedCount 只在合成升级命中时加）。
   /// clearBoard 无目标等级，按出租车档位取一个中低位区间。
   List<int> spawnWeights() {
-    final maxIdx = CarTier.values.length - 1;
+    final maxIdx = VehicleType.values.length - 1;
     final baseIdx = targetTier != null
         ? (targetTier!.index - 1).clamp(0, maxIdx)
-        : (CarTier.taxi.index + 2).clamp(0, maxIdx);
+        : (VehicleType.taxi.index + 2).clamp(0, maxIdx);
     final t = baseIdx.clamp(0, maxIdx);
     final topN = highTierBias.clamp(0, t + 1);
     return List.generate(
@@ -184,7 +184,7 @@ class LevelDefinition {
     final moves = movesLimit;
     final goal = switch (goalType) {
       GoalType.produce =>
-        '目标：合成 ${targetTier!.icon} ${targetTier!.label} ×$targetCount',
+        '目标：合成 ${targetTier!.icon} ${targetTier!.name} ×$targetCount',
       GoalType.clearBoard => '目标：清空棋盘',
     };
     final obs = obstacles.isEmpty
@@ -216,7 +216,7 @@ const endlessLevel = LevelDefinition(
   cols: 5,
   rows: 5,
   stockSize: 999,
-  targetTier: CarTier.taxi,
+  targetTier: VehicleType.taxi,
   targetCount: 3,
   endless: true,
 );
@@ -229,7 +229,7 @@ const _handLevels = <LevelDefinition>[
     cols: 4,
     rows: 3,
     stockSize: 18,
-    targetTier: CarTier.taxi,
+    targetTier: VehicleType.taxi,
     targetCount: 1,
   ),
   LevelDefinition(
@@ -238,7 +238,7 @@ const _handLevels = <LevelDefinition>[
     cols: 4,
     rows: 4,
     stockSize: 24,
-    targetTier: CarTier.bus,
+    targetTier: VehicleType.bus,
     targetCount: 1,
     obstacles: [
       ObstacleSpec(ObstacleType.lock, 1, 2),
@@ -250,7 +250,7 @@ const _handLevels = <LevelDefinition>[
     cols: 5,
     rows: 4,
     stockSize: 30,
-    targetTier: CarTier.truck,
+    targetTier: VehicleType.truck,
     targetCount: 1,
     fogCells: 6,
   ),
@@ -260,7 +260,7 @@ const _handLevels = <LevelDefinition>[
     cols: 5,
     rows: 4,
     stockSize: 38,
-    targetTier: CarTier.truck,
+    targetTier: VehicleType.truck,
     highTierBias: 1,
     targetCount: 2,
   ),
@@ -270,7 +270,7 @@ const _handLevels = <LevelDefinition>[
     cols: 5,
     rows: 5,
     stockSize: 34,
-    targetTier: CarTier.train,
+    targetTier: VehicleType.highspeed,
     highTierBias: 1,
     targetCount: 1,
   ),
@@ -294,7 +294,7 @@ const _handLevels = <LevelDefinition>[
     cols: 4,
     rows: 4,
     stockSize: 20,
-    targetTier: CarTier.taxi,
+    targetTier: VehicleType.taxi,
     highTierBias: 1,
     targetCount: 3,
     timeLimitSeconds: 60,
@@ -305,7 +305,7 @@ const _handLevels = <LevelDefinition>[
     cols: 5,
     rows: 4,
     stockSize: 34,
-    targetTier: CarTier.truck,
+    targetTier: VehicleType.truck,
     highTierBias: 1,
     targetCount: 3,
     obstacles: [
@@ -335,7 +335,7 @@ const _handLevels = <LevelDefinition>[
     cols: 5,
     rows: 5,
     stockSize: 40,
-    targetTier: CarTier.train,
+    targetTier: VehicleType.highspeed,
     highTierBias: 2,
     targetCount: 3,
     timeLimitSeconds: 120,
@@ -352,7 +352,7 @@ const _handLevels = <LevelDefinition>[
     cols: 4,
     rows: 4,
     stockSize: 22,
-    targetTier: CarTier.scooter,
+    targetTier: VehicleType.scooter,
     targetCount: 3,
     timeLimitSeconds: 45,
   ),
@@ -362,7 +362,7 @@ const _handLevels = <LevelDefinition>[
     cols: 4,
     rows: 4,
     stockSize: 26,
-    targetTier: CarTier.bus,
+    targetTier: VehicleType.bus,
     highTierBias: 1,
     targetCount: 2,
     obstacles: [
@@ -376,7 +376,7 @@ const _handLevels = <LevelDefinition>[
     cols: 4,
     rows: 5,
     stockSize: 30,
-    targetTier: CarTier.truck,
+    targetTier: VehicleType.truck,
     highTierBias: 1,
     targetCount: 2,
     obstacles: [
@@ -390,7 +390,7 @@ const _handLevels = <LevelDefinition>[
     cols: 4,
     rows: 4,
     stockSize: 24,
-    targetTier: CarTier.truck,
+    targetTier: VehicleType.truck,
     highTierBias: 1,
     targetCount: 1,
     timeLimitSeconds: 60,
@@ -418,7 +418,7 @@ const _handLevels = <LevelDefinition>[
     cols: 4,
     rows: 5,
     stockSize: 32,
-    targetTier: CarTier.train,
+    targetTier: VehicleType.highspeed,
     highTierBias: 1,
     targetCount: 2,
     obstacles: [
@@ -433,7 +433,7 @@ const _handLevels = <LevelDefinition>[
     cols: 5,
     rows: 5,
     stockSize: 38,
-    targetTier: CarTier.rocket,
+    targetTier: VehicleType.rocket,
     highTierBias: 1,
     targetCount: 1,
     obstacles: [
@@ -463,7 +463,7 @@ const _handLevels = <LevelDefinition>[
     cols: 5,
     rows: 5,
     stockSize: 40,
-    targetTier: CarTier.train,
+    targetTier: VehicleType.highspeed,
     highTierBias: 2,
     targetCount: 3,
     timeLimitSeconds: 120,
@@ -479,7 +479,7 @@ const _handLevels = <LevelDefinition>[
     cols: 5,
     rows: 6,
     stockSize: 44,
-    targetTier: CarTier.metro,
+    targetTier: VehicleType.subway,
     highTierBias: 2,
     targetCount: 2,
     obstacles: [
@@ -495,7 +495,7 @@ const _handLevels = <LevelDefinition>[
     cols: 5,
     rows: 5,
     stockSize: 36,
-    targetTier: CarTier.train,
+    targetTier: VehicleType.highspeed,
     highTierBias: 1,
     targetCount: 2,
     obstacles: [
@@ -509,7 +509,7 @@ const _handLevels = <LevelDefinition>[
     cols: 5,
     rows: 5,
     stockSize: 36,
-    targetTier: CarTier.tanker,
+    targetTier: VehicleType.tanker,
     highTierBias: 2,
     targetCount: 2,
     obstacles: [
@@ -539,7 +539,7 @@ const _handLevels = <LevelDefinition>[
     cols: 5,
     rows: 6,
     stockSize: 42,
-    targetTier: CarTier.metro,
+    targetTier: VehicleType.subway,
     highTierBias: 2,
     targetCount: 2,
     obstacles: [
@@ -553,7 +553,7 @@ const _handLevels = <LevelDefinition>[
     cols: 5,
     rows: 6,
     stockSize: 44,
-    targetTier: CarTier.metro,
+    targetTier: VehicleType.subway,
     highTierBias: 4,
     targetCount: 3,
     obstacles: [
@@ -567,7 +567,7 @@ const _handLevels = <LevelDefinition>[
     cols: 5,
     rows: 6,
     stockSize: 44,
-    targetTier: CarTier.plane,
+    targetTier: VehicleType.airliner,
     highTierBias: 1,
     targetCount: 1,
     obstacles: [
@@ -597,7 +597,7 @@ const _handLevels = <LevelDefinition>[
     cols: 5,
     rows: 6,
     stockSize: 46,
-    targetTier: CarTier.plane,
+    targetTier: VehicleType.airliner,
     highTierBias: 2,
     targetCount: 2,
     timeLimitSeconds: 150,
@@ -613,7 +613,7 @@ const _handLevels = <LevelDefinition>[
     cols: 5,
     rows: 6,
     stockSize: 48,
-    targetTier: CarTier.metro,
+    targetTier: VehicleType.subway,
     highTierBias: 4,
     targetCount: 2,
     obstacles: [
@@ -628,7 +628,7 @@ const _handLevels = <LevelDefinition>[
     cols: 5,
     rows: 6,
     stockSize: 40,
-    targetTier: CarTier.plane,
+    targetTier: VehicleType.airliner,
     highTierBias: 3,
     targetCount: 2,
     timeLimitSeconds: 120,
@@ -644,7 +644,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 46,
-    targetTier: CarTier.tanker,
+    targetTier: VehicleType.tanker,
     highTierBias: 2,
     targetCount: 3,
     obstacles: [
@@ -658,7 +658,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 50,
-    targetTier: CarTier.jet,
+    targetTier: VehicleType.fighter,
     highTierBias: 1,
     targetCount: 1,
     obstacles: [
@@ -688,7 +688,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 52,
-    targetTier: CarTier.jet,
+    targetTier: VehicleType.fighter,
     highTierBias: 2,
     targetCount: 2,
     obstacles: [
@@ -703,7 +703,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 44,
-    targetTier: CarTier.jet,
+    targetTier: VehicleType.fighter,
     highTierBias: 3,
     targetCount: 2,
     timeLimitSeconds: 150,
@@ -719,7 +719,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 54,
-    targetTier: CarTier.shuttle,
+    targetTier: VehicleType.spaceShuttle,
     highTierBias: 1,
     targetCount: 1,
     obstacles: [
@@ -734,7 +734,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 56,
-    targetTier: CarTier.jet,
+    targetTier: VehicleType.fighter,
     highTierBias: 3,
     targetCount: 3,
     obstacles: [
@@ -767,7 +767,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 58,
-    targetTier: CarTier.shuttle,
+    targetTier: VehicleType.spaceShuttle,
     highTierBias: 3,
     targetCount: 2,
     obstacles: [
@@ -783,7 +783,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 56,
-    targetTier: CarTier.shuttle,
+    targetTier: VehicleType.spaceShuttle,
     highTierBias: 2,
     targetCount: 2,
     timeLimitSeconds: 180,
@@ -800,7 +800,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 58,
-    targetTier: CarTier.shuttle,
+    targetTier: VehicleType.spaceShuttle,
     highTierBias: 2,
     targetCount: 2,
     obstacles: [
@@ -831,7 +831,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 60,
-    targetTier: CarTier.jet,
+    targetTier: VehicleType.fighter,
     highTierBias: 4,
     targetCount: 2,
     obstacles: [
@@ -847,7 +847,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 58,
-    targetTier: CarTier.shuttle,
+    targetTier: VehicleType.spaceShuttle,
     highTierBias: 2,
     targetCount: 2,
     timeLimitSeconds: 150,
@@ -864,7 +864,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 60,
-    targetTier: CarTier.shuttle,
+    targetTier: VehicleType.spaceShuttle,
     highTierBias: 4,
     targetCount: 3,
     obstacles: [
@@ -880,7 +880,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 62,
-    targetTier: CarTier.shuttle,
+    targetTier: VehicleType.spaceShuttle,
     highTierBias: 3,
     targetCount: 3,
     timeLimitSeconds: 200,
@@ -914,7 +914,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 62,
-    targetTier: CarTier.jet,
+    targetTier: VehicleType.fighter,
     highTierBias: 4,
     targetCount: 2,
     obstacles: [
@@ -930,7 +930,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 64,
-    targetTier: CarTier.shuttle,
+    targetTier: VehicleType.spaceShuttle,
     highTierBias: 3,
     targetCount: 3,
     obstacles: [
@@ -947,7 +947,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 66,
-    targetTier: CarTier.shuttle,
+    targetTier: VehicleType.spaceShuttle,
     highTierBias: 7,
     targetCount: 4,
     obstacles: [
@@ -965,7 +965,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 70,
-    targetTier: CarTier.ufo,
+    targetTier: VehicleType.warpShip,
     highTierBias: 1,
     targetCount: 1,
     timeLimitSeconds: 180,
@@ -983,7 +983,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 70,
-    targetTier: CarTier.maglev,
+    targetTier: VehicleType.maglev,
     targetCount: 1,
     highTierBias: 6,
     obstacles: [
@@ -997,7 +997,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 74,
-    targetTier: CarTier.station,
+    targetTier: VehicleType.spaceStation,
     targetCount: 1,
     highTierBias: 8,
     obstacles: [
@@ -1012,7 +1012,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 78,
-    targetTier: CarTier.comet,
+    targetTier: VehicleType.starship,
     targetCount: 1,
     highTierBias: 10,
     obstacles: [
@@ -1028,7 +1028,7 @@ const _handLevels = <LevelDefinition>[
     cols: 5,
     rows: 6,
     stockSize: 42,
-    targetTier: CarTier.truck,
+    targetTier: VehicleType.truck,
     highTierBias: 1,
     targetCount: 3,
     movesLimit: 45,
@@ -1043,7 +1043,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 46,
-    targetTier: CarTier.metro,
+    targetTier: VehicleType.subway,
     highTierBias: 3,
     targetCount: 3,
     movesLimit: 55,
@@ -1095,7 +1095,7 @@ const _handLevels = <LevelDefinition>[
     cols: 5,
     rows: 5,
     stockSize: 52,
-    targetTier: CarTier.rocket,
+    targetTier: VehicleType.rocket,
     targetCount: 1,
     fogCells: 8,
     obstacles: [
@@ -1125,7 +1125,7 @@ const _handLevels = <LevelDefinition>[
     cols: 5,
     rows: 5,
     stockSize: 50,
-    targetTier: CarTier.train,
+    targetTier: VehicleType.highspeed,
     targetCount: 1,
     wildcards: 3,
     obstacles: [
@@ -1155,7 +1155,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 62,
-    targetTier: CarTier.metro,
+    targetTier: VehicleType.subway,
     highTierBias: 1,
     targetCount: 2,
     fogCells: 6,
@@ -1171,7 +1171,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 66,
-    targetTier: CarTier.plane,
+    targetTier: VehicleType.airliner,
     highTierBias: 1,
     targetCount: 1,
     obstacles: [
@@ -1189,7 +1189,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 68,
-    targetTier: CarTier.rocket,
+    targetTier: VehicleType.rocket,
     highTierBias: 1,
     targetCount: 2,
     wildcards: 4,
@@ -1204,7 +1204,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 64,
-    targetTier: CarTier.tanker,
+    targetTier: VehicleType.tanker,
     highTierBias: 1,
     targetCount: 2,
     bombs: 3,
@@ -1238,7 +1238,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 70,
-    targetTier: CarTier.shuttle,
+    targetTier: VehicleType.spaceShuttle,
     targetCount: 1,
     highTierBias: 4,
     fogCells: 8,
@@ -1253,7 +1253,7 @@ const _handLevels = <LevelDefinition>[
     cols: 6,
     rows: 6,
     stockSize: 72,
-    targetTier: CarTier.plane,
+    targetTier: VehicleType.airliner,
     highTierBias: 2,
     targetCount: 3,
     wildcards: 2,

@@ -335,7 +335,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
 
         // 气泡（贴高亮区域或底部）
         if (hasHighlight)
-          _buildBubbleNearHighlight(mediaSize, highlight!)
+          _buildBubbleNearHighlight(mediaSize, highlight)
         else
           _buildBubbleAtBottom(mediaSize),
       ],
@@ -345,7 +345,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
   /// 气泡主体（含按钮行）。
   Widget _bubbleBody({bool showArrowDown = false, bool showArrowUp = false}) {
     final isLast = _isLast;
-    final nextText = showNext
+    final nextText = widget.showNext
         ? (isLast ? widget.nextLabel : '下一步')
         : (isLast ? '知道了' : '下一步');
     return Container(

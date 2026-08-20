@@ -13,6 +13,7 @@ import '../save/save_repository.dart';
 import '../services/parking_chapters.dart';
 import '../services/parking_generator.dart';
 import '../theme/app_theme.dart';
+import '../widgets/vehicle_image.dart';
 
 /// 车辆滑动动画时长（选车滑行 / 重置归位）。
 const Duration _kVehicleSlide = Duration(milliseconds: 170);
@@ -836,16 +837,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
                       borderRadius: BorderRadius.circular(size * 0.18),
                       child: Padding(
                         padding: EdgeInsets.all(size * 0.08),
-                        child: Image.asset(
-                          'assets/vehicles/${v.tier.name}.png',
-                          fit: BoxFit.contain,
-                          // 新档车模 PNG 未就位时降级为车型色 icon，避免红屏。
-                          errorBuilder: (_, _, _) => Icon(
-                            Icons.directions_car,
-                            color: v.tier.color.withValues(alpha: 0.7),
-                            size: size * 0.4,
-                          ),
-                        ),
+                        child: VehicleImage(vehicle: v.tier, size: size),
                       ),
                     ),
                   ),

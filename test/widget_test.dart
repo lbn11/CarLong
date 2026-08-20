@@ -1,5 +1,5 @@
+import 'package:merge_fleet/models/vehicle.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:merge_fleet/models/car.dart';
 import 'package:merge_fleet/models/level.dart';
 import 'package:merge_fleet/save/save_repository.dart';
 
@@ -25,7 +25,7 @@ void main() {
   });
 
   test('最高级卡片无法继续升级', () {
-    expect(CarTier.antigrav.next, isNull);
-    expect(CarTier.comet.next, CarTier.warp); // 任务93：comet 之后有 5 档新车
+    expect(VehicleType.warpShip.next, isNull);
+    expect(VehicleType.starship.next, VehicleType.warpShip); // 任务93：comet 之后有 5 档新车
   });
 }
