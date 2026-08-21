@@ -190,7 +190,7 @@ class CollectionScreen extends StatelessWidget {
               const SizedBox(height: 14),
               Text(
                 unlocked
-                    ? '✅ 已收集 · 等级 ${vehicle.id + 1}/22'
+                    ? '✅ 已收集 · 等级 ${vehicle.id + 1}/${VehicleType.values.length}'
                     : '🔒 未收集 · 合成或停车通关解锁',
                 style: TextStyle(
                   color: unlocked ? const Color(0xFF66BB6A) : AppColors.ink3,

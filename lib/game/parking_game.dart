@@ -110,12 +110,16 @@ class ParkingGame extends ChangeNotifier {
   late final List<List<ParkingCell>> _grid;
   late final List<VehicleState> _vehicles;
   final List<ParkingAction> _undoStack = [];
+  /// 格子标记状态：key = "row,col", value = mark类型 ('x' = 不可通行, '!' = 可能目标, '?' = 不确定)
+  final Map<String, String> _marks = {};
 
   int _moves = 0;
   int _elapsedSeconds = 0;
   Timer? _timer;
   bool _won = false;
   bool _lost = false;
+  int _lives = 3;
+  static const int maxLives = 3;
 
   ParkingGame(this.level) {
     _initGrid();
@@ -143,6 +147,9 @@ class ParkingGame extends ChangeNotifier {
 
   /// 是否失败
   bool get hasLost => _lost;
+
+  int get lives => _lives;
+  bool get isLivesDepleted => _lives <= 0;
 
   /// 能否撤销
   bool get canUndo => _undoStack.isNotEmpty;
@@ -391,57 +398,11 @@ class ParkingGame extends ChangeNotifier {
         _moves >= level.movesLimit! &&
         _targetVehicle != null &&
         !_targetVehicle!.parked) {
-      _lost = true;
-      _timer?.cancel();
+      loseLife();
       return;
     }
-    if (!_hasAnyMove()) {
-      _lost = true;
-      _timer?.cancel();
-    }
-  }
-
-  /// 是否还存在任意一次合法移动。
-  bool _hasAnyMove() {
-    for (final v in _vehicles) {
-      if (v.parked) continue;
-      // teleport: can jump to any cell, so always has a move if board has space
-      if (v.tier.stats.ability == SpecialAbility.teleport) {
-        for (var r = 0; r < level.rows; r++) {
-          for (var c = 0; c < level.cols; c++) {
-            if (canMoveTo(v.index, r, c)) return true;
-          }
-        }
-        continue;
-      }
-      // turn ability: long-bar vehicles can slide in any direction
-      final canTurn = v.tier.stats.ability == SpecialAbility.turn;
-      final dirs = (v._canHoriz && v._canVert) || canTurn
-          ? const [
-              (0, 1),
-              (0, -1),
-              (1, 0),
-              (-1, 0),
-            ]
-          : (v._canHoriz
-              ? const [(0, 1), (0, -1)]
-              : const [(1, 0), (-1, 0)]);
-      for (final (dr, dc) in dirs) {
-        if (_canMoveOneStep(v.index, dr, dc)) return true;
-      }
-    }
-    return false;
-  }
-
-  /// 沿 (dr,dc) 方向找到的目标格是否存在合法移动。
-  bool _canMoveOneStep(int vehicleIndex, int dr, int dc) {
-    final v = _vehicles[vehicleIndex];
-    final toR = v.row + dr;
-    final toC = v.col + dc;
-    if (toR < 0 || toR >= level.rows || toC < 0 || toC >= level.cols) {
-      return false;
-    }
-    return canMoveTo(vehicleIndex, toR, toC);
+    // Don't auto-lose on deadlock - let the player use items/undo
+    // The lives system handles the failure path
   }
 
   VehicleState? get _targetVehicle =>
@@ -580,14 +541,18 @@ class ParkingGame extends ChangeNotifier {
       for (var c = v.col + 1; c <= v.col + 3 && c < level.cols; c++) {
         if (canMoveTo(vehicleIndex, v.row, c)) {
           bestCol = c;
-        } else break;
+        } else {
+          break;
+        }
       }
       // Try left (3 cells) - if right didn't move far, try left
       if (bestCol == v.col) {
         for (var c = v.col - 1; c >= v.col - 3 && c >= 0; c--) {
           if (canMoveTo(vehicleIndex, v.row, c)) {
             bestCol = c;
-          } else break;
+          } else {
+          break;
+        }
         }
       }
     }
@@ -596,14 +561,18 @@ class ParkingGame extends ChangeNotifier {
       for (var r = v.row + 1; r <= v.row + 3 && r < level.rows; r++) {
         if (canMoveTo(vehicleIndex, r, v.col)) {
           bestRow = r;
-        } else break;
+        } else {
+          break;
+        }
       }
       // Try up
       if (bestRow == v.row) {
         for (var r = v.row - 1; r >= v.row - 3 && r >= 0; r--) {
           if (canMoveTo(vehicleIndex, r, v.col)) {
             bestRow = r;
-          } else break;
+          } else {
+          break;
+        }
         }
       }
     }
@@ -681,14 +650,76 @@ class ParkingGame extends ChangeNotifier {
     return result;
   }
 
+  /// 获取格子标记（null = 无标记）
+  String? getMark(int row, int col) => _marks['$row,$col'];
+
+  /// 切换格子标记：无 → X → ! → ? → 无
+  void toggleMark(int row, int col) {
+    if (_won || _lost) return;
+    final key = '$row,$col';
+    final current = _marks[key];
+    if (current == null) {
+      _marks[key] = 'x';
+    } else if (current == 'x') {
+      _marks[key] = '!';
+    } else if (current == '!') {
+      _marks[key] = '?';
+    } else {
+      _marks.remove(key);
+    }
+    notifyListeners();
+  }
+
+  /// 清除所有标记
+  void clearMarks() {
+    _marks.clear();
+    notifyListeners();
+  }
+
+  /// 获取所有标记的格子（只读）
+  Map<String, String> get marks => Map.unmodifiable(_marks);
+
+  /// 失去一条生命。返回是否还有剩余生命。
+  bool loseLife() {
+    if (_lives <= 0) {
+      // 已无生命（如撤销后再次触发）：确保进入失败态，避免"无命但未判负"的卡死状态。
+      if (!_lost) {
+        _lost = true;
+        _timer?.cancel();
+        notifyListeners();
+      }
+      return false;
+    }
+    _lives--;
+    if (_lives <= 0) {
+      _lost = true;
+      _timer?.cancel();
+    }
+    notifyListeners();
+    return _lives > 0;
+  }
+
+  /// 复活：恢复1条命，解除失败状态，重启计时器。
+  void revive() {
+    if (_lives >= maxLives) return;
+    _lives++;
+    _lost = false;
+    if (_timer == null || !_timer!.isActive) {
+      _startTimer();
+    }
+    notifyListeners();
+  }
+
   /// 重置关卡
   void reset() {
     _timer?.cancel();
     _undoStack.clear();
+    _marks.clear();
     _moves = 0;
     _elapsedSeconds = 0;
     _won = false;
     _lost = false;
+    _lives = maxLives;
     _initGrid();
     _initVehicles();
     _startTimer();

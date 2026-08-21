@@ -61,15 +61,25 @@ void main() {
       expect(game.canMoveTo(filler.index, 3, 3), isFalse);
     });
 
-    test('限步关卡：步数耗尽且未胜利则判负', () {
+    test('限步关卡：步数耗尽扣命，生命耗尽才判负', () {
       final game = ParkingGame(_miniLevel(movesLimit: 1));
-      _moveBikeAside(game);
-      // 消耗掉唯一一步且目标未停好 => 判负。
-      expect(game.hasLost, isTrue);
+      // 每次耗尽步数扣一条命；三条命全部耗光才判负。
+      for (var i = 1; i <= ParkingGame.maxLives; i++) {
+        _moveBikeAside(game);
+        expect(game.lives, ParkingGame.maxLives - i);
+        expect(game.hasLost, i == ParkingGame.maxLives);
+        if (!game.hasLost) game.undo();
+      }
+      expect(game.isLivesDepleted, isTrue);
     });
 
     test('撤销可解除判负状态', () {
       final game = ParkingGame(_miniLevel(movesLimit: 1));
+      // 耗光三条命进入判负。
+      for (var i = 1; i < ParkingGame.maxLives; i++) {
+        _moveBikeAside(game);
+        game.undo();
+      }
       _moveBikeAside(game);
       expect(game.hasLost, isTrue);
       game.undo();

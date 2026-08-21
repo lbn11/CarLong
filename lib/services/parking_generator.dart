@@ -252,7 +252,35 @@ class ParkingLevelGenerator {
       grid: grid,
       vehicles: vehicles,
       targetTier: tier,
+      rowHints: id >= 150 ? _generateRowHints(size, vehicles) : null,
+      colHints: id >= 150 ? _generateColHints(size, vehicles) : null,
     );
+  }
+
+  /// 扫雷风格行约束：计算每行实际被车辆占用的格数。
+  static List<int?> _generateRowHints(int size, List<VehicleSpawn> vehicles) {
+    return List.generate(size, (r) {
+      var count = 0;
+      for (final v in vehicles) {
+        for (final (vr, _) in v.cells()) {
+          if (vr == r) count++;
+        }
+      }
+      return count > 0 ? count : null;
+    });
+  }
+
+  /// 扫雷风格列约束：计算每列实际被车辆占用的格数。
+  static List<int?> _generateColHints(int size, List<VehicleSpawn> vehicles) {
+    return List.generate(size, (c) {
+      var count = 0;
+      for (final v in vehicles) {
+        for (final (_, vc) in v.cells()) {
+          if (vc == c) count++;
+        }
+      }
+      return count > 0 ? count : null;
+    });
   }
 
   /// 在棋盘上找一段连续 [len] 格、全为 road 且未被占用的空闲段。

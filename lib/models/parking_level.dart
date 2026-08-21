@@ -86,7 +86,13 @@ class ParkingLevel {
   final VehicleType targetTier;
   final int? timeLimit;
   final int? movesLimit;
-  final int? minMoves; // 求解器算出的最短步数（标定难度用，无解为 null）
+  final int? minMoves;
+
+  /// 扫雷风格行约束：每行允许的最大车辆数（null = 无约束）。
+  final List<int?>? rowHints;
+
+  /// 扫雷风格列约束：每列允许的最大车辆数（null = 无约束）。
+  final List<int?>? colHints;
 
   const ParkingLevel({
     required this.id,
@@ -99,6 +105,8 @@ class ParkingLevel {
     this.timeLimit,
     this.movesLimit,
     this.minMoves,
+    this.rowHints,
+    this.colHints,
   });
 
   ParkingLevel copyWith({
@@ -112,6 +120,8 @@ class ParkingLevel {
     int? timeLimit,
     int? movesLimit,
     int? minMoves,
+    List<int?>? rowHints,
+    List<int?>? colHints,
   }) {
     return ParkingLevel(
       id: id ?? this.id,
@@ -124,6 +134,8 @@ class ParkingLevel {
       timeLimit: timeLimit ?? this.timeLimit,
       movesLimit: movesLimit ?? this.movesLimit,
       minMoves: minMoves ?? this.minMoves,
+      rowHints: rowHints ?? this.rowHints,
+      colHints: colHints ?? this.colHints,
     );
   }
 
@@ -140,6 +152,8 @@ class ParkingLevel {
         'timeLimit': timeLimit,
         'movesLimit': movesLimit,
         'minMoves': minMoves,
+        'rowHints': rowHints,
+        'colHints': colHints,
       };
 
   factory ParkingLevel.fromJson(Map<String, dynamic> json) => ParkingLevel(
@@ -159,5 +173,7 @@ class ParkingLevel {
         timeLimit: json['timeLimit'] as int?,
         movesLimit: json['movesLimit'] as int?,
         minMoves: json['minMoves'] as int?,
+        rowHints: (json['rowHints'] as List?)?.map((e) => e as int?).toList(),
+        colHints: (json['colHints'] as List?)?.map((e) => e as int?).toList(),
       );
 }

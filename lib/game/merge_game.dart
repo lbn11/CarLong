@@ -1,10 +1,8 @@
 import 'dart:math';
-import 'dart:ui' as ui;
 
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/widgets.dart' hide View;
 
 import '../logic/board_logic.dart';
@@ -52,10 +50,6 @@ void paintFog(Canvas canvas, RRect rr) {
 class MergeGame extends FlameGame {
   final LevelDefinition level;
   final BoardLogic board;
-
-  /// 预加载的 17 张车模 PNG（ui.Image），供方块绘制真实车模；
-  /// 加载失败或缺图时，方块会降级回 canvas 剪影。
-  final Map<VehicleType, ui.Image> vehicleImages = {};
 
   final ValueNotifier<int> score = ValueNotifier<int>(0);
   final ValueNotifier<int> produced = ValueNotifier<int>(0);
@@ -215,18 +209,6 @@ class MergeGame extends FlameGame {
   @override
   Future<void> onLoad() async {
     super.onLoad();
-    // 预加载 17 张车模 PNG，供方块绘制真实车模。
-    // 用 rootBundle 直接加载，规避 Flame images 缓存默认前缀 assets/images/ 导致的路径翻倍。
-    for (final tier in VehicleType.values) {
-      try {
-        final bytes =
-            await rootBundle.load('assets/vehicles/${tier.name}.png');
-        vehicleImages[tier] = await decodeImageFromList(
-            bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes));
-      } catch (_) {
-        // 忽略：方块 _drawIcon 会回退到 canvas 剪影。
-      }
-    }
     await feedback.load();
     add(AmbientBackground()..priority = -2);
     for (var c = 0; c < level.cols; c++) {
@@ -1523,22 +1505,15 @@ class StackSprite extends PositionComponent
     } else if (data.isWildcard) {
       paintWildcardIcon(canvas, box);
     } else {
-      final img = game.vehicleImages[data.tier];
-      if (img != null) {
-        // 浅色卡面：取消车型色光晕，避免出现"色块状"内背景（仅靠卡面渐变+车型描边就能区分身份）。
-        // 以 contain 方式把整张车模图缩放进 box，居中绘制。
-        final s = box / max(img.width, img.height);
-        canvas.save();
-        canvas.scale(s);
-        canvas.drawImage(
-          img,
-          Offset(-img.width / 2, -img.height / 2),
-          Paint(),
-        );
-        canvas.restore();
-      } else {
-        paintVehicleIcon(canvas, data.tier, box, body: data.tier.color);
-      }
+      // 统一用 emoji 显示车辆
+      final tp = TextPainter(
+        text: TextSpan(
+          text: data.tier.icon,
+          style: TextStyle(fontSize: box),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(-tp.width / 2, -tp.height / 2));
     }
     canvas.restore();
   }

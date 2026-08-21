@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../game/parking_daily_challenge.dart';
 import '../models/parking_level.dart';
 import '../save/save_repository.dart';
 import '../services/parking_chapters.dart';
@@ -72,10 +73,12 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
             Expanded(
               child: ListView.separated(
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-                itemCount: ParkingChapters.all.length,
+                itemCount: ParkingChapters.all.length + 1, // +1 for daily challenge
                 separatorBuilder: (_, _) => const SizedBox(height: 14),
-                itemBuilder: (context, i) =>
-                    _chapterCard(ParkingChapters.all[i]),
+                itemBuilder: (context, i) {
+                  if (i == 0) return _buildDailyChallengeCard();
+                  return _chapterCard(ParkingChapters.all[i - 1]);
+                },
               ),
             ),
           ],
@@ -252,6 +255,109 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
               style: const TextStyle(fontSize: 13),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDailyChallengeCard() {
+    final cleared = widget.data.dailyClearedDate == ParkingDailyChallenge.todayKey;
+    final streak = widget.data.dailyStreak;
+    final level = ParkingDailyChallenge.today();
+    final accent = level.targetTier.color;
+
+    return Material(
+      color: Colors.transparent,
+      child: Ink(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.lerp(Colors.white, accent, 0.16)!,
+              Color.lerp(Colors.white, accent, 0.08)!,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: accent.withValues(alpha: 0.35)),
+          boxShadow: const [
+            BoxShadow(
+                color: AppColors.shadow, blurRadius: 10, offset: Offset(0, 4)),
+          ],
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: cleared ? null : _openParkingDaily,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.30),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.calendar_today,
+                      color: Color(0xFFB39DDB), size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('每日停车挑战',
+                          style: TextStyle(
+                              color: AppColors.ink1,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15)),
+                      const SizedBox(height: 2),
+                      Text(
+                        cleared
+                            ? '今日已完成${streak > 0 ? ' · 连续 $streak 天' : ''}'
+                            : streak >= 2
+                                ? '连续 $streak 天 · 完成领 +${ParkingDailyChallenge.reward + ParkingDailyChallenge.streakBonus(streak)} 🪙'
+                                : '完成今日挑战，领 +${ParkingDailyChallenge.reward} 🪙',
+                        style: TextStyle(
+                            color: cleared ? const Color(0xFF66BB6A) : AppColors.ink2,
+                            fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                if (cleared)
+                  const Icon(Icons.check_circle, color: Color(0xFF66BB6A), size: 26)
+                else
+                  FilledButton.icon(
+                    onPressed: _openParkingDaily,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: accent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                    ),
+                    icon: const Icon(Icons.play_arrow, size: 18),
+                    label: const Text('挑战'),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openParkingDaily() {
+    final level = ParkingDailyChallenge.today();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ParkingScreen(
+          level: level,
+          data: widget.data,
+          repo: widget.repo,
+          isDaily: true,
         ),
       ),
     );

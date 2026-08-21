@@ -1422,61 +1422,6 @@ void _drawStation(Canvas c, Color base) {
   _specular(c, const Offset(42, 44), 2.5);
 }
 
-/// 彗星：冰核 + 彗尾（拖曳粒子）。
-void _drawComet(Canvas c, Color base) {
-  _groundShadow(c, 20, 90, 90);
-  // 彗尾
-  final tail = Path()
-    ..moveTo(40, 50)
-    ..quadraticBezierTo(14, 26, 2, 18)
-    ..quadraticBezierTo(6, 52, 40, 62)
-    ..close();
-  final tailPaint = Paint()
-    ..shader = ui.Gradient.linear(
-      const Offset(42, 55),
-      const Offset(4, 22),
-      [base.withValues(alpha: 0.8), base.withValues(alpha: 0.0)],
-    );
-  c.drawPath(tail, tailPaint);
-  // 尾迹光点
-  final glow = Paint()..color = Colors.white.withValues(alpha: 0.7);
-  c.drawCircle(const Offset(24, 40), 2, glow);
-  c.drawCircle(const Offset(16, 48), 1.5, glow);
-  c.drawCircle(const Offset(30, 32), 1.2, glow);
-  // 冰核
-  final nucleus = Path()
-    ..moveTo(34, 34)
-    ..quadraticBezierTo(50, 26, 66, 38)
-    ..quadraticBezierTo(76, 50, 66, 62)
-    ..quadraticBezierTo(50, 72, 34, 60)
-    ..quadraticBezierTo(26, 48, 34, 34)
-    ..close();
-  _fillPath(c, nucleus, base);
-  // 环形尘带
-  c.save();
-  c.clipPath(nucleus);
-  c.drawOval(
-    Rect.fromLTWH(28, 40, 44, 16),
-    Paint()
-      ..color = Colors.white.withValues(alpha: 0.35)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2,
-  );
-  c.restore();
-  // 冰核斑点
-  c.drawCircle(
-    const Offset(48, 50),
-    3,
-    Paint()..color = Colors.white.withValues(alpha: 0.4),
-  );
-  c.drawCircle(
-    const Offset(58, 44),
-    2,
-    Paint()..color = Colors.white.withValues(alpha: 0.3),
-  );
-  _specular(c, const Offset(42, 40), 3);
-}
-
 /// Flutter 侧的车图标组件(纯图标, 无卡面)。
 class VehicleIcon extends StatelessWidget {
   final VehicleType vehicle;

@@ -7,6 +7,7 @@ import '../analytics/analytics.dart';
 import '../game/audio_feedback.dart';
 import '../game/game_config.dart';
 import '../game/music_player.dart';
+import '../game/parking_daily_challenge.dart';
 import '../game/parking_game.dart';
 import '../models/parking_level.dart';
 import '../save/save_repository.dart';
@@ -23,12 +24,14 @@ class ParkingScreen extends StatefulWidget {
   final ParkingLevel level;
   final PlayerData data;
   final SaveRepository repo;
+  final bool isDaily;
 
   const ParkingScreen({
     super.key,
     required this.level,
     required this.data,
     required this.repo,
+    this.isDaily = false,
   });
 
   @override
@@ -52,12 +55,21 @@ class _ParkingScreenState extends State<ParkingScreen> {
   String? _activeItem;
   /// 双倍移动：第一次移动后允许再移动一次。
   bool _doubleMoveActive = false;
+  /// 标记模式：true = 标记格子（X/!/？），false = 正常选择车辆
+  bool _markMode = false;
+
+  /// 连胜计数
+  int _winStreak = 0;
+
+  /// 上次记录的生命值（用于检测扣血）
+  int _prevLives = ParkingGame.maxLives;
 
   @override
   void initState() {
     super.initState();
     _analytics = AnalyticsService(widget.data, widget.repo);
     _game = ParkingGame(widget.level);
+    _prevLives = _game.lives;
     _game.addListener(_onGameUpdate);
     // 音效/触感跟随全局开关。
     _audio.soundOn = widget.data.soundOn;
@@ -75,7 +87,18 @@ class _ParkingScreenState extends State<ParkingScreen> {
   }
 
   void _onGameUpdate() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    // 检测生命值变化 — 扣血时弹出失去生命对话框
+    if (_game.lives < _prevLives && _game.lives > 0 && !_game.hasWon) {
+      _prevLives = _game.lives;
+      setState(() {});
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_settled) _showLoseLifeDialog();
+      });
+      return;
+    }
+    _prevLives = _game.lives;
+    setState(() {});
   }
 
   @override
@@ -88,6 +111,13 @@ class _ParkingScreenState extends State<ParkingScreen> {
   void _handleCellTap(int row, int col) {
     if (_game.hasWon || _game.hasLost) return;
 
+    // 标记模式
+    if (_markMode && !_game.hasWon && !_game.hasLost) {
+      _game.toggleMark(row, col);
+      _audio.play(Sfx.tick);
+      return;
+    }
+
     // 道具使用
     if (_activeItem != null) {
       _useItemOnCell(row, col);
@@ -99,10 +129,16 @@ class _ParkingScreenState extends State<ParkingScreen> {
       final moved = _game.slideTo(_selectedVehicle!, row, col);
       if (moved) {
         _audio.play(Sfx.move);
+        final bonusMove = _doubleMoveActive;
         setState(() {
-          _selectedVehicle = null;
           _hintVehicle = null;
           _hintCells = const [];
+          if (bonusMove) {
+            // 双倍卡：消耗一次机会，保留选中让本车再滑一次。
+            _doubleMoveActive = false;
+          } else {
+            _selectedVehicle = null;
+          }
         });
         _onPlayerAction('move');
         if (_game.hasWon) {
@@ -140,6 +176,9 @@ class _ParkingScreenState extends State<ParkingScreen> {
   /// 本次 3 星通关奖励的合成道具卡 key（'time'/'cards'/'double'），null 表示未奖励。
   String? _boosterKey;
 
+  /// 每日挑战连续通关额外奖励（>0 时显示在结果卡片）。
+  int _dailyStreakBonus = 0;
+
   static const Map<String, String> _boosterLabels = {
     'time': '🕐 加时卡',
     'cards': '📦 补卡卡',
@@ -149,10 +188,33 @@ class _ParkingScreenState extends State<ParkingScreen> {
   void _settleWin() {
     if (_settled) return;
     _settled = true;
+    _winStreak++;
     final stars = _game.calcStars();
-    final reward = GameConfig.parkingBaseReward + stars * GameConfig.parkingStarReward;
+    var reward = GameConfig.parkingBaseReward + stars * GameConfig.parkingStarReward;
     _lastStars = stars;
     _lastReward = reward;
+
+    // 每日挑战奖励
+    if (widget.isDaily) {
+      final today = ParkingDailyChallenge.todayKey;
+      if (widget.data.dailyClearedDate != today) {
+        widget.data.dailyClearedDate = today;
+        final yesterday = DateTime.now().subtract(const Duration(days: 1));
+        final yKey = '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
+        final streak = widget.data.dailyLastDate == yKey
+            ? widget.data.dailyStreak + 1
+            : 1;
+        widget.data.dailyStreak = streak;
+        widget.data.dailyLastDate = today;
+        final dailyBonus = ParkingDailyChallenge.reward + ParkingDailyChallenge.streakBonus(streak);
+        reward += dailyBonus;
+        _lastReward = reward;
+        if (streak >= 3) {
+          _dailyStreakBonus = ParkingDailyChallenge.streakBonus(streak);
+        }
+      }
+    }
+
     widget.data.addCoins(reward);
 
     // 图鉴接入：通关停车关卡即点亮目标车型（与合成游戏共享同一套交通图鉴）。
@@ -186,24 +248,105 @@ class _ParkingScreenState extends State<ParkingScreen> {
 
   void _settleLose() {
     if (_settled) return;
+    
+    if (_game.lives > 0) {
+      // Lost a life but can continue
+      _showLoseLifeDialog();
+      return;
+    }
+    
+    // All lives lost - game over
     _settled = true;
-    // 失败不解锁、不发奖，仅保底存盘。
+    _winStreak = 0;
     widget.repo.save(widget.data);
     _audio.play(Sfx.lose);
     unawaited(_audio.fail());
   }
 
+  void _showLoseLifeDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceLight,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('💔 失去一条命！', textAlign: TextAlign.center),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(ParkingGame.maxLives, (i) {
+                return Text(
+                  i < _game.lives ? '❤️' : '🖤',
+                  style: const TextStyle(fontSize: 28),
+                );
+              }),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '剩余 ${_game.lives} 条命',
+              style: const TextStyle(color: AppColors.ink2, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '继续挑战或放弃本关',
+              style: TextStyle(color: AppColors.ink3, fontSize: 13),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _resetGame();
+            },
+            child: const Text('重新开始'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _game.revive();
+              _prevLives = _game.lives;
+              setState(() {});
+            },
+            icon: const Icon(Icons.play_circle_fill),
+            label: const Text('看广告复活'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF66BB6A),
+              foregroundColor: Colors.white,
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accent,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('继续挑战'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _resetGame() {
     _game.reset();
+    _game.clearMarks();
     setState(() {
       _settled = false;
       _collectionNew = false;
       _collectionBonus = 0;
       _boosterKey = null;
+      _dailyStreakBonus = 0;
       _hintVehicle = null;
       _hintCells = const [];
       _activeItem = null;
       _doubleMoveActive = false;
+      _markMode = false;
+      _prevLives = ParkingGame.maxLives;
     });
   }
 
@@ -479,7 +622,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
           if (won)
             _buildStarsRow()
           else
-            const Text('再试一次吧', style: TextStyle(color: AppColors.ink2)),
+            const Text('没有可用的移动了', style: TextStyle(color: AppColors.ink2)),
           const SizedBox(height: 8),
           Text(
             won
@@ -513,10 +656,38 @@ class _ParkingScreenState extends State<ParkingScreen> {
                     color: Color(0xFF7E57C2), fontWeight: FontWeight.w800),
               ),
             ),
+          if (won && _dailyStreakBonus > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                '🔥 连续挑战奖励 +${ParkingDailyChallenge.reward + _dailyStreakBonus} 🪙',
+                style: const TextStyle(
+                    color: Color(0xFFFF6D00), fontWeight: FontWeight.w800),
+              ),
+            ),
           const SizedBox(height: 20),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (!won)
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      // 模拟观看广告复活 — 恢复1条命
+                      _game.revive();
+                      _prevLives = _game.lives;
+                      _settled = false;
+                      setState(() {});
+                    },
+                    icon: const Icon(Icons.play_circle_fill),
+                    label: const Text('看广告复活'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF66BB6A),
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
               FilledButton(
                 onPressed: _resetGame,
                 style: FilledButton.styleFrom(
@@ -639,7 +810,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
               child: Row(
                 children: [
                   _buildInfoChip(
-                      '🚗 ${widget.level.name}', AppColors.accent),
+                      '🚗 ${widget.isDaily ? '每日挑战' : widget.level.name}', AppColors.accent),
                   const SizedBox(width: 6),
                   // 常驻目标提示：把哪辆车开到绿车位（不依赖教学弹窗）。
                   _buildInfoChip(
@@ -648,6 +819,39 @@ class _ParkingScreenState extends State<ParkingScreen> {
                   ),
                   const SizedBox(width: 6),
                   _buildInfoChip('👣 ${_game.moves}', AppColors.surfaceSoft),
+                  const SizedBox(width: 6),
+                  // Lives display
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(ParkingGame.maxLives, (i) {
+                      final alive = i < _game.lives;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        child: Text(
+                          alive ? '❤️' : '🖤',
+                          style: const TextStyle(fontSize: 18),
+                        ),
+                      );
+                    }),
+                  ),
+                  if (_winStreak > 1) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFCA28).withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '🔥 x$_winStreak',
+                        style: const TextStyle(
+                          color: Color(0xFFFFCA28),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
                   if (widget.level.timeLimit != null) ...[
                     const SizedBox(width: 6),
                     _buildInfoChip(
@@ -739,7 +943,11 @@ class _ParkingScreenState extends State<ParkingScreen> {
     if (_activeItem == null) return;
     final key = _activeItem!;
     final count = widget.data.boosters[key] ?? 0;
-    if (count <= 0) return;
+    if (count <= 0) {
+      // 数量耗尽自动退出道具模式，避免点击全部被道具分支吞掉导致棋盘无响应。
+      setState(() => _activeItem = null);
+      return;
+    }
     
     bool used = false;
     int? removedIdx;
@@ -773,6 +981,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
       case 'doubleMove':
         if (_selectedVehicle != null) {
           _doubleMoveActive = true;
+          _activeItem = null; // 激活完成，退出道具模式，后续点击走正常移动
           used = true; // Will be consumed on next move
         }
         break;
@@ -785,8 +994,8 @@ class _ParkingScreenState extends State<ParkingScreen> {
       setState(() {});
     }
     
-    // Clear item mode after use (except spring/balloon/doubleMove which need vehicle selection first)
-    if (key != 'spring' && key != 'balloon' && key != 'doubleMove') {
+    // Clear item mode after use (except spring/balloon which need vehicle selection first)
+    if (key != 'spring' && key != 'balloon') {
       setState(() => _activeItem = null);
     }
   }
@@ -801,6 +1010,40 @@ class _ParkingScreenState extends State<ParkingScreen> {
           children: [
           // 道具按钮（仅在停车模式可用）
           if (!_game.hasWon && !_game.hasLost) ...[
+            // 标记模式切换
+            GestureDetector(
+              onTap: () => setState(() {
+                _markMode = !_markMode;
+                _activeItem = null;
+                _selectedVehicle = null;
+              }),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _markMode ? const Color(0xFFFFCA28).withValues(alpha: 0.2) : AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _markMode ? const Color(0xFFFFCA28) : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('🏷️', style: const TextStyle(fontSize: 16)),
+                    Text(
+                      '标记',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: _markMode ? const Color(0xFFFFCA28) : AppColors.ink2,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
             _buildItemButton('bomb', '💣', '炸弹', Color(0xFFFF7043)),
             const SizedBox(width: 6),
             _buildItemButton('spring', '🌀', '弹簧', Color(0xFF66BB6A)),
@@ -872,26 +1115,96 @@ class _ParkingScreenState extends State<ParkingScreen> {
             .clamp(56.0, 140.0);
         final boardW = _game.cols * cellSize;
         final boardH = _game.rows * cellSize;
+        final hasHints = widget.level.rowHints != null || widget.level.colHints != null;
+        final hintSize = cellSize * 0.35;
 
         return SizedBox(
-          width: boardW,
-          height: boardH,
+          width: boardW + (hasHints ? hintSize + 4 : 0),
+          height: boardH + (hasHints ? hintSize + 4 : 0),
           child: Stack(
             children: [
+              // 行列约束提示（扫雷风格）
+              if (hasHints) ...[
+                // 顶部列提示
+                if (widget.level.colHints != null)
+                  Positioned(
+                    left: hasHints ? hintSize + 4 : 0,
+                    top: 0,
+                    width: boardW,
+                    height: hintSize,
+                    child: Row(
+                      children: List.generate(_game.cols, (c) {
+                        final hint = widget.level.colHints![c];
+                        return SizedBox(
+                          width: cellSize,
+                          child: Center(
+                            child: hint != null
+                                ? Text(
+                                    '$hint',
+                                    style: TextStyle(
+                                      fontSize: hintSize * 0.6,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.ink2,
+                                    ),
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                // 左侧行提示
+                if (widget.level.rowHints != null)
+                  Positioned(
+                    left: 0,
+                    top: hasHints ? hintSize + 4 : 0,
+                    width: hintSize,
+                    height: boardH,
+                    child: Column(
+                      children: List.generate(_game.rows, (r) {
+                        final hint = widget.level.rowHints![r];
+                        return SizedBox(
+                          height: cellSize,
+                          child: Center(
+                            child: hint != null
+                                ? Text(
+                                    '$hint',
+                                    style: TextStyle(
+                                      fontSize: hintSize * 0.6,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.ink2,
+                                    ),
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+              ],
               // 底层：格子（背景/障碍/车位/入口），并接收点击。
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: List.generate(_game.rows, (r) {
-                  return Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: List.generate(_game.cols, (c) {
-                      return _buildCell(r, c, cellSize);
-                    }),
-                  );
-                }),
+              Positioned(
+                left: hasHints ? hintSize + 4 : 0,
+                top: hasHints ? hintSize + 4 : 0,
+                width: boardW,
+                height: boardH,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(_game.rows, (r) {
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: List.generate(_game.cols, (c) {
+                        return _buildCell(r, c, cellSize);
+                      }),
+                    );
+                  }),
+                ),
               ),
               // 覆盖层：车辆（长条车画成一整块），IgnorePointer 让点击穿透到格子。
-              for (final v in _game.vehicles) _buildVehicleOverlay(v, cellSize),
+              for (final v in _game.vehicles)
+                _buildVehicleOverlay(v, cellSize,
+                    offsetX: hasHints ? hintSize + 4 : 0,
+                    offsetY: hasHints ? hintSize + 4 : 0),
             ],
           ),
         );
@@ -901,7 +1214,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
 
   /// 车辆覆盖层：长条车按占用格数绘制成一整块圆角车身（含车图标居中）。
   /// 颜色按车型(tier)取，颜色即"车的身份"，玩家可凭色辨认不同车。
-  Widget _buildVehicleOverlay(VehicleState v, double size) {
+  Widget _buildVehicleOverlay(VehicleState v, double size, {double offsetX = 0, double offsetY = 0}) {
     final isSelected = v.index == _selectedVehicle;
     final isHint = v.index == _hintVehicle;
     final w = (v.orientation == ParkingOrientation.horizontal ? v.length : 1) *
@@ -924,8 +1237,8 @@ class _ParkingScreenState extends State<ParkingScreen> {
       key: ValueKey(v.index),
       duration: _kVehicleSlide,
       curve: Curves.easeOutCubic,
-      left: left + inset,
-      top: top + inset,
+      left: left + inset + offsetX,
+      top: top + inset + offsetY,
       width: w - 2 * inset,
       height: h - 2 * inset,
       child: IgnorePointer(
@@ -1004,6 +1317,30 @@ class _ParkingScreenState extends State<ParkingScreen> {
                   child: Text('🎯', style: TextStyle(fontSize: size * 0.18)),
                 ),
               ),
+            // 双倍卡充能标记：本车下一步可连滑两次。
+            if (_doubleMoveActive && isSelected)
+              Positioned(
+                top: 2,
+                left: 2,
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: size * 0.06,
+                    vertical: size * 0.02,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFAB47BC),
+                    borderRadius: BorderRadius.circular(size * 0.1),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x66000000),
+                        blurRadius: 3,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Text('🎲×2', style: TextStyle(fontSize: size * 0.16)),
+                ),
+              ),
           ],
         ),
       ),
@@ -1046,19 +1383,34 @@ class _ParkingScreenState extends State<ParkingScreen> {
       behavior: HitTestBehavior.opaque,
       key: ValueKey('cell-$row-$col'),
       onTap: () => _handleCellTap(row, col),
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: bg,
-          border: Border.all(
-            color: isHintTarget ? const Color(0xFF26C6DA) : AppColors.ink3.withValues(alpha: 0.18),
-            width: isHintTarget ? 3 : 1,
-          ),
-          borderRadius: BorderRadius.circular(4),
+        child: Stack(
+          children: [
+            Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                color: bg,
+                border: Border.all(
+                  color: isHintTarget ? const Color(0xFF26C6DA) : AppColors.ink3.withValues(alpha: 0.18),
+                  width: isHintTarget ? 3 : 1,
+                ),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: _buildCellContent(cell, vehicle, size),
+            ),
+            // 标记覆盖层
+            if (_game.getMark(row, col) != null)
+              Positioned.fill(
+                child: Center(
+                  child: Text(
+                    _game.getMark(row, col) == 'x' ? '❌' :
+                    _game.getMark(row, col) == '!' ? '❗' : '❓',
+                    style: TextStyle(fontSize: size * 0.5),
+                  ),
+                ),
+              ),
+          ],
         ),
-        child: _buildCellContent(cell, vehicle, size),
-      ),
     );
   }
 

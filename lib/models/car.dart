@@ -75,7 +75,7 @@ enum CarTier {
   highspeed(51, '高速列车', '🚄', Color(0xFFE91E63), CarFamily.rail),
   steam(52, '蒸汽火车', '🚂', Color(0xFF5D4037), CarFamily.rail),
   diesel(53, '内燃机车', '🚂', Color(0xFF795548), CarFamily.rail),
-  electric_train(54, '电力机车', '🚄', Color(0xFF2196F3), CarFamily.rail),
+  electricTrain(54, '电力机车', '🚄', Color(0xFF2196F3), CarFamily.rail),
   subway(55, '地铁', '🚇', Color(0xFF607D8B), CarFamily.rail),
   airport(56, '机场快线', '🚄', Color(0xFF00BCD4), CarFamily.rail),
   maglev2(57, '超导磁悬浮', '🚝', Color(0xFF00BFA5), CarFamily.rail),

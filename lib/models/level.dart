@@ -160,10 +160,16 @@ class LevelDefinition {
     this.obstacles = const [],
   });
 
-  /// 出生权重：低等级卡出现概率更高。
+  /// 出生权重：窗口式分布，出牌集中在目标下方 3 档内。
   /// produce 目标只生成【低于】目标等级的卡片——目标车必须靠合成产出，
   /// 避免"抽到目标卡却在棋盘上却不计数"的困惑（producedCount 只在合成升级命中时加）。
   /// clearBoard 无目标等级，按出租车档位取一个中低位区间。
+  ///
+  /// 历史：17 档时代用"线性递减"权重（低档多、高档少），链深=目标档位；
+  /// 迁移到 50 车系统后目标档位深度翻倍（truck 5→12、rocket 7→44），
+  /// 线性权重下深目标的期望出牌数远超牌堆预算，设计上不可达成。
+  /// 改为窗口式：距目标 0/1/2/3 档权重 12/8/5/3，更低档位保留长尾 1 用于填场，
+  /// 链深恒定 ≈3~4，任何目标都能在原设计的 stockSize 内合成出来。
   List<int> spawnWeights() {
     final maxIdx = VehicleType.values.length - 1;
     final baseIdx = targetTier != null
@@ -173,8 +179,17 @@ class LevelDefinition {
     final topN = highTierBias.clamp(0, t + 1);
     return List.generate(
       t + 1,
-      (i) => (t - i + 1) +
-          (i > t - topN ? (i - (t - topN)) * 4 : 0),
+      (i) {
+        final d = t - i;
+        final base = switch (d) {
+          0 => 12,
+          1 => 8,
+          2 => 5,
+          3 => 3,
+          _ => 1,
+        };
+        return base + (i > t - topN ? (i - (t - topN)) * 4 : 0);
+      },
     );
   }
 

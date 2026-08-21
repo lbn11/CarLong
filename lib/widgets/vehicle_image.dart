@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/vehicle.dart';
 
-/// 车辆图片组件：优先加载 assets/vehicles/{name}.png，失败时回退到 emoji。
+/// 车辆图标组件：统一使用 emoji 显示车辆。
 class VehicleImage extends StatelessWidget {
   final VehicleType vehicle;
   final double size;
@@ -17,15 +17,9 @@ class VehicleImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Image.asset(
-      'assets/vehicles/${vehicle.name}.png',
-      width: size,
-      height: size,
-      fit: BoxFit.contain,
-      errorBuilder: (_, _, _) => Text(
-        vehicle.icon,
-        style: TextStyle(fontSize: size * 0.7),
-      ),
+    return Text(
+      vehicle.icon,
+      style: TextStyle(fontSize: size * 0.7),
     );
   }
 }

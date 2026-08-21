@@ -43,8 +43,8 @@ void main() {
       home: CollectionScreen(data: data, repo: repo),
     ));
     await tester.pumpAndSettle();
-    // 点第一张车卡（单车）
-    await tester.tap(find.text('单车').first, warnIfMissed: false);
+    // 点第一张车卡（自行车，50 车系统迁移后的 1 级车）
+    await tester.tap(find.text('自行车').first, warnIfMissed: false);
     await tester.pumpAndSettle();
     expect(find.textContaining('已收集'), findsWidgets); // 详情弹层出现
   });

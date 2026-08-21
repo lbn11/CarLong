@@ -40,12 +40,12 @@ class _ShopScreenState extends State<ShopScreen> {
     'cards': (name: '补卡卡', icon: Icons.inventory_2, color: AppColors.mint),
     'double': (name: '双倍卡', icon: Icons.casino, color: AppColors.sun),
     // 停车模式专用道具
-    'bomb': (name: '炸弹', icon: Icons.whatshot, color: const Color(0xFFFF7043)),
-    'spring': (name: '弹簧', icon: Icons.open_with, color: const Color(0xFF66BB6A)),
-    'balloon': (name: '气球飞越', icon: Icons.location_on, color: const Color(0xFF42A5F5)),
-    'key': (name: '钥匙', icon: Icons.vpn_key, color: const Color(0xFFFFCA28)),
-    'hammer': (name: '锤子', icon: Icons.build, color: const Color(0xFF8D6E63)),
-    'doubleMove': (name: '双倍移动', icon: Icons.compare_arrows, color: const Color(0xFFAB47BC)),
+    'bomb': (name: '炸弹', icon: Icons.whatshot, color: Color(0xFFFF7043)),
+    'spring': (name: '弹簧', icon: Icons.open_with, color: Color(0xFF66BB6A)),
+    'balloon': (name: '气球飞越', icon: Icons.location_on, color: Color(0xFF42A5F5)),
+    'key': (name: '钥匙', icon: Icons.vpn_key, color: Color(0xFFFFCA28)),
+    'hammer': (name: '锤子', icon: Icons.build, color: Color(0xFF8D6E63)),
+    'doubleMove': (name: '双倍移动', icon: Icons.compare_arrows, color: Color(0xFFAB47BC)),
   };
 
   String _today() {
@@ -87,7 +87,7 @@ class _ShopScreenState extends State<ShopScreen> {
     setState(() {});
     _showResult(
       icon: Icons.workspace_premium,
-      color: const Color(0xFFFFB23E),
+      color: Color(0xFFFFB23E),
       title: '金币礼包 +$_coinPackAmount 🪙',
       desc: '演示版：上架后接入真实内购（iOS IAP / 安卓 Google Play）',
     );
