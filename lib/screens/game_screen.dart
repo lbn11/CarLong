@@ -117,6 +117,12 @@ class _GameScreenState extends State<GameScreen> {
     _analytics = AnalyticsService(widget.data, widget.repo);
     _analytics.levelStart(widget.level);
     _applyBoosters();
+    // 清道夫关开局教学：胜利条件与"顶级车升空"机制一句话讲清。
+    if (widget.level.goalType == GoalType.clearBoard) {
+      _game.hint.value =
+          '🎯 把牌堆用完，场上剩 ≤${widget.level.clearLimit ?? 0} 组就赢！'
+          '同级车拖一起合成，最高档三合一会升空消失';
+    }
 
     // 教程:前 3 关开启引导（2026-08-19 重做轻量版后恢复启用：
     // 无全屏遮罩、不拦截点击、动作检测 + 按钮双通道推进，永不卡死）。
@@ -302,48 +308,100 @@ class _GameScreenState extends State<GameScreen> {
             : '⏰ 差一点';
 
     if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => _ResultDialog(
-        won: won,
-        score: score,
-        message: message,
-        title: title,
-        stars: stars,
-        maxCombo: _game.maxCombo,
-        elapsedText: _elapsedText(),
-        endlessLevel: widget.level.endless ? _game.endlessLevel : 0,
-        rank: endlessRank,
-        reward: reward,
-        consolation: won ? 0 : consolation,
-        onReplay: _restart,
-        onHome: () {
-          Navigator.of(context).pop();
-          Navigator.of(context).pop(true);
-        },
-        // 分享战绩：复制文案到剪贴板（零依赖，跨平台；接 SDK 后可换系统分享）。
-        onShare: () {
-          final text = isEndless
-              ? '我在《车水马龙》无尽模式冲到 $score 分！来挑战我 🚀'
-              : won
-                  ? '我在《车水马龙》第 ${widget.level.id} 关拿到 $stars 星！'
-                      '合成车队解锁星辰宇宙，来挑战我 🚗✨'
-                  : '我在《车水马龙》挑战第 ${widget.level.id} 关，'
-                      '你也来试试合成车队 🚗';
-          Clipboard.setData(ClipboardData(text: text));
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(
-              const SnackBar(
-                content: Text('✅ 分享文案已复制，去粘贴给好友吧！'),
-                duration: Duration(seconds: 2),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-        },
-      ),
-    );
+    // 失败且有续命次数时，按失败原因给出对应"看广告续命"按钮。
+    // 注：失败 levelEnd 已记录，续命后最终结局会再记一次（同一局两条 end，
+    // 以最后一条为准）；量级小先接受，接 SDK 后可加 runId 关联去重。
+    final reviveLabel = !won && _game.revivesLeft > 0
+        ? switch (_game.failReason) {
+            MergeFailReason.timeOut => '🎬 看广告续命 · +30 秒',
+            MergeFailReason.movesOut => '🎬 看广告续命 · +10 步',
+            MergeFailReason.deadEnd => '🎬 看广告续命 · 牌堆+2 并重排',
+            MergeFailReason.endlessStuck => '🎬 看广告续命 · 清 3 组腾位',
+            null => null,
+          }
+        : null;
+
+    // 胜利结算支持"看广告金币×2"：翻倍后弹窗重建（金额更新、按钮消失）。
+    void showResultDialog(int shownReward, bool canDouble) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => _ResultDialog(
+          won: won,
+          score: score,
+          message: message,
+          title: title,
+          stars: stars,
+          maxCombo: _game.maxCombo,
+          elapsedText: _elapsedText(),
+          endlessLevel: widget.level.endless ? _game.endlessLevel : 0,
+          rank: endlessRank,
+          reward: shownReward,
+          consolation: won ? 0 : consolation,
+          reviveLabel: reviveLabel,
+          onRevive: reviveLabel == null
+              ? null
+              : () {
+                  Navigator.of(context).pop();
+                  _analytics.toolUse('ad_revive', 0, widget.data.coins);
+                  setState(() => _finished = false);
+                  _game.revive();
+                },
+          onDoubleReward: canDouble && won
+              ? () {
+                  widget.data.addCoins(shownReward);
+                  widget.repo.save(widget.data);
+                  _analytics.toolUse('ad_double', 0, widget.data.coins);
+                  Navigator.of(context).pop();
+                  showResultDialog(shownReward * 2, false);
+                }
+              : null,
+          onReplay: _restart,
+          // 通关且还有下一关时，主按钮直接进下一关（无尽/每日仍为再来一局）。
+          onNext: won && !isEndless && !widget.level.daily && widget.level.id + 1 < levels.length
+              ? () {
+                  Navigator.of(context).pop();
+                  // levels 按 id 升序（id 从 1 开始），下一关即 levels[id]。
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (_) => GameScreen(
+                        level: levels[widget.level.id],
+                        data: widget.data,
+                        repo: widget.repo,
+                      ),
+                    ),
+                  );
+                }
+              : null,
+          onHome: () {
+            Navigator.of(context).pop();
+            Navigator.of(context).pop(true);
+          },
+          // 分享战绩：复制文案到剪贴板（零依赖，跨平台；接 SDK 后可换系统分享）。
+          onShare: () {
+            final text = isEndless
+                ? '我在《车水马龙》无尽模式冲到 $score 分！来挑战我 🚀'
+                : won
+                    ? '我在《车水马龙》第 ${widget.level.id} 关拿到 $stars 星！'
+                        '合成车队解锁星辰宇宙，来挑战我 🚗✨'
+                    : '我在《车水马龙》挑战第 ${widget.level.id} 关，'
+                        '你也来试试合成车队 🚗';
+            Clipboard.setData(ClipboardData(text: text));
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                const SnackBar(
+                  content: Text('✅ 分享文案已复制，去粘贴给好友吧！'),
+                  duration: Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+          },
+        ),
+      );
+    }
+
+    showResultDialog(reward, won);
   }
 
   String _dateString([DateTime? date]) {
@@ -481,7 +539,10 @@ class _GameScreenState extends State<GameScreen> {
     }
     if (level.goalType == GoalType.clearBoard) {
       final left = _game.produced.value;
-      return left > 0 ? '还剩 $left 张卡没合成清空' : '再动一动棋子就清空啦';
+      final limit = level.clearLimit ?? 0;
+      return left > limit
+          ? '场上还剩 $left 组车（目标 ≤$limit 组）'
+          : '再动一动棋子就清空啦';
     }
     final produced = _game.produced.value;
     final remain = (level.targetCount - produced).clamp(0, 999);
@@ -525,6 +586,7 @@ class _GameScreenState extends State<GameScreen> {
     return Column(
       children: [
         _buildHud(),
+        _buildGoalBar(),
         Expanded(
           child: KeyedSubtree(key: _boardKey, child: GameWidget(game: _game)),
         ),
@@ -633,6 +695,8 @@ class _GameScreenState extends State<GameScreen> {
         ),
         const SizedBox(height: 4),
         _buildLdGoalChip(),
+        const SizedBox(height: 4),
+        _buildGoalBar(compact: true),
         if (widget.level.timeLimitSeconds != null)
           Padding(
             padding: const EdgeInsets.only(top: 4),
@@ -669,11 +733,21 @@ class _GameScreenState extends State<GameScreen> {
             ],
           );
         } else if (isClear) {
-          child = Text('清空 · 剩 $v 格',
+          // 清道夫关两阶段目标：打牌阶段看牌堆进度，收尾阶段才看残堆。
+          child = ValueListenableBuilder<int>(
+            valueListenable: _game.stockLeft,
+            builder: (_, left, _) => Text(
+              left > 0
+                  ? '🂠 打完牌堆 · 剩 $left 张'
+                  : (v <= (widget.level.clearLimit ?? 0)
+                      ? '✅ 达标！场上 $v 组'
+                      : '场上 $v 组 / 目标 ≤${widget.level.clearLimit ?? 0}'),
               style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w900,
-                  fontSize: 12));
+                  fontSize: 12),
+            ),
+          );
         } else {
           child = Row(
             mainAxisSize: MainAxisSize.min,
@@ -994,13 +1068,20 @@ class _GameScreenState extends State<GameScreen> {
                         ]
                       : isClear
                           ? [
-                              const Text('目标 清空棋盘 · 剩余 ',
+                              const Text('目标 ',
                                   style: TextStyle(color: Colors.white)),
-                              Text(
-                                '$v 格',
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w900),
+                              ValueListenableBuilder<int>(
+                                valueListenable: _game.stockLeft,
+                                builder: (_, left, _) => Text(
+                                  left > 0
+                                      ? '打完牌堆 · 剩 $left 张'
+                                      : (v <= (widget.level.clearLimit ?? 0)
+                                          ? '✅ 达标 场上 $v 组'
+                                          : '场上 $v 组 / 目标 ≤${widget.level.clearLimit ?? 0}'),
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w900),
+                                ),
                               ),
                             ]
                           : [
@@ -1075,6 +1156,80 @@ class _GameScreenState extends State<GameScreen> {
                       children: chips,
                     );
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 常驻目标栏：每关固定显示"通关目的 + 怎么赢"，
+  /// 尤其清道夫关（第 6/9 关等）胜利条件与普通关不同，
+  /// 没有说明时玩家会不知道怎么过关、误以为是 bug。
+  Widget _buildGoalBar({bool compact = false}) {
+    final level = widget.level;
+    final String title;
+    final String howTo;
+    if (level.endless) {
+      title = '🌌 无尽冲档：不断合成更高级车辆';
+      howTo = '棋盘放满即结束';
+    } else {
+      // 清道夫关不用 goalText（"残留≤N 堆"太术语化，玩家看不懂），
+      // 改成大白话：牌堆用完 + 场上剩的车不超过 N 组就赢。
+      title = switch (level.goalType) {
+        GoalType.clearBoard =>
+          '🎯 目标：用光牌堆，场上剩 ≤${level.clearLimit ?? 0} 组就赢',
+        _ => level.goalText,
+      };
+      howTo = switch (level.goalType) {
+        GoalType.clearBoard => '同级 3 辆拖一起合成升级，最高档合成会升空消失',
+        _ => '同级车拖一起合成升级',
+      };
+    }
+    return Container(
+      margin: EdgeInsets.fromLTRB(compact ? 0 : 12, 0, compact ? 0 : 12, 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0x22FF5E7A)),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Text('🎯', style: TextStyle(fontSize: compact ? 11 : 13)),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: AppColors.ink1,
+                    fontWeight: FontWeight.w800,
+                    fontSize: compact ? 11 : 12,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  howTo,
+                  style: TextStyle(
+                    color: AppColors.ink2,
+                    fontSize: compact ? 10 : 11,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1421,8 +1576,18 @@ class _ResultDialog extends StatelessWidget {
   final VoidCallback onReplay;
   final VoidCallback onHome;
 
+  /// 通关且有下一关时的"直接进下一关"回调；为空则主按钮显示再来一局。
+  final VoidCallback? onNext;
+
   /// 分享战绩回调（#80，可为空则隐藏分享按钮）。
   final VoidCallback? onShare;
+
+  /// 失败时"看广告续命"按钮文案（null = 不显示，胜利/次数用完）。
+  final String? reviveLabel;
+  final VoidCallback? onRevive;
+
+  /// 胜利时"看广告金币×2"回调（null = 不显示或已翻倍）。
+  final VoidCallback? onDoubleReward;
 
   const _ResultDialog({
     required this.won,
@@ -1438,7 +1603,11 @@ class _ResultDialog extends StatelessWidget {
     required this.consolation,
     required this.onReplay,
     required this.onHome,
+    this.onNext,
     this.onShare,
+    this.reviveLabel,
+    this.onRevive,
+    this.onDoubleReward,
   });
 
   @override
@@ -1529,6 +1698,22 @@ class _ResultDialog extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
+                  // 胜利广告位：看广告金币×2（每局一次，翻倍后隐藏）。
+                  if (onDoubleReward != null) ...[
+                    FilledButton.icon(
+                      onPressed: onDoubleReward,
+                      icon: const Icon(Icons.movie_creation_outlined, size: 18),
+                      label: Text('看广告 金币 ×2（+$reward 🪙）',
+                          style: const TextStyle(fontWeight: FontWeight.w800)),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.coinGold2,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 10),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   if (isEndless)
                     Text(
                       rank != null
@@ -1542,6 +1727,22 @@ class _ResultDialog extends StatelessWidget {
                       style: const TextStyle(color: AppColors.ink2, fontSize: 14),
                     ),
                   const SizedBox(height: 20),
+                  // 失败广告位：看广告续命（每局一次），放在主操作上方最显眼处。
+                  if (reviveLabel != null && onRevive != null) ...[
+                    FilledButton.icon(
+                      onPressed: onRevive,
+                      icon: const Icon(Icons.play_circle_fill, size: 20),
+                      label: Text(reviveLabel!,
+                          style: const TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w800)),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF66BB6A),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(44),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   if (onShare != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
@@ -1577,12 +1778,13 @@ class _ResultDialog extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: FilledButton(
-                          onPressed: onReplay,
+                          onPressed: onNext ?? onReplay,
                           style: FilledButton.styleFrom(
                             backgroundColor: AppColors.coral,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
-                          child: const Text('再来一局'),
+                          child:
+                              Text(onNext != null ? '下一关 ▶' : '再来一局'),
                         ),
                       ),
                     ],

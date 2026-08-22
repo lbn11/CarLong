@@ -1272,34 +1272,6 @@ class _HomeScreenState extends State<HomeScreen>
               backgroundColor: AppColors.ink3.withValues(alpha: 0.14),
             ),
           ),
-          const SizedBox(width: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFFB39DDB), Color(0xFF7E57C2)],
-              ),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x557E57C2),
-                  blurRadius: 10,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                const Text('🚗', style: TextStyle(fontSize: 15)),
-                const SizedBox(width: 4),
-                Text('车库 ${data.collection.length}/17',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w900, color: Colors.white)),
-              ],
-            ),
-          ),
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

@@ -47,6 +47,21 @@ void paintFog(Canvas canvas, RRect rr) {
 }
 
 /// 核心游戏。负责棋盘渲染、交互、生成与胜负判定。
+/// 失败原因（决定结算弹窗提供哪种"看广告续命"补偿）。
+enum MergeFailReason {
+  /// 限时关时间归零 → 续命 +30 秒。
+  timeOut,
+
+  /// 限步关步数用尽 → 续命 +10 步。
+  movesOut,
+
+  /// 牌堆打完且无可行合成（普通/清道夫关）→ 续命牌堆+2 并重排棋盘。
+  deadEnd,
+
+  /// 无尽模式死局（棋盘满且无合成）→ 续命清理最低的 3 组腾位。
+  endlessStuck,
+}
+
 class MergeGame extends FlameGame {
   final LevelDefinition level;
   final BoardLogic board;
@@ -106,7 +121,27 @@ class MergeGame extends FlameGame {
   final List<VehicleType> _upcoming = [];
   final List<({BoardSnapshot snap, int bonus})> _undoStack = [];
   ({int col, int row})? _selected;
+
+  /// 正在拖拽的源格（拖拽期间显示可合并提示，与点选互斥使用）。
+  (int, int)? _dragSrc;
+
+  /// 拖拽落点预览格（磁吸目标，高亮显示）。
+  ({int col, int row})? _dropPreview;
+
+  /// 清道夫关"棋盘已清空"提醒只发一次的标记（棋盘重新有牌后复位）。
+  bool _emptyBoardHinted = false;
   bool _ended = false;
+
+  /// 最近一次失败原因（胜利/进行中为 null）；结算弹窗据此展示对应续命按钮。
+  MergeFailReason? _failReason;
+  MergeFailReason? get failReason => _failReason;
+
+  /// 看广告续命每局限 1 次，防止无限续命破坏难度曲线。
+  int _revivesUsed = 0;
+  static const int maxRevivesPerRun = 1;
+
+  /// 本局剩余续命次数。
+  int get revivesLeft => maxRevivesPerRun - _revivesUsed;
 
   BoardBackdrop? _backdrop;
 
@@ -144,7 +179,9 @@ class MergeGame extends FlameGame {
   bool get _isWin {
     if (level.endless) return false;
     if (level.goalType == GoalType.clearBoard) {
-      return _deck.isEmpty && board.isEmpty;
+      // 残留 ≤ clearLimit 即胜利（合并-3 下绝对清空需三进制全局守恒，
+      // 概率≈0；顶部窗口出牌时残堆 90% ≤4、99% ≤6，按上限闭环）。
+      return _deck.isEmpty && level.boardCleared(board.tileCount);
     }
     return board.producedCount >= level.targetCount;
   }
@@ -317,10 +354,24 @@ class MergeGame extends FlameGame {
       _end(true);
       return;
     }
+    // 清道夫关：棋盘提前清空但牌堆没打完 → 明确提醒（否则玩家会困惑
+    // "桌面啥也没有为啥不过关"——胜利还要求打完牌堆）。
+    if (!level.endless && level.goalType == GoalType.clearBoard) {
+      if (board.tileCount == 0 && _deck.isNotEmpty) {
+        if (!_emptyBoardHinted) {
+          _emptyBoardHinted = true;
+          hint.value =
+              '✨ 棋盘清空了！还剩 ${_deck.length} 张牌没打完，'
+              '继续出牌，最后场上剩 ≤${level.clearLimit ?? 0} 组就赢';
+        }
+      } else if (board.tileCount > 0) {
+        _emptyBoardHinted = false;
+      }
+    }
     // 限步倒扣。
     if (level.movesLimit != null && movesLeft.value <= 0) {
       hint.value = '⏹ 步数用尽！';
-      _end(false);
+      _end(false, failReason: MergeFailReason.movesOut);
       return;
     }
     // 限时倒计时。
@@ -334,15 +385,15 @@ class MergeGame extends FlameGame {
       }
       if (_timeLeftSec <= 0) {
         hint.value = '⏰ 时间到！';
-        _end(false);
+        _end(false, failReason: MergeFailReason.timeOut);
         return;
       }
     }
     if (board.isDeadlocked) {
       if (level.endless) {
-        _end(false);
+        _end(false, failReason: MergeFailReason.endlessStuck);
       } else if (_deck.isEmpty) {
-        _end(false);
+        _end(false, failReason: MergeFailReason.deadEnd);
       } else {
         _clearLowestAuto();
       }
@@ -350,7 +401,7 @@ class MergeGame extends FlameGame {
     }
     // 没牌又没得合：温和收尾（可重试，无惩罚）。无尽模式只按死局判定，不适用。
     if (!level.endless && _deck.isEmpty && !board.hasPossibleMove) {
-      _end(false);
+      _end(false, failReason: MergeFailReason.deadEnd);
     }
   }
 
@@ -405,9 +456,10 @@ class MergeGame extends FlameGame {
     _refreshGoal();
   }
 
-  void _end(bool won) {
+  void _end(bool won, {MergeFailReason? failReason}) {
     if (_ended) return;
     _ended = true;
+    _failReason = won ? null : failReason;
     if (won) {
       add(Confetti(_cellCenter(level.cols ~/ 2, level.rows ~/ 2), count: 60));
       shake(8, 0.3);
@@ -520,12 +572,57 @@ class MergeGame extends FlameGame {
         : '🔀 棋盘已重排，寻找新组合！';
   }
 
+  /// 看广告续命：解除结束状态，按失败原因补偿并继续本局。
+  /// 返回 false 表示不可续命（未结束 / 次数已用完）。
+  bool revive() {
+    if (!_ended || revivesLeft <= 0) return false;
+    // 先解除结束态：addTime/addCards 在 _ended 时会直接返回。
+    _ended = false;
+    _revivesUsed++;
+    switch (_failReason) {
+      case MergeFailReason.timeOut:
+        addTime(30);
+        hint.value = '▶️ 续命成功：+30 秒，冲！';
+      case MergeFailReason.movesOut:
+        movesLeft.value += 10;
+        hint.value = '▶️ 续命成功：+10 步，冲！';
+      case MergeFailReason.deadEnd:
+        // 牌堆见底且无合成：补 2 张新料 + 重排棋盘打开局面。
+        addCards(2);
+        board.shuffleTiles();
+        _syncSpritesFromBoard();
+        hint.value = '▶️ 续命成功：牌堆 +2 并重排棋盘';
+      case MergeFailReason.endlessStuck:
+        // 无尽死局：清掉最低的 3 组腾出空间（不走 _clearLowestAuto，避免报错音效）。
+        for (var i = 0; i < 3; i++) {
+          final removed = board.removeLowest();
+          if (removed == null) break;
+          final sprite = _findStack(removed.col, removed.row);
+          if (sprite != null) {
+            _stackSprites.remove(sprite);
+            sprite.removePuff();
+          }
+        }
+        _refreshGoal();
+        hint.value = '▶️ 续命成功：清理了 3 组车，继续冲档！';
+      case null:
+        // 理论不可达（胜利不会触发续命），保险起见恢复结束态。
+        _ended = true;
+        _revivesUsed--;
+        return false;
+    }
+    feedback.play(Sfx.bonus);
+    return true;
+  }
+
   /// 提示一步（金币道具）：高亮一个可合并的操作。
   void showHint() {
     if (_ended) return;
     final m = board.hintMove();
     if (m == null) {
-      hint.value = '😅 暂时没有可合并的卡片';
+      hint.value = _deck.isEmpty
+          ? '😅 没有可合并的了，试试洗牌或加牌'
+          : '😅 场上没得合，点牌堆出新卡试试';
       feedback.play(Sfx.error);
       return;
     }
@@ -605,6 +702,8 @@ class MergeGame extends FlameGame {
 
   /// 拖拽释放：执行移动/合并/交换，并驱动对应动画。
   void _onDragEnd(int fc, int fr, int? tc, int? tr) {
+    _dragSrc = null;
+    updateDropPreview(null);
     _selected = null;
     _refreshSelection();
     final from = board.at(fc, fr);
@@ -800,11 +899,23 @@ class MergeGame extends FlameGame {
     if (result.upgraded) {
       final dstData = board.at(tc, tr);
       if (dstData != null && dstData.isEmpty) {
+        // 顶级车三合一升空（合成模式核心机制：最高档不占格）。
+        // 补充说明飘字（+300 特效在下方 goalHit 处），避免"凭空消失"困惑。
         final ghost = _findStack(tc, tr);
         if (ghost != null) {
           _stackSprites.remove(ghost);
           ghost.removePuff();
         }
+        _spawnFloat(
+          tc,
+          tr,
+          level.goalType == GoalType.clearBoard
+              ? '🚀 顶级车升空，清掉 3 堆！'
+              : '🚀 ${board.at(tc, tr)?.tier.name ?? "顶级车"}已交付',
+          color: const Color(0xFFFFD54F),
+          fontSize: 15,
+          dy: -_cellSize * 0.95,
+        );
       }
     }
 
@@ -936,6 +1047,78 @@ class MergeGame extends FlameGame {
   Vector2 _cellCenter(int col, int row) =>
       _cellPos(col, row) + Vector2.all(_cellSize / 2);
 
+  /// 磁吸落点：拖拽中心附近（≤0.45 格）最近的【合法】目标格。
+  /// 只修正真正的近失误——精确落在格内的走原有判定，远离棋盘仍视为取消。
+  ({int col, int row})? nearestDropCell(Vector2 center, int fc, int fr) {
+    ({int col, int row})? best;
+    var bestD = double.infinity;
+    final r = _cellSize * 0.45;
+    for (var c = 0; c < level.cols; c++) {
+      for (var rr2 = 0; rr2 < level.rows; rr2++) {
+        final d = (_cellCenter(c, rr2) - center).length;
+        if (d >= bestD || d > r) continue;
+        if (!_canDropOn(fc, fr, c, rr2)) continue;
+        bestD = d;
+        best = (col: c, row: rr2);
+      }
+    }
+    return best;
+  }
+
+  /// 落点合法性预判（不执行移动）：空格可放；同级车/万能卡/炸弹对可合；
+  /// 石块等障碍不可落。传送门按可落处理，最终以 _tryMove 的完整校验为准。
+  bool _canDropOn(int fc, int fr, int tc, int tr) {
+    final from = board.at(fc, fr);
+    if (from == null || (fc == tc && fr == tr)) return false;
+    if (tc < 0 || tc >= level.cols || tr < 0 || tr >= level.rows) {
+      return false;
+    }
+    final obs = board.obstacleAt(tc, tr);
+    if (obs != null && obs.type != ObstacleType.teleport) return false;
+    final dst = board.at(tc, tr);
+    if (dst == null) return true;
+    return _canMergeWith(from, dst);
+  }
+
+  /// 解析最终落点：精确命中且合法 → 原样返回（手感与旧版一致）；
+  /// 否则尝试近失磁吸；再不行返回原始包含结果（由 _tryMove 弹回）。
+  ({int col, int row})? resolveDrop(Vector2 center, int fc, int fr) {
+    final raw = cellAt(center);
+    if (raw != null && _canDropOn(fc, fr, raw.col, raw.row)) return raw;
+    return nearestDropCell(center, fc, fr) ?? raw;
+  }
+
+  /// 更新拖拽落点预览高亮（同格重复调用无副作用）。
+  void updateDropPreview(({int col, int row})? cell) {
+    if (cell == _dropPreview) return;
+    _dropPreview = cell;
+    for (final s in children.whereType<CellSprite>()) {
+      s.dropTarget =
+          cell != null && s.col == cell.col && s.row == cell.row;
+    }
+  }
+
+  /// 可合并提示：选中/拖拽源与其他堆能否合并。
+  /// 规则与 board.move 一致——同级车、万能卡×任意、炸弹×炸弹。
+  bool _canMergeWith(StackData src, StackData dst) {
+    if (src.isBomb || dst.isBomb) {
+      return src.isBomb && dst.isBomb;
+    }
+    if (src.isWildcard || dst.isWildcard) return true;
+    return src.tier == dst.tier;
+  }
+
+  /// 刷新"可合并"提示（点选或拖拽时调用；null 清除全部提示）。
+  void _setMergeHints((int, int)? src) {
+    final srcData = src == null ? null : board.at(src.$1, src.$2);
+    for (final s in children.whereType<StackSprite>()) {
+      final isSrc = src != null && s.col == src.$1 && s.row == src.$2;
+      s.mergeHint = !isSrc &&
+          srcData != null &&
+          _canMergeWith(srcData, s.data);
+    }
+  }
+
   void _addStack(int col, int row) {
     final sprite = StackSprite(
       game: this,
@@ -951,10 +1134,15 @@ class MergeGame extends FlameGame {
   }
 
   void _refreshSelection() {
+    final sel = _selected;
     for (final s in children.whereType<StackSprite>()) {
-      s.selected = _selected != null &&
-          _selected!.col == s.col &&
-          _selected!.row == s.row;
+      s.selected = sel != null && sel.col == s.col && sel.row == s.row;
+    }
+    // 选中时同步高亮所有可合并目标；无选中且非拖拽则清空提示。
+    if (sel != null) {
+      _setMergeHints((sel.col, sel.row));
+    } else if (_dragSrc == null) {
+      _setMergeHints(null);
     }
   }
 }
@@ -966,6 +1154,9 @@ class CellSprite extends PositionComponent with TapCallbacks {
   final int row;
 
   CellSprite({required this.game, required this.col, required this.row});
+
+  /// 拖拽落点预览：当前磁吸目标格高亮金环。
+  bool dropTarget = false;
 
   double _lastSize = -1;
   RRect _rr = RRect.fromRectAndRadius(Rect.zero, const Radius.circular(0));
@@ -1013,6 +1204,20 @@ class CellSprite extends PositionComponent with TapCallbacks {
     canvas.drawRRect(_rr, _base);
     canvas.drawRRect(_inset, _topShade!);
     canvas.drawRRect(_inset, _bottomLight!);
+
+    // 拖拽落点预览：磁吸目标格金环，松手即落到这里。
+    if (dropTarget) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          _rr.outerRect.inflate(3),
+          Radius.circular(_rr.tlRadius.x + 2),
+        ),
+        Paint()
+          ..color = const Color(0xFFFFD54F)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3,
+      );
+    }
 
     final obs = game.board.obstacleAt(col, row);
     if (obs != null) _drawObstacle(canvas, obs, size.x);
@@ -1171,6 +1376,9 @@ class StackSprite extends PositionComponent
   StackData data;
   bool selected = false;
 
+  /// 可合并提示：选中/拖拽某张卡时，能与之合并的目标堆高亮细环。
+  bool mergeHint = false;
+
   bool _flying = false;
   Vector2 _flyFrom = Vector2.zero();
   Vector2 _flyTo = Vector2.zero();
@@ -1189,6 +1397,9 @@ class StackSprite extends PositionComponent
   double _removeT = 0;
 
   double _dragDist = 0;
+
+  /// 拖拽悬浮偏移量：卡片抬到手指上方，避免拇指遮挡（松手时归零）。
+  double _liftY = 0;
 
   StackSprite({
     required this.game,
@@ -1296,12 +1507,19 @@ class StackSprite extends PositionComponent
     _dragDist = 0;
     priority = 1;
     scale = Vector2.all(1.08);
+    // 悬浮偏移：卡片小幅抬到手指上方（0.55 格），拇指不挡卡面又不突兀。
+    _liftY = game._cellSize * 0.55;
+    position.y -= _liftY;
+    game._dragSrc = (col, row);
+    game._setMergeHints((col, row));
   }
 
   @override
   void onDragUpdate(DragUpdateEvent event) {
     _dragDist += event.localDelta.length;
     position.add(event.localDelta);
+    // 实时落点预览：与松手判定同一函数，所见即所得。
+    game.updateDropPreview(game.resolveDrop(position + size / 2, col, row));
   }
 
   @override
@@ -1310,15 +1528,19 @@ class StackSprite extends PositionComponent
     priority = 0;
     scale = Vector2.all(1);
     if (_dragDist < 14) {
-      // 距离很小：视为点击（选中）
+      // 距离很小：视为点击（选中）。回弹悬浮偏移后按原逻辑处理。
+      position.y += _liftY;
+      _liftY = 0;
+      game._dragSrc = null;
+      game.updateDropPreview(null);
       game._onTapStack(col, row);
-    } else {
-      // 以卡片中心的落点（而非左上角锚点）换算目标格，
-      // 避免"按住卡片中心拖到另一张上"时被算成相邻格/空格。
-      final center = position + size / 2;
-      final cell = game.cellAt(center);
-      game._onDragEnd(col, row, cell?.col, cell?.row);
+      return;
     }
+    // 以卡片中心（含悬浮偏移，即用户看到的卡面位置）换算目标格。
+    final center = position + size / 2;
+    final cell = game.resolveDrop(center, col, row);
+    game._onDragEnd(col, row, cell?.col, cell?.row);
+    _liftY = 0;
   }
 
   @override
@@ -1326,6 +1548,9 @@ class StackSprite extends PositionComponent
     super.onDragCancel(event);
     priority = 0;
     scale = Vector2.all(1);
+    _liftY = 0;
+    game._dragSrc = null;
+    game.updateDropPreview(null);
     game.snapBack(col, row);
   }
 
@@ -1449,6 +1674,20 @@ class StackSprite extends PositionComponent
         Paint()
           ..color = const Color(0xFFFFD54F).withValues(alpha: 0.5)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9),
+      );
+    }
+
+    // 可合并提示环：细绿环，与选中金环区分，提示"拖到这里能合"。
+    if (mergeHint && !selected) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          rr.outerRect.inflate(3),
+          Radius.circular(rr.tlRadius.x + 2),
+        ),
+        Paint()
+          ..color = const Color(0xFF66BB6A).withValues(alpha: 0.85)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.4,
       );
     }
 

@@ -413,9 +413,12 @@ class BoardLogic {
       upgraded = true;
       final next = target.tier.next;
       if (next == null) {
-        // 最高级（彗星）：保留在棋盘上，不清掉。
-        // 玩家可以看到自己的彗星成就。
-        target.count = 1;
+        // 最高级：产出后清除（count=0）。
+        // 必须清掉——clearBoard 关的胜利条件是"牌堆空 && 残留 ≤ clearLimit"，
+        // 而合并只会 3 堆变 1 堆；若最高级永久占格，残堆永远无法减少，
+        // 17 个清道夫关卡将数学上不可通关（d491acc 曾改为保留，已回归修复）。
+        // 彗星成就由图鉴/producedCount 记录，不依赖棋盘实体。
+        target.count = 0;
       } else {
         target.tier = next;
         target.count = 1;

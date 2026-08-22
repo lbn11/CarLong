@@ -128,6 +128,14 @@ class LevelDefinition {
   /// 开局放置在棋盘上的炸弹卡数量。
   final int bombs;
 
+  /// clearBoard 目标的残留上限：牌堆抽完时棋盘剩余堆数 ≤ 此值即胜利。
+  /// 合并-3 机制下"绝对清空"需要全局三进制守恒（概率≈0），
+  /// 以残留上限闭环；模拟显示顶部窗口出牌时残堆 ≤4 概率约 90%、≤6 约 99%。
+  final int? clearLimit;
+
+  /// clearBoard 胜利判定：牌堆抽完后棋盘剩余堆数是否达标。
+  bool boardCleared(int tileCount) => tileCount <= (clearLimit ?? 0);
+
   /// 开局被迷雾盖住的格子数（靠近/落子后揭开）。
   final int fogCells;
 
@@ -154,6 +162,7 @@ class LevelDefinition {
     this.highTierBias = 0,
     this.wildcards = 0,
     this.bombs = 0,
+    this.clearLimit,
     this.fogCells = 0,
     this.endless = false,
     this.daily = false,
@@ -163,18 +172,25 @@ class LevelDefinition {
   /// 出生权重：窗口式分布，出牌集中在目标下方 3 档内。
   /// produce 目标只生成【低于】目标等级的卡片——目标车必须靠合成产出，
   /// 避免"抽到目标卡却在棋盘上却不计数"的困惑（producedCount 只在合成升级命中时加）。
-  /// clearBoard 无目标等级，按出租车档位取一个中低位区间。
   ///
   /// 历史：17 档时代用"线性递减"权重（低档多、高档少），链深=目标档位；
   /// 迁移到 50 车系统后目标档位深度翻倍（truck 5→12、rocket 7→44），
   /// 线性权重下深目标的期望出牌数远超牌堆预算，设计上不可达成。
   /// 改为窗口式：距目标 0/1/2/3 档权重 12/8/5/3，更低档位保留长尾 1 用于填场，
   /// 链深恒定 ≈3~4，任何目标都能在原设计的 stockSize 内合成出来。
+  ///
+  /// clearBoard 特例：出牌只落在最高 3 档（49:12 / 48:8 / 47:5），
+  /// 链深 ≤2 即触顶消失，残堆分布稳定（0.9 概率 ≤4 堆），配合 clearLimit 闭环。
   List<int> spawnWeights() {
     final maxIdx = VehicleType.values.length - 1;
-    final baseIdx = targetTier != null
-        ? (targetTier!.index - 1).clamp(0, maxIdx)
-        : (VehicleType.taxi.index + 2).clamp(0, maxIdx);
+    if (goalType == GoalType.clearBoard) {
+      final w = List.filled(maxIdx + 1, 0);
+      w[maxIdx] = 12;
+      w[maxIdx - 1] = 8;
+      w[maxIdx - 2] = 5;
+      return w;
+    }
+    final baseIdx = (targetTier!.index - 1).clamp(0, maxIdx);
     final t = baseIdx.clamp(0, maxIdx);
     final topN = highTierBias.clamp(0, t + 1);
     return List.generate(
@@ -200,7 +216,8 @@ class LevelDefinition {
     final goal = switch (goalType) {
       GoalType.produce =>
         '目标：合成 ${targetTier!.icon} ${targetTier!.name} ×$targetCount',
-      GoalType.clearBoard => '目标：清空棋盘',
+      GoalType.clearBoard =>
+        '目标：用光牌堆，场上剩 ≤${clearLimit ?? 0} 组车',
     };
     final obs = obstacles.isEmpty
         ? ''
@@ -298,6 +315,7 @@ const _handLevels = <LevelDefinition>[
     goalType: GoalType.clearBoard,
     targetTier: null,
     targetCount: 1,
+    clearLimit: 6,
     obstacles: [
       ObstacleSpec(ObstacleType.block, 1, 1),
       ObstacleSpec(ObstacleType.block, 3, 3),
@@ -337,6 +355,7 @@ const _handLevels = <LevelDefinition>[
     goalType: GoalType.clearBoard,
     targetTier: null,
     targetCount: 1,
+    clearLimit: 6,
     timeLimitSeconds: 75,
     obstacles: [
       ObstacleSpec(ObstacleType.ice, 1, 0),
@@ -422,6 +441,7 @@ const _handLevels = <LevelDefinition>[
     goalType: GoalType.clearBoard,
     targetTier: null,
     targetCount: 1,
+    clearLimit: 6,
     obstacles: [
       ObstacleSpec(ObstacleType.block, 1, 1),
       ObstacleSpec(ObstacleType.ice, 0, 4, layers: 2),
@@ -465,6 +485,7 @@ const _handLevels = <LevelDefinition>[
     goalType: GoalType.clearBoard,
     targetTier: null,
     targetCount: 1,
+    clearLimit: 6,
     timeLimitSeconds: 90,
     obstacles: [
       ObstacleSpec(ObstacleType.ice, 0, 0, layers: 3),
@@ -541,6 +562,7 @@ const _handLevels = <LevelDefinition>[
     goalType: GoalType.clearBoard,
     targetTier: null,
     targetCount: 1,
+    clearLimit: 6,
     timeLimitSeconds: 75,
     obstacles: [
       ObstacleSpec(ObstacleType.block, 1, 1),
@@ -599,6 +621,7 @@ const _handLevels = <LevelDefinition>[
     goalType: GoalType.clearBoard,
     targetTier: null,
     targetCount: 1,
+    clearLimit: 6,
     timeLimitSeconds: 90,
     obstacles: [
       ObstacleSpec(ObstacleType.block, 0, 0),
@@ -690,6 +713,7 @@ const _handLevels = <LevelDefinition>[
     goalType: GoalType.clearBoard,
     targetTier: null,
     targetCount: 1,
+    clearLimit: 5,
     timeLimitSeconds: 100,
     obstacles: [
       ObstacleSpec(ObstacleType.block, 0, 0),
@@ -768,6 +792,7 @@ const _handLevels = <LevelDefinition>[
     goalType: GoalType.clearBoard,
     targetTier: null,
     targetCount: 1,
+    clearLimit: 5,
     timeLimitSeconds: 120,
     obstacles: [
       ObstacleSpec(ObstacleType.block, 0, 0),
@@ -833,6 +858,7 @@ const _handLevels = <LevelDefinition>[
     goalType: GoalType.clearBoard,
     targetTier: null,
     targetCount: 1,
+    clearLimit: 5,
     obstacles: [
       ObstacleSpec(ObstacleType.block, 0, 0),
       ObstacleSpec(ObstacleType.block, 5, 5),
@@ -915,6 +941,7 @@ const _handLevels = <LevelDefinition>[
     goalType: GoalType.clearBoard,
     targetTier: null,
     targetCount: 1,
+    clearLimit: 5,
     timeLimitSeconds: 150,
     obstacles: [
       ObstacleSpec(ObstacleType.block, 0, 0),
@@ -1077,6 +1104,7 @@ const _handLevels = <LevelDefinition>[
     goalType: GoalType.clearBoard,
     targetTier: null,
     targetCount: 1,
+    clearLimit: 5,
     movesLimit: 70,
     obstacles: [
       ObstacleSpec(ObstacleType.block, 0, 0),
@@ -1094,6 +1122,7 @@ const _handLevels = <LevelDefinition>[
     goalType: GoalType.clearBoard,
     targetTier: null,
     targetCount: 1,
+    clearLimit: 4,
     timeLimitSeconds: 120,
     obstacles: [
       ObstacleSpec(ObstacleType.block, 1, 0),
@@ -1126,6 +1155,7 @@ const _handLevels = <LevelDefinition>[
     goalType: GoalType.clearBoard,
     targetTier: null,
     targetCount: 1,
+    clearLimit: 4,
     obstacles: [
       ObstacleSpec(ObstacleType.teleport, 1, 1),
       ObstacleSpec(ObstacleType.teleport, 3, 4),
@@ -1156,6 +1186,7 @@ const _handLevels = <LevelDefinition>[
     goalType: GoalType.clearBoard,
     targetTier: null,
     targetCount: 1,
+    clearLimit: 4,
     bombs: 2,
     timeLimitSeconds: 90,
     obstacles: [
@@ -1238,6 +1269,7 @@ const _handLevels = <LevelDefinition>[
     goalType: GoalType.clearBoard,
     targetTier: null,
     targetCount: 1,
+    clearLimit: 4,
     movesLimit: 60,
     obstacles: [
       ObstacleSpec(ObstacleType.teleport, 0, 2),
@@ -1289,6 +1321,7 @@ const _handLevels = <LevelDefinition>[
     goalType: GoalType.clearBoard,
     targetTier: null,
     targetCount: 1,
+    clearLimit: 4,
     movesLimit: 80,
     obstacles: [
       ObstacleSpec(ObstacleType.teleport, 1, 0),

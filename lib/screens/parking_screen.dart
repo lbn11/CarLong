@@ -10,6 +10,7 @@ import '../game/music_player.dart';
 import '../game/parking_daily_challenge.dart';
 import '../game/parking_game.dart';
 import '../models/parking_level.dart';
+import '../models/vehicle.dart';
 import '../save/save_repository.dart';
 import '../services/parking_chapters.dart';
 import '../services/parking_generator.dart';
@@ -61,8 +62,23 @@ class _ParkingScreenState extends State<ParkingScreen> {
   /// 连胜计数
   int _winStreak = 0;
 
+  /// 死局弹窗已弹出标记（同一死局只弹一次，棋盘恢复可动后重置）。
+  bool _deadlockDialogShown = false;
+
   /// 上次记录的生命值（用于检测扣血）
   int _prevLives = ParkingGame.maxLives;
+
+  /// 操作反馈提示（如"横车只能左右滑"），2 秒后自动消失。
+  String? _toast;
+  Timer? _toastTimer;
+
+  void _showToast(String msg) {
+    _toastTimer?.cancel();
+    setState(() => _toast = msg);
+    _toastTimer = Timer(const Duration(milliseconds: 2000), () {
+      if (mounted) setState(() => _toast = null);
+    });
+  }
 
   @override
   void initState() {
@@ -98,11 +114,68 @@ class _ParkingScreenState extends State<ParkingScreen> {
       return;
     }
     _prevLives = _game.lives;
+    // 死局检测：无车可动时弹窗引导，避免无限僵持（每次死局只弹一次）。
+    if (_game.isDeadlocked && !_deadlockDialogShown) {
+      _deadlockDialogShown = true;
+      setState(() {});
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_settled && _game.isDeadlocked) {
+          _showDeadlockDialog();
+        }
+      });
+      return;
+    }
+    if (!_game.isDeadlocked) _deadlockDialogShown = false;
     setState(() {});
+  }
+
+  /// 死局弹窗：撤销 / 道具提示 / 重新开始。
+  void _showDeadlockDialog() {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceLight,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('🚧 无车可动', textAlign: TextAlign.center),
+        content: const Text(
+          '棋盘陷入死局。可以撤销上一步、'
+          '用炸弹等道具清出通路，或重新开始本关。',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: AppColors.ink2, fontSize: 14),
+        ),
+        actions: [
+          if (_game.canUndo)
+            TextButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                _undo();
+              },
+              child: const Text('撤销一步'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(), // 留在场内使用道具
+            child: const Text('使用道具'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _resetGame();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accent,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('重新开始'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   void dispose() {
+    _toastTimer?.cancel();
     _game.removeListener(_onGameUpdate);
     _game.dispose();
     super.dispose();
@@ -125,6 +198,24 @@ class _ParkingScreenState extends State<ParkingScreen> {
     }
 
     if (_selectedVehicle != null) {
+      // 点到另一辆可动的车 → 直接切换选中；再点自己 → 取消选中。
+      // 修复：之前选中后点别车只会报"被挡住"，永远无法换车，
+      // 若选中的车暂时无路可走，玩家会觉得整个棋盘卡死。
+      final tapped = _game.vehicleAt(row, col);
+      if (tapped != null && !tapped.parked && tapped.index != _selectedVehicle) {
+        setState(() {
+          _selectedVehicle = tapped.index;
+          _hintVehicle = null;
+          _hintCells = const [];
+        });
+        unawaited(_audio.tap());
+        return;
+      }
+      if (tapped != null && tapped.index == _selectedVehicle) {
+        setState(() => _selectedVehicle = null);
+        unawaited(_audio.tap());
+        return;
+      }
       // 沿车身方向滑到点击侧最远可达处（长条车只能沿轴滑动）。
       final moved = _game.slideTo(_selectedVehicle!, row, col);
       if (moved) {
@@ -145,6 +236,24 @@ class _ParkingScreenState extends State<ParkingScreen> {
           _settleWin();
         } else if (_game.hasLost) {
           _settleLose();
+        }
+      } else {
+        // 点了滑不过去的方向：明确告知原因（方向不对 vs 被挡住），
+        // 否则玩家以为"不能上下移动"是 bug。
+        final v = _game.vehicles[_selectedVehicle!];
+        final canTurn = v.tier.stats.ability == SpecialAbility.turn;
+        final wrongAxis = !canTurn &&
+            v.length > 1 &&
+            ((v.orientation == ParkingOrientation.horizontal &&
+                    row != v.row) ||
+                (v.orientation == ParkingOrientation.vertical &&
+                    col != v.col));
+        if (wrongAxis) {
+          _showToast(v.orientation == ParkingOrientation.horizontal
+              ? '↔️ 横车只能左右滑'
+              : '↕️ 竖车只能上下滑');
+        } else {
+          _showToast('🚧 前方被挡住了');
         }
       }
     } else {
@@ -770,8 +879,36 @@ class _ParkingScreenState extends State<ParkingScreen> {
       children: [
         _buildHud(),
         Expanded(child: Center(child: _buildBoard())),
+        _buildToast(),
         _buildActionBar(),
       ],
+    );
+  }
+
+  /// 操作反馈条：点错方向/被挡时给一句话解释，2 秒自动消失。
+  Widget _buildToast() {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 150),
+      child: _toast == null
+          ? const SizedBox.shrink()
+          : Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.ink1.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  _toast!,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
     );
   }
 
@@ -1341,8 +1478,61 @@ class _ParkingScreenState extends State<ParkingScreen> {
                   child: Text('🎲×2', style: TextStyle(fontSize: size * 0.16)),
                 ),
               ),
+            // 长条车滑动方向指示：横车 ‹›、竖车 ˄˅。
+            // 华容道规则：长车只能沿车身轴滑动；turn 能力车可任意向，不标。
+            if (v.length > 1 && v.tier.stats.ability != SpecialAbility.turn) ...[
+              if (v.orientation == ParkingOrientation.horizontal) ...[
+                Positioned(
+                  left: size * 0.02,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                      child: _dirChevron(Icons.chevron_left, size)),
+                ),
+                Positioned(
+                  right: size * 0.02,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                      child: _dirChevron(Icons.chevron_right, size)),
+                ),
+              ] else ...[
+                Positioned(
+                  top: size * 0.02,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                      child: _dirChevron(Icons.expand_less, size)),
+                ),
+                Positioned(
+                  bottom: size * 0.02,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                      child: _dirChevron(Icons.expand_more, size)),
+                ),
+              ],
+            ],
           ],
         ),
+      ),
+    );
+  }
+
+  /// 方向指示小圆标（半透明黑底白箭头，不抢车身视觉）。
+  Widget _dirChevron(IconData icon, double size) {
+    return Container(
+      width: size * 0.24,
+      height: size * 0.24,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.30),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        icon,
+        size: size * 0.18,
+        color: Colors.white.withValues(alpha: 0.9),
       ),
     );
   }

@@ -29,6 +29,7 @@ class LevelDataGenerator {
       targetTier: tier,
       targetCount: targetCount,
       goalType: id % 7 == 0 ? GoalType.clearBoard : GoalType.produce,
+      clearLimit: id % 7 == 0 ? ((id < 130) ? 5 : 4) : null,
       timeLimitSeconds: timeLimit,
       highTierBias: _autoBias(tier, targetCount),
       obstacles: _generateObstacles(obstacles, size),

@@ -34,18 +34,18 @@ class _ShopScreenState extends State<ShopScreen> {
   late final AnalyticsService _analytics = AnalyticsService(widget.data, widget.repo);
   final _rng = Random();
 
-  static const _boosterMeta = <String, ({String name, IconData icon, Color color})>{
-    // 合并模式 boosters (existing)
-    'time': (name: '加时卡', icon: Icons.schedule, color: AppColors.sky),
-    'cards': (name: '补卡卡', icon: Icons.inventory_2, color: AppColors.mint),
-    'double': (name: '双倍卡', icon: Icons.casino, color: AppColors.sun),
-    // 停车模式专用道具
-    'bomb': (name: '炸弹', icon: Icons.whatshot, color: Color(0xFFFF7043)),
-    'spring': (name: '弹簧', icon: Icons.open_with, color: Color(0xFF66BB6A)),
-    'balloon': (name: '气球飞越', icon: Icons.location_on, color: Color(0xFF42A5F5)),
-    'key': (name: '钥匙', icon: Icons.vpn_key, color: Color(0xFFFFCA28)),
-    'hammer': (name: '锤子', icon: Icons.build, color: Color(0xFF8D6E63)),
-    'doubleMove': (name: '双倍移动', icon: Icons.compare_arrows, color: Color(0xFFAB47BC)),
+  static const _boosterMeta = <String, ({String name, IconData icon, Color color, bool parkingOnly})>{
+    // 合成模式道具：开局自动生效（GameScreen._applyBoosters）
+    'time': (name: '加时卡', icon: Icons.schedule, color: AppColors.sky, parkingOnly: false),
+    'cards': (name: '补卡卡', icon: Icons.inventory_2, color: AppColors.mint, parkingOnly: false),
+    'double': (name: '双倍卡', icon: Icons.casino, color: AppColors.sun, parkingOnly: false),
+    // 停车模式专用道具：仅停车对局内使用
+    'bomb': (name: '炸弹', icon: Icons.whatshot, color: Color(0xFFFF7043), parkingOnly: true),
+    'spring': (name: '弹簧', icon: Icons.open_with, color: Color(0xFF66BB6A), parkingOnly: true),
+    'balloon': (name: '气球飞越', icon: Icons.location_on, color: Color(0xFF42A5F5), parkingOnly: true),
+    'key': (name: '钥匙', icon: Icons.vpn_key, color: Color(0xFFFFCA28), parkingOnly: true),
+    'hammer': (name: '锤子', icon: Icons.build, color: Color(0xFF8D6E63), parkingOnly: true),
+    'doubleMove': (name: '双倍移动', icon: Icons.compare_arrows, color: Color(0xFFAB47BC), parkingOnly: true),
   };
 
   String _today() {
@@ -165,7 +165,7 @@ class _ShopScreenState extends State<ShopScreen> {
       data.boosters[key] = (data.boosters[key] ?? 0) + 1;
       final meta = _boosterMeta[key]!;
       title = '🎁 开到 ${meta.name}！';
-      desc = '库存 +1，下一关开局自动生效';
+      desc = meta.parkingOnly ? '库存 +1，停车模式对局内使用' : '库存 +1，合成开局自动生效';
       icon = meta.icon;
       color = meta.color;
     } else if (roll < 0.75) {
@@ -319,7 +319,7 @@ class _ShopScreenState extends State<ShopScreen> {
                                     fontSize: 17)),
                             const SizedBox(height: 4),
                             const Text(
-                              '100 🪙 抽一箱：40% 开到加时/补卡/双倍卡，\n'
+                              '100 🪙 抽一箱：40% 开到随机道具（合成卡或停车道具），\n'
                               '60% 开到金币（+90 ~ +300）。',
                               style: TextStyle(
                                   color: AppColors.ink2, fontSize: 12),
@@ -327,8 +327,9 @@ class _ShopScreenState extends State<ShopScreen> {
                             const SizedBox(height: 6),
                             Text(
                               '消耗品说明：加时卡限时关 +30s（非限时关 +30🪙）、'
-                              '补卡卡牌堆 +3、双倍卡通关金币 ×2，'
-                              '也可在停车模式三星奖励免费获得。',
+                              '补卡卡牌堆 +3、双倍卡通关金币 ×2；'
+                              '炸弹/弹簧等停车道具仅停车模式可用。'
+                              '合成卡也可在停车模式三星奖励免费获得。',
                               style: TextStyle(
                                   color: AppColors.ink3, fontSize: 11),
                             ),
@@ -492,7 +493,43 @@ class _ShopScreenState extends State<ShopScreen> {
                       style: TextStyle(
                           color: AppColors.ink1, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 8),
-                  for (final entry in _boosterMeta.entries) ...[
+                  // 合成道具组：开局自动生效。
+                  const Text('🃏 合成道具 · 开局自动生效',
+                      style: TextStyle(
+                          color: AppColors.ink2,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800)),
+                  for (final entry in _boosterMeta.entries.where(
+                      (e) => !e.value.parkingOnly)) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 5),
+                      child: Row(
+                        children: [
+                          Icon(entry.value.icon,
+                              color: entry.value.color, size: 20),
+                          const SizedBox(width: 8),
+                          Text(entry.value.name,
+                              style: const TextStyle(
+                                  color: AppColors.ink2, fontSize: 14)),
+                          const Spacer(),
+                          Text('持有 ${data.boosters[entry.key] ?? 0}',
+                              style: const TextStyle(
+                                  color: AppColors.ink3,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  // 停车道具组：仅停车对局内使用，合成关不生效。
+                  const Text('🅿️ 停车道具 · 仅停车模式可用',
+                      style: TextStyle(
+                          color: AppColors.ink2,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800)),
+                  for (final entry in _boosterMeta.entries
+                      .where((e) => e.value.parkingOnly)) ...[
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 5),
                       child: Row(
@@ -515,7 +552,7 @@ class _ShopScreenState extends State<ShopScreen> {
                   ],
                   const SizedBox(height: 4),
                   const Text(
-                    '消耗品来自金币宝箱与停车模式三星奖励。停车道具仅在停车模式可用。',
+                    '消耗品来自金币宝箱与停车模式三星奖励。停车道具在合成关卡不会消耗、不会生效。',
                     style: TextStyle(color: AppColors.ink3, fontSize: 11),
                   ),
                 ],

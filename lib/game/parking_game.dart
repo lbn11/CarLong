@@ -202,10 +202,11 @@ class ParkingGame extends ChangeNotifier {
       if (_won || _lost) return;
       _elapsedSeconds++;
 
-      // 限步超时
+      // 限时超时：与限步一致走扣命制，重置计时给剩余生命新的时间窗口；
+      // 生命耗尽由 loseLife 内部落败。
       if (level.timeLimit != null && _elapsedSeconds >= level.timeLimit!) {
-        _lost = true;
-        _timer?.cancel();
+        _elapsedSeconds = 0;
+        loseLife();
       }
       notifyListeners();
     });
@@ -392,7 +393,9 @@ class ParkingGame extends ChangeNotifier {
     }
   }
 
-  /// 判负：限步关步数耗尽且未达成；或已无任何可移动的车辆（死局）。
+  /// 判负：限步关步数耗尽且未达成（扣命制）。
+  /// 死局不在此判负——由 [isDeadlocked] 暴露给 UI 弹窗引导撤销/道具/重开，
+  /// 因为炸弹等道具可以解除死局，自动扣命会误伤持道具的玩家。
   void _checkLose() {
     if (level.movesLimit != null &&
         _moves >= level.movesLimit! &&
@@ -407,6 +410,33 @@ class ParkingGame extends ChangeNotifier {
 
   VehicleState? get _targetVehicle =>
       _vehicles.where((v) => v.tier == level.targetTier).firstOrNull;
+
+  /// 是否还有任意一辆车能滑动一步（单步 canMoveTo 即完整路径校验：
+  /// 一步平移后车身 = 原车身移一格，新进入格已被目标占格检查覆盖）。
+  bool get hasAnyMove {
+    for (final v in _vehicles) {
+      if (v.parked) continue;
+      if (canMoveTo(v.index, v.row, v.col + 1) ||
+          canMoveTo(v.index, v.row, v.col - 1) ||
+          canMoveTo(v.index, v.row + 1, v.col) ||
+          canMoveTo(v.index, v.row - 1, v.col)) {
+        return true;
+      }
+      // 传送能力车可跳到任意合法空位，邻格全堵不代表无路。
+      if (v.tier.stats.ability == SpecialAbility.teleport) {
+        for (var r = 0; r < level.rows; r++) {
+          for (var c = 0; c < level.cols; c++) {
+            if (canMoveTo(v.index, r, c)) return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  /// 死局：对局进行中但无任何车辆可动。
+  /// UI 应弹窗引导撤销/使用道具/重新开始，避免无限僵持。
+  bool get isDeadlocked => !_won && !_lost && !hasAnyMove;
 
   /// 提示：基于当前棋盘实时状态求下一步建议（不消耗步数、不改状态）。
   /// 返回 [ParkingMove]，无解或已胜利/失败时返回 null。
