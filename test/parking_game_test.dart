@@ -61,30 +61,33 @@ void main() {
       expect(game.canMoveTo(filler.index, 3, 3), isFalse);
     });
 
-    test('限步关卡：步数耗尽扣命，生命耗尽才判负', () {
+    test('限步关卡：步数耗尽直接判负（无生命系统）', () {
       final game = ParkingGame(_miniLevel(movesLimit: 1));
-      // 每次耗尽步数扣一条命；三条命全部耗光才判负。
-      for (var i = 1; i <= ParkingGame.maxLives; i++) {
-        _moveBikeAside(game);
-        expect(game.lives, ParkingGame.maxLives - i);
-        expect(game.hasLost, i == ParkingGame.maxLives);
-        if (!game.hasLost) game.undo();
-      }
-      expect(game.isLivesDepleted, isTrue);
-    });
-
-    test('撤销可解除判负状态', () {
-      final game = ParkingGame(_miniLevel(movesLimit: 1));
-      // 耗光三条命进入判负。
-      for (var i = 1; i < ParkingGame.maxLives; i++) {
-        _moveBikeAside(game);
-        game.undo();
-      }
       _moveBikeAside(game);
       expect(game.hasLost, isTrue);
-      game.undo();
-      expect(game.hasLost, isFalse);
+    });
+
+    test('undoMoves：一次回退最多 3 步并解除判负', () {
+      final game = ParkingGame(_miniLevel());
+      // 连走 2 步（bike 让路后原路返回）制造可撤销深度。
+      _moveBikeAside(game);
+      final bike =
+          game.vehicles.firstWhere((v) => v.tier == VehicleType.bicycle);
+      game.moveVehicle(bike.index, 3, 1);
+      expect(game.moves, 2);
+      // 深度不足时按实际深度回退。
+      expect(game.undoMoves(3), 2);
       expect(game.moves, 0);
+      expect(game.undoDepth, 0);
+
+      // 判负后撤销可解除。
+      final lostGame = ParkingGame(_miniLevel(movesLimit: 1));
+      _moveBikeAside(lostGame);
+      expect(lostGame.hasLost, isTrue);
+      final undone = lostGame.undoMoves(3);
+      expect(undone, 1);
+      expect(lostGame.hasLost, isFalse);
+      expect(lostGame.moves, 0);
     });
 
     test('直线移动：不能直接斜向移动', () {

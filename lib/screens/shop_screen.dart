@@ -40,6 +40,7 @@ class _ShopScreenState extends State<ShopScreen> {
     'cards': (name: '补卡卡', icon: Icons.inventory_2, color: AppColors.mint, parkingOnly: false),
     'double': (name: '双倍卡', icon: Icons.casino, color: AppColors.sun, parkingOnly: false),
     // 停车模式专用道具：仅停车对局内使用
+    'undo': (name: '撤销卡', icon: Icons.undo, color: Color(0xFF26A69A), parkingOnly: true),
     'bomb': (name: '炸弹', icon: Icons.whatshot, color: Color(0xFFFF7043), parkingOnly: true),
     'spring': (name: '弹簧', icon: Icons.open_with, color: Color(0xFF66BB6A), parkingOnly: true),
     'balloon': (name: '气球飞越', icon: Icons.location_on, color: Color(0xFF42A5F5), parkingOnly: true),

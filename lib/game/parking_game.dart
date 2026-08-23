@@ -118,8 +118,6 @@ class ParkingGame extends ChangeNotifier {
   Timer? _timer;
   bool _won = false;
   bool _lost = false;
-  int _lives = 3;
-  static const int maxLives = 3;
 
   ParkingGame(this.level) {
     _initGrid();
@@ -148,11 +146,11 @@ class ParkingGame extends ChangeNotifier {
   /// 是否失败
   bool get hasLost => _lost;
 
-  int get lives => _lives;
-  bool get isLivesDepleted => _lives <= 0;
-
   /// 能否撤销
   bool get canUndo => _undoStack.isNotEmpty;
+
+  /// 可撤销的步数（撤销卡一次最多回退 3 步，UI 显示用）
+  int get undoDepth => _undoStack.length;
 
   /// 剩余时间(限时有意义时)
   int? get timeLeft =>
@@ -202,11 +200,10 @@ class ParkingGame extends ChangeNotifier {
       if (_won || _lost) return;
       _elapsedSeconds++;
 
-      // 限时超时：与限步一致走扣命制，重置计时给剩余生命新的时间窗口；
-      // 生命耗尽由 loseLife 内部落败。
+      // 限时超时：直接判负（已无生命系统，撤销/重开是唯一出路）。
       if (level.timeLimit != null && _elapsedSeconds >= level.timeLimit!) {
-        _elapsedSeconds = 0;
-        loseLife();
+        _lost = true;
+        _timer?.cancel();
       }
       notifyListeners();
     });
@@ -393,19 +390,20 @@ class ParkingGame extends ChangeNotifier {
     }
   }
 
-  /// 判负：限步关步数耗尽且未达成（扣命制）。
+  /// 判负：限步关步数耗尽且未达成（直接判负，无生命系统）。
   /// 死局不在此判负——由 [isDeadlocked] 暴露给 UI 弹窗引导撤销/道具/重开，
-  /// 因为炸弹等道具可以解除死局，自动扣命会误伤持道具的玩家。
+  /// 因为炸弹等道具可以解除死局，自动判负会误伤持道具的玩家。
   void _checkLose() {
     if (level.movesLimit != null &&
         _moves >= level.movesLimit! &&
         _targetVehicle != null &&
         !_targetVehicle!.parked) {
-      loseLife();
+      if (!_lost) {
+        _lost = true;
+        _timer?.cancel();
+      }
       return;
     }
-    // Don't auto-lose on deadlock - let the player use items/undo
-    // The lives system handles the failure path
   }
 
   VehicleState? get _targetVehicle =>
@@ -709,35 +707,28 @@ class ParkingGame extends ChangeNotifier {
   /// 获取所有标记的格子（只读）
   Map<String, String> get marks => Map.unmodifiable(_marks);
 
-  /// 失去一条生命。返回是否还有剩余生命。
-  bool loseLife() {
-    if (_lives <= 0) {
-      // 已无生命（如撤销后再次触发）：确保进入失败态，避免"无命但未判负"的卡死状态。
-      if (!_lost) {
-        _lost = true;
-        _timer?.cancel();
-        notifyListeners();
-      }
-      return false;
+  /// 撤销最多 [n] 步（撤销卡/看广告一次回退 3 步）。
+  /// 返回实际回退的步数。
+  int undoMoves(int n) {
+    var undone = 0;
+    for (var i = 0; i < n && _undoStack.isNotEmpty; i++) {
+      final action = _undoStack.removeLast();
+      final v = _vehicles[action.vehicleIndex];
+      _vacate(v, v.row, v.col);
+      _vehicles[action.vehicleIndex] = v.copyWith(
+        row: action.fromRow,
+        col: action.fromCol,
+        parked: false,
+      );
+      _occupy(_vehicles[action.vehicleIndex], action.fromRow, action.fromCol);
+      _moves--;
+      undone++;
     }
-    _lives--;
-    if (_lives <= 0) {
-      _lost = true;
-      _timer?.cancel();
-    }
+    if (undone == 0) return 0;
+    _won = false; // 撤销后重新检查胜利
+    _lost = false; // 撤销后解除死局/限步判负
     notifyListeners();
-    return _lives > 0;
-  }
-
-  /// 复活：恢复1条命，解除失败状态，重启计时器。
-  void revive() {
-    if (_lives >= maxLives) return;
-    _lives++;
-    _lost = false;
-    if (_timer == null || !_timer!.isActive) {
-      _startTimer();
-    }
-    notifyListeners();
+    return undone;
   }
 
   /// 重置关卡
@@ -749,7 +740,6 @@ class ParkingGame extends ChangeNotifier {
     _elapsedSeconds = 0;
     _won = false;
     _lost = false;
-    _lives = maxLives;
     _initGrid();
     _initVehicles();
     _startTimer();

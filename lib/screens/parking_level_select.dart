@@ -205,14 +205,17 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
   Widget _levelTile(ParkingLevel level) {
     final stars = widget.data.parkingBestStars[level.id] ?? 0;
     return GestureDetector(
-      onTap: () {
-        Navigator.of(context).push(MaterialPageRoute(
+      onTap: () async {
+        // 等对局返回后强制重绘：ParkingScreen 直接改的是共享的 data，
+        // 不 setState 的话本页仍显示旧星级，看起来像"通关没被记录"。
+        await Navigator.of(context).push(MaterialPageRoute(
           builder: (_) => ParkingScreen(
             level: level,
             data: widget.data,
             repo: widget.repo,
           ),
         ));
+        if (mounted) setState(() {});
       },
       child: Container(
         decoration: BoxDecoration(
@@ -349,9 +352,9 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
     );
   }
 
-  void _openParkingDaily() {
+  void _openParkingDaily() async {
     final level = ParkingDailyChallenge.today();
-    Navigator.of(context).push(
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ParkingScreen(
           level: level,
@@ -361,5 +364,6 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
         ),
       ),
     );
+    if (mounted) setState(() {});
   }
 }

@@ -15,7 +15,7 @@ import '../save/save_repository.dart';
 import '../services/parking_chapters.dart';
 import '../services/parking_generator.dart';
 import '../theme/app_theme.dart';
-import '../widgets/vehicle_image.dart';
+import '../widgets/parking_vehicle_body.dart';
 
 /// 车辆滑动动画时长（选车滑行 / 重置归位）。
 const Duration _kVehicleSlide = Duration(milliseconds: 170);
@@ -65,9 +65,6 @@ class _ParkingScreenState extends State<ParkingScreen> {
   /// 死局弹窗已弹出标记（同一死局只弹一次，棋盘恢复可动后重置）。
   bool _deadlockDialogShown = false;
 
-  /// 上次记录的生命值（用于检测扣血）
-  int _prevLives = ParkingGame.maxLives;
-
   /// 操作反馈提示（如"横车只能左右滑"），2 秒后自动消失。
   String? _toast;
   Timer? _toastTimer;
@@ -85,7 +82,6 @@ class _ParkingScreenState extends State<ParkingScreen> {
     super.initState();
     _analytics = AnalyticsService(widget.data, widget.repo);
     _game = ParkingGame(widget.level);
-    _prevLives = _game.lives;
     _game.addListener(_onGameUpdate);
     // 音效/触感跟随全局开关。
     _audio.soundOn = widget.data.soundOn;
@@ -104,16 +100,6 @@ class _ParkingScreenState extends State<ParkingScreen> {
 
   void _onGameUpdate() {
     if (!mounted) return;
-    // 检测生命值变化 — 扣血时弹出失去生命对话框
-    if (_game.lives < _prevLives && _game.lives > 0 && !_game.hasWon) {
-      _prevLives = _game.lives;
-      setState(() {});
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && !_settled) _showLoseLifeDialog();
-      });
-      return;
-    }
-    _prevLives = _game.lives;
     // 死局检测：无车可动时弹窗引导，避免无限僵持（每次死局只弹一次）。
     if (_game.isDeadlocked && !_deadlockDialogShown) {
       _deadlockDialogShown = true;
@@ -129,7 +115,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
     setState(() {});
   }
 
-  /// 死局弹窗：撤销 / 道具提示 / 重新开始。
+  /// 死局弹窗：撤销 3 步 / 道具提示 / 重新开始。
   void _showDeadlockDialog() {
     showDialog<void>(
       context: context,
@@ -139,7 +125,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('🚧 无车可动', textAlign: TextAlign.center),
         content: const Text(
-          '棋盘陷入死局。可以撤销上一步、'
+          '棋盘陷入死局。可以撤销 3 步、'
           '用炸弹等道具清出通路，或重新开始本关。',
           textAlign: TextAlign.center,
           style: TextStyle(color: AppColors.ink2, fontSize: 14),
@@ -149,9 +135,9 @@ class _ParkingScreenState extends State<ParkingScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(ctx).pop();
-                _undo();
+                _useUndo();
               },
-              child: const Text('撤销一步'),
+              child: const Text('撤销 3 步'),
             ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(), // 留在场内使用道具
@@ -357,88 +343,11 @@ class _ParkingScreenState extends State<ParkingScreen> {
 
   void _settleLose() {
     if (_settled) return;
-    
-    if (_game.lives > 0) {
-      // Lost a life but can continue
-      _showLoseLifeDialog();
-      return;
-    }
-    
-    // All lives lost - game over
     _settled = true;
     _winStreak = 0;
     widget.repo.save(widget.data);
     _audio.play(Sfx.lose);
     unawaited(_audio.fail());
-  }
-
-  void _showLoseLifeDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceLight,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('💔 失去一条命！', textAlign: TextAlign.center),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(ParkingGame.maxLives, (i) {
-                return Text(
-                  i < _game.lives ? '❤️' : '🖤',
-                  style: const TextStyle(fontSize: 28),
-                );
-              }),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              '剩余 ${_game.lives} 条命',
-              style: const TextStyle(color: AppColors.ink2, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              '继续挑战或放弃本关',
-              style: TextStyle(color: AppColors.ink3, fontSize: 13),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              _resetGame();
-            },
-            child: const Text('重新开始'),
-          ),
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              _game.revive();
-              _prevLives = _game.lives;
-              setState(() {});
-            },
-            icon: const Icon(Icons.play_circle_fill),
-            label: const Text('看广告复活'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF66BB6A),
-              foregroundColor: Colors.white,
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.accent,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('继续挑战'),
-          ),
-        ],
-      ),
-    );
   }
 
   void _resetGame() {
@@ -455,20 +364,104 @@ class _ParkingScreenState extends State<ParkingScreen> {
       _activeItem = null;
       _doubleMoveActive = false;
       _markMode = false;
-      _prevLives = ParkingGame.maxLives;
     });
   }
 
-  void _undo() {
-    if (!_game.canUndo) return;
+  /// 撤销 3 步：有撤销卡消耗一张，没有则看广告。
+  void _useUndo() {
+    if (_game.hasWon || _game.hasLost) return;
+    if (!_game.canUndo) {
+      _showToast('没有可撤销的操作');
+      return;
+    }
     _activeItem = null;
     _doubleMoveActive = false;
-    _game.undo();
-    _audio.play(Sfx.undo);
+    final stock = widget.data.boosters['undo'] ?? 0;
+    if (stock > 0) {
+      setState(() => widget.data.boosters['undo'] = stock - 1);
+      widget.repo.save(widget.data);
+      final n = _game.undoMoves(3);
+      _analytics.toolUse('undo', 0, widget.data.coins);
+      _audio.play(Sfx.undo);
+      _showToast('↩️ 撤销卡 · 回退 $n 步');
+      return;
+    }
+    // 无撤销卡：看广告回退 3 步（模拟广告，接 SDK 后替换为真实播放）。
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceLight,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('🧯 撤销卡不足', textAlign: TextAlign.center),
+        content: const Text(
+          '看一条广告，立即回退 3 步。',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: AppColors.ink2, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('取消'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              if (!_game.canUndo) return;
+              _analytics.toolUse('ad_undo', 0, widget.data.coins);
+              final n = _game.undoMoves(3);
+              _audio.play(Sfx.undo);
+              _showToast('🎬 广告撤销 · 回退 $n 步');
+            },
+            icon: const Icon(Icons.play_circle_fill),
+            label: const Text('🎬 看广告'),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF66BB6A),
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
+  /// 提示：每次都需看广告解锁。
   void _requestHint() {
     if (_game.hasWon || _game.hasLost) return;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceLight,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('💡 获取提示', textAlign: TextAlign.center),
+        content: const Text(
+          '看一条广告，解锁下一步最优走法。',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: AppColors.ink2, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('取消'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _analytics.toolUse('ad_hint', 0, widget.data.coins);
+              _applyHint();
+            },
+            icon: const Icon(Icons.play_circle_fill),
+            label: const Text('🎬 看广告'),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.accent,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _applyHint() {
     final h = _game.hint();
     setState(() {
       _hintVehicle = h?.vehicleIndex;
@@ -778,19 +771,21 @@ class _ParkingScreenState extends State<ParkingScreen> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (!won)
+              if (!won && _game.canUndo)
                 Padding(
                   padding: const EdgeInsets.only(right: 12),
                   child: FilledButton.icon(
                     onPressed: () {
-                      // 模拟观看广告复活 — 恢复1条命
-                      _game.revive();
-                      _prevLives = _game.lives;
+                      // 模拟观看广告：回退 3 步并解除判负（步数/时间随之返还）。
+                      _analytics.toolUse('ad_undo', 0, widget.data.coins);
+                      final n = _game.undoMoves(3);
                       _settled = false;
                       setState(() {});
+                      _audio.play(Sfx.undo);
+                      _showToast('🎬 广告撤销 · 回退 $n 步');
                     },
                     icon: const Icon(Icons.play_circle_fill),
-                    label: const Text('看广告复活'),
+                    label: const Text('看广告回退 3 步'),
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF66BB6A),
                       foregroundColor: Colors.white,
@@ -957,20 +952,11 @@ class _ParkingScreenState extends State<ParkingScreen> {
                   const SizedBox(width: 6),
                   _buildInfoChip('👣 ${_game.moves}', AppColors.surfaceSoft),
                   const SizedBox(width: 6),
-                  // Lives display
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: List.generate(ParkingGame.maxLives, (i) {
-                      final alive = i < _game.lives;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 2),
-                        child: Text(
-                          alive ? '❤️' : '🖤',
-                          style: const TextStyle(fontSize: 18),
-                        ),
-                      );
-                    }),
-                  ),
+                  // 撤销卡库存（替代原生命值展示）
+                  Builder(builder: (context) {
+                    final undoStock = widget.data.boosters['undo'] ?? 0;
+                    return _buildInfoChip('🧯 x$undoStock', AppColors.surfaceSoft);
+                  }),
                   if (_winStreak > 1) ...[
                     const SizedBox(width: 6),
                     Container(
@@ -1195,9 +1181,12 @@ class _ParkingScreenState extends State<ParkingScreen> {
             const SizedBox(width: 12),
           ],
           ElevatedButton.icon(
-            onPressed: _game.canUndo ? _undo : null,
+            onPressed: _useUndo,
             icon: const Icon(Icons.undo),
-            label: const Text('撤销'),
+            label: Text(
+              _game.canUndo ? '撤销 3 步' : '撤销',
+              style: const TextStyle(fontSize: 13),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.surfaceLight,
               foregroundColor: AppColors.ink1,
@@ -1419,12 +1408,12 @@ class _ParkingScreenState extends State<ParkingScreen> {
                         ),
                       ],
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(size * 0.18),
-                      child: Padding(
-                        padding: EdgeInsets.all(size * 0.08),
-                        child: VehicleImage(vehicle: v.tier, size: size),
-                      ),
+                    child: ParkingVehicleBody(
+                      tier: v.tier,
+                      length: v.length,
+                      horizontal:
+                          v.orientation == ParkingOrientation.horizontal,
+                      cellSize: size,
                     ),
                   ),
                 ],

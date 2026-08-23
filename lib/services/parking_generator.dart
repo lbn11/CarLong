@@ -39,11 +39,20 @@ class ParkingLevelGenerator {
     final tier = _tierForLevel(id);
 
     // 障碍 / 挡路车数量随难度增长（6x6 密度封顶：障碍 6、挡路车 4）。
+    // 注意：障碍格在 ~50 关后即饱和封顶，真正的章节差异化靠下方能力车偏置。
     final obstacleCount = ((id ~/ 6).clamp(1, size));
     final fillCount = (id < 25
             ? 1
             : (id < 100 ? 2 : (id < 300 ? 3 : 4)))
         .clamp(1, size - 2);
+
+    // 特殊元素随章节加浓：填充车按章节概率偏向"带特殊能力"的档位
+    // （turn/teleport/flyOver 等），让能力成为后期真实解法而非随机彩蛋。
+    final chapterIdx =
+        ParkingChapters.all.indexOf(ParkingChapters.chapterForId(id));
+    final abilityBias = chapterIdx <= 0
+        ? 0.0
+        : (0.10 + (chapterIdx - 1) * 0.05).clamp(0.0, 0.45);
 
     // 难度目标随 id 缓慢增长：小棋盘易，大棋盘需多思考。达到目标即提前结束，控制耗时。
     final target = _targetMinMoves(id);
@@ -64,6 +73,7 @@ class ParkingLevelGenerator {
         tier: tier,
         obstacleCount: obstacleCount,
         fillCount: fillCount,
+        abilityBias: abilityBias,
       );
       final minMoves = ParkingSolver.minMoves(
         candidate,
@@ -107,6 +117,7 @@ class ParkingLevelGenerator {
     required VehicleType tier,
     required int obstacleCount,
     required int fillCount,
+    required double abilityBias,
   }) {
     final pr = size - 1; // 停车位所在行（底部）
     final pc = (size - 2).clamp(0, size - 1); // 停车位所在列
@@ -131,9 +142,19 @@ class ParkingLevelGenerator {
         if (i != tier.id) VehicleType.values[i]
     ];
     otherTiers.shuffle(rng); // 确定性：同 id 同一关配色稳定可复现
+    // 能力车档位池：排除目标档（防止冒充目标车停车）。
+    final abilityTiers = [
+      for (final t in otherTiers)
+        if (t.stats.ability != SpecialAbility.none) t,
+    ];
     var fillerCursor = 0;
-    VehicleType nextFillerTier() =>
-        otherTiers[fillerCursor++ % otherTiers.length];
+    VehicleType nextFillerTier() {
+      // 章节偏置：概率性优先给填充车配特殊能力档位。
+      if (abilityBias > 0 && abilityTiers.isNotEmpty && rng.nextDouble() < abilityBias) {
+        return abilityTiers[rng.nextInt(abilityTiers.length)];
+      }
+      return otherTiers[fillerCursor++ % otherTiers.length];
+    }
 
     // 目标车：size>=5 时放 2 格横车在停车行（经典 Rush Hour 红车），起点不压停车位；
     // 小棋盘(size<=4)用单格车，且强制不在底部停车行，保证至少"下移+横移"两步。
