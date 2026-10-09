@@ -37,7 +37,7 @@ void main() {
       ],
       targetTier: VehicleType.sedan,
     );
-    final data = PlayerData()..tutorialCompleted.add(-1); // 跳过教学，避免延迟回调
+    final data = PlayerData();
     await tester.pumpWidget(MaterialApp(
       home: ParkingScreen(
         level: level,
@@ -47,6 +47,8 @@ void main() {
     ));
     await tester.pumpAndSettle();
     expect(find.byType(ParkingScreen), findsOneWidget);
+    // 目标车位幽灵车可见（🅿 角标）。
+    expect(find.text('🅿'), findsOneWidget);
   });
 
   testWidgets('点击选中再滑入车位 → 胜利弹窗与彩带不抛异常', (tester) async {
@@ -62,7 +64,7 @@ void main() {
       ],
       targetTier: VehicleType.sedan,
     );
-    final data = PlayerData()..tutorialCompleted.add(-1); // 跳过教学，避免延迟回调
+    final data = PlayerData();
     await tester.pumpWidget(MaterialApp(
       home: ParkingScreen(
         level: level,

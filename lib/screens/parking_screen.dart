@@ -44,8 +44,6 @@ class _ParkingScreenState extends State<ParkingScreen> {
   final AudioFeedback _audio = AudioFeedback();
   late final AnalyticsService _analytics;
   int? _selectedVehicle;
-  int _tutorialStep = 0;
-  bool _tutorialActive = false;
 
   /// 提示状态：被建议移动的车辆索引（用于高亮，null 表示未激活）。
   int? _hintVehicle;
@@ -69,6 +67,25 @@ class _ParkingScreenState extends State<ParkingScreen> {
   String? _toast;
   Timer? _toastTimer;
 
+  /// 目标车位幽灵车呼吸脉冲（Timer 驱动；不用循环动画控制器，
+  /// 避免测试里 pumpAndSettle 永不结束）。
+  bool _ghostPulse = false;
+  Timer? _ghostTimer;
+
+  /// 停车位坐标（关卡不可变，初始化一次）。
+  late final (int, int) _parkingCell = _findParkingCell();
+
+  (int, int) _findParkingCell() {
+    for (var r = 0; r < widget.level.rows; r++) {
+      for (var c = 0; c < widget.level.cols; c++) {
+        if (widget.level.grid[r][c] == ParkingCellType.parking) {
+          return (r, c);
+        }
+      }
+    }
+    return (-1, -1);
+  }
+
   void _showToast(String msg) {
     _toastTimer?.cancel();
     setState(() => _toast = msg);
@@ -87,11 +104,10 @@ class _ParkingScreenState extends State<ParkingScreen> {
     _audio.soundOn = widget.data.soundOn;
     _audio.vibrateOn = widget.data.vibrateOn;
     unawaited(_audio.load());
-    // 停车模式首次进入弹出教学（2026-08-19 重做轻量版后恢复启用：
-    // 气泡提示不遮挡棋盘、不拦截点击，玩家可随时跳过）。
-    if (!widget.data.tutorialCompleted.contains(-1)) {
-      _tutorialActive = true;
-    }
+    // 目标车位幽灵车呼吸脉冲。
+    _ghostTimer = Timer.periodic(const Duration(milliseconds: 900), (_) {
+      if (mounted) setState(() => _ghostPulse = !_ghostPulse);
+    });
     // 停车场景 BGM（跟随音效开关；返回首页由 home 的 didPopNext 恢复）。
     if (widget.data.soundOn) {
       MusicPlayer.instance.play(MusicPlayer.parking);
@@ -162,6 +178,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
   @override
   void dispose() {
     _toastTimer?.cancel();
+    _ghostTimer?.cancel();
     _game.removeListener(_onGameUpdate);
     _game.dispose();
     super.dispose();
@@ -217,7 +234,6 @@ class _ParkingScreenState extends State<ParkingScreen> {
             _selectedVehicle = null;
           }
         });
-        _onPlayerAction('move');
         if (_game.hasWon) {
           _settleWin();
         } else if (_game.hasLost) {
@@ -254,7 +270,6 @@ class _ParkingScreenState extends State<ParkingScreen> {
         setState(() => _selectedVehicle = v.index);
         _audio.play(Sfx.tick);
         unawaited(_audio.tap());
-        _onPlayerAction('select');
       }
     }
   }
@@ -488,26 +503,6 @@ class _ParkingScreenState extends State<ParkingScreen> {
     }
   }
 
-  void _onPlayerAction(String action) {
-    if (!_tutorialActive) return;
-    if (_tutorialStep == 0 && action == 'select') {
-      setState(() => _tutorialStep = 1);
-    } else if (_tutorialStep == 1 && action == 'move') {
-      // Check if the moved vehicle is the target and it reached parking
-      if (_game.hasWon) {
-        setState(() => _tutorialStep = 2);
-        Future.delayed(const Duration(seconds: 3), () {
-          if (mounted) {
-            setState(() => _tutorialActive = false);
-            widget.data.tutorialCompleted.add(-1);
-            widget.repo.save(widget.data);
-            _analytics.tutorialComplete('parking');
-          }
-        });
-      }
-    }
-  }
-
   void _showHelpDialog() {
     showDialog(
       context: context,
@@ -532,8 +527,10 @@ class _ParkingScreenState extends State<ParkingScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('目标：把 ${widget.level.targetTier.icon} 停到 🟢 绿色车位上',
+            Text('目标：把 ${widget.level.targetTier.icon} ${widget.level.targetTier.name} 开进虚线车位',
                 style: const TextStyle(color: AppColors.ink1, fontWeight: FontWeight.bold)),
+            const Text('（车位上停着同款半透明"幽灵车"，就是它）',
+                style: TextStyle(color: AppColors.ink2, fontSize: 12)),
             const SizedBox(height: 12),
             const Text('• 点击一辆车选中（金色边框）', style: TextStyle(color: AppColors.ink2)),
             const Text('• 点击空地或车位 — 直线滑行过去', style: TextStyle(color: AppColors.ink2)),
@@ -572,92 +569,10 @@ class _ParkingScreenState extends State<ParkingScreen> {
                   : _buildPortraitLayout(),
               if (_game.hasWon || _game.hasLost)
                 _buildResultOverlay(),
-              if (_tutorialActive)
-                _buildParkingTutorial(),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildParkingTutorial() {
-    final step0 = _tutorialStep == 0;
-    final text = step0
-        ? '点击车辆选中它（金色边框）'
-        : (_tutorialStep == 1 ? '点击绿色车位 — 把车停进去' : '🎉 停车成功！');
-    final bottomOffset = step0 ? 120.0 : 180.0;
-
-    return Column(
-      children: [
-        Align(
-          alignment: Alignment.topRight,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 40, right: 16),
-            child: TextButton(
-              onPressed: () {
-                setState(() {
-                  _tutorialActive = false;
-                  _tutorialStep = 0;
-                });
-                widget.data.tutorialCompleted.add(-1);
-                widget.repo.save(widget.data);
-                _analytics.tutorialComplete('parking', skipped: true);
-              },
-              child: const Text(
-                '跳过',
-                style: TextStyle(color: AppColors.ink2, fontSize: 14),
-              ),
-            ),
-          ),
-        ),
-        const Spacer(),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 14,
-            ),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AppColors.coral, AppColors.coralDeep],
-              ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.coralDeep.withValues(alpha: 0.4),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.touch_app,
-                  color: Colors.white,
-                  size: 24,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    text,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        SizedBox(height: bottomOffset),
-      ],
     );
   }
 
@@ -944,10 +859,11 @@ class _ParkingScreenState extends State<ParkingScreen> {
                   _buildInfoChip(
                       '🚗 ${widget.isDaily ? '每日挑战' : widget.level.name}', AppColors.accent),
                   const SizedBox(width: 6),
-                  // 常驻目标提示：把哪辆车开到绿车位（不依赖教学弹窗）。
+                  // 常驻目标提示：把哪辆车开到车位（车型色底 + 🅿 图案，
+                  // 与棋盘上的幽灵车位同一套视觉语言）。
                   _buildInfoChip(
-                    '🎯 ${widget.level.targetTier.icon}→🟢',
-                    AppColors.mint.withValues(alpha: 0.25),
+                    '🎯 ${widget.level.targetTier.icon} → 🅿',
+                    widget.level.targetTier.color,
                   ),
                   const SizedBox(width: 6),
                   _buildInfoChip('👣 ${_game.moves}', AppColors.surfaceSoft),
@@ -1326,6 +1242,12 @@ class _ParkingScreenState extends State<ParkingScreen> {
                   }),
                 ),
               ),
+              // 目标车位幽灵车：把目标车按真实车身形状半透明画在停车位上，
+              // 玩家一眼看懂"哪辆车停进哪里"。
+              if (!_game.hasWon && !_game.hasLost)
+                _buildParkingSlotGhost(cellSize,
+                    offsetX: hasHints ? hintSize + 4 : 0,
+                    offsetY: hasHints ? hintSize + 4 : 0),
               // 覆盖层：车辆（长条车画成一整块），IgnorePointer 让点击穿透到格子。
               for (final v in _game.vehicles)
                 _buildVehicleOverlay(v, cellSize,
@@ -1358,7 +1280,6 @@ class _ParkingScreenState extends State<ParkingScreen> {
             ? const Color(0xFF26C6DA)
             : (isTarget ? const Color(0xFFFBC02D) : v.tier.color.withValues(alpha: 0.55)));
     final borderWidth = (isSelected || isHint || isTarget) ? 3.0 : 1.0;
-
     return AnimatedPositioned(
       key: ValueKey(v.index),
       duration: _kVehicleSlide,
@@ -1400,13 +1321,22 @@ class _ParkingScreenState extends State<ParkingScreen> {
                         ],
                       ),
                       border: Border.all(color: borderColor, width: borderWidth),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: AppColors.shadow,
-                          blurRadius: 6,
-                          offset: Offset(0, 3),
-                        ),
-                      ],
+                      // 目标车追加金色光晕，与幽灵车位遥相呼应。
+                      boxShadow: isTarget
+                          ? const [
+                              BoxShadow(
+                                color: Color(0x88FBC02D),
+                                blurRadius: 12,
+                                offset: Offset(0, 3),
+                              ),
+                            ]
+                          : const [
+                              BoxShadow(
+                                color: AppColors.shadow,
+                                blurRadius: 6,
+                                offset: Offset(0, 3),
+                              ),
+                            ],
                     ),
                     child: ParkingVehicleBody(
                       tier: v.tier,
@@ -1526,6 +1456,89 @@ class _ParkingScreenState extends State<ParkingScreen> {
     );
   }
 
+  /// 目标车位"幽灵车"：目标车按真实车身形状（长度/朝向一致）半透明停进
+  /// 虚线车位框，配呼吸脉冲 —— 解决"目标车位要停什么车看不出来"。
+  Widget _buildParkingSlotGhost(double size,
+      {double offsetX = 0, double offsetY = 0}) {
+    if (_parkingCell.$1 < 0) return const SizedBox.shrink();
+    final tier = widget.level.targetTier;
+    // 目标车的真实形状（长度/朝向），幽灵车与棋盘上的实际车一模一样。
+    VehicleSpawn spawn;
+    try {
+      spawn = widget.level.vehicles.firstWhere((v) => v.tier == tier);
+    } catch (_) {
+      spawn = VehicleSpawn(col: 0, row: 0, tier: tier);
+    }
+    final len = spawn.length;
+    final horiz = spawn.orientation == ParkingOrientation.horizontal;
+    final w = (horiz ? len : 1) * size;
+    final h = (horiz ? 1 : len) * size;
+
+    return Positioned(
+      left: _parkingCell.$2 * size + offsetX,
+      top: _parkingCell.$1 * size + offsetY,
+      width: w,
+      height: h,
+      child: IgnorePointer(
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 700),
+          curve: Curves.easeInOut,
+          opacity: _ghostPulse ? 0.50 : 0.92,
+          child: Stack(
+            children: [
+              // 虚线车位框（车型色）。
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _SlotDashesPainter(tier.color),
+                ),
+              ),
+              // 半透明同款车身。
+              Positioned.fill(
+                child: Opacity(
+                  opacity: 0.55,
+                  child: ParkingVehicleBody(
+                    tier: tier,
+                    length: len,
+                    horizontal: horiz,
+                    cellSize: size,
+                  ),
+                ),
+              ),
+              // 车位角标。
+              Positioned(
+                top: 2,
+                left: 2,
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: size * 0.05,
+                    vertical: size * 0.015,
+                  ),
+                  decoration: BoxDecoration(
+                    color: tier.color,
+                    borderRadius: BorderRadius.circular(size * 0.1),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x66000000),
+                        blurRadius: 3,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Text('🅿',
+                      style: TextStyle(
+                        fontSize: size * 0.18,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                      )),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   /// 停车模式车辆卡：矢量绘制的车身（高光 + 车窗 + 车轮 + 车灯），
   /// 颜色由车型决定，整体比纯渐变块更有质感、更像"一张车卡"。
   Widget _buildCell(int row, int col, double size) {
@@ -1539,7 +1552,8 @@ class _ParkingScreenState extends State<ParkingScreen> {
         bg = AppColors.surfaceSoft;
         break;
       case ParkingCellType.parking:
-        bg = AppColors.mint.withValues(alpha: 0.30);
+        // 车位底色用目标车型色（与幽灵车同色系，强化"这停这辆车"）。
+        bg = widget.level.targetTier.color.withValues(alpha: 0.16);
         break;
       case ParkingCellType.obstacle:
         bg = AppColors.ink3.withValues(alpha: 0.18);
@@ -1601,15 +1615,9 @@ class _ParkingScreenState extends State<ParkingScreen> {
         child: Text('🧱', style: TextStyle(fontSize: 18)),
       );
     }
-    // 停车位图标（停在车下的幽灵图标）
+    // 停车位：幽灵车由 _buildParkingSlotGhost 在棋盘层绘制，这里不再画 emoji。
     if (cell.isParking) {
-      final parked = vehicle != null;
-      return Center(
-        child: Text(widget.level.targetTier.icon,
-            style: TextStyle(
-                fontSize: size * 0.4,
-                color: parked ? AppColors.mint : AppColors.ink3.withValues(alpha: 0.4))),
-      );
+      return null;
     }
     // 入口
     if (cell.isEntrance) {
@@ -1624,6 +1632,41 @@ class _ParkingScreenState extends State<ParkingScreen> {
   }
 }
 
+
+/// 车位虚线描边画笔：沿圆角矩形均匀画短划线，语义是"这是可停车位"。
+class _SlotDashesPainter extends CustomPainter {
+  final Color color;
+  _SlotDashesPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width < 12 || size.height < 12) return;
+    final rrect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(3, 3, size.width - 6, size.height - 6),
+      Radius.circular(size.shortestSide * 0.18),
+    );
+    final path = Path()..addRRect(rrect);
+    final metric = path.computeMetrics().first;
+    // ~22 段虚线：短划 + 等长间隙。
+    final dash = metric.length / 44;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round
+      ..color = color;
+    for (var d = 0.0; d < metric.length; d += dash * 2) {
+      canvas.drawPath(metric.extractPath(d, (d + dash).clamp(0.0, metric.length)), paint);
+    }
+    // 内侧一层淡色填充，强化车位区域。
+    canvas.drawRRect(
+      rrect,
+      Paint()..color = color.withValues(alpha: 0.10),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_SlotDashesPainter old) => old.color != color;
+}
 
 /// 胜利彩带：一次性下落的 emoji 粒子，stateless（固定种子保证重绘稳定、不掉帧）。
 class WinConfetti extends StatelessWidget {
