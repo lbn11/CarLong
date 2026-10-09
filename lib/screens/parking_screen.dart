@@ -87,11 +87,11 @@ class _ParkingScreenState extends State<ParkingScreen> {
     _audio.soundOn = widget.data.soundOn;
     _audio.vibrateOn = widget.data.vibrateOn;
     unawaited(_audio.load());
-    // 停车模式首次进入弹出教学
-    // 【2026-08-19 临时禁用】用户反馈新手教学无法使用，先去掉（代码保留可逆）。
-    // if (!widget.data.tutorialCompleted.contains(-1)) {
-    //   _tutorialActive = true;
-    // }
+    // 停车模式首次进入弹出教学（2026-08-19 重做轻量版后恢复启用：
+    // 气泡提示不遮挡棋盘、不拦截点击，玩家可随时跳过）。
+    if (!widget.data.tutorialCompleted.contains(-1)) {
+      _tutorialActive = true;
+    }
     // 停车场景 BGM（跟随音效开关；返回首页由 home 的 didPopNext 恢复）。
     if (widget.data.soundOn) {
       MusicPlayer.instance.play(MusicPlayer.parking);
