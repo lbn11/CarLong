@@ -12,7 +12,6 @@ import '../models/vehicle.dart';
 import '../theme/app_theme.dart';
 import '../models/level.dart';
 import '../save/save_repository.dart';
-import '../widgets/tutorial_overlay.dart';
 import '../widgets/vehicle_image.dart';
 import 'achievements_screen.dart';
 import 'collection_screen.dart';
@@ -44,24 +43,10 @@ class _HomeScreenState extends State<HomeScreen>
   /// 环境氛围：缓慢漂移的背景光晕。
   late final AnimationController _ambient;
 
-  // ===== 首页首启引导 =====
-  /// 首页引导的存档 key（与合成/停车教程区分）。
-  static const int _homeTutorialKey = -2;
-  bool _homeTutorialActive = false;
-  int _homeStepIndex = 0;
-  Rect? _homeHighlightRect;
+  // ===== 板块锚点（原首启引导已移除，键保留供布局复用） =====
   final GlobalKey _levelListKey = GlobalKey();
   final GlobalKey _parkingEntryKey = GlobalKey();
   final GlobalKey _shopRowKey = GlobalKey();
-
-  static const List<TutorialStep> _homeSteps = [
-    TutorialStep(
-      text: '👋 欢迎来到车队！点这里选择关卡，'
-          '第一关会手把手教你合成玩法',
-      highlight: TutorialHighlight.homeLevels,
-      blocking: false,
-    ),
-  ];
 
   @override
   void initState() {
@@ -75,18 +60,6 @@ class _HomeScreenState extends State<HomeScreen>
     _ambient = AnimationController(
         vsync: this, duration: const Duration(seconds: 16))
       ..repeat();
-    // 首启引导：等首帧布局完成再算高亮矩形（2026-08-19 重做轻量版后恢复）。
-    if (!widget.data.tutorialCompleted.contains(_homeTutorialKey)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          setState(() {
-            _homeTutorialActive = true;
-            _homeStepIndex = 0;
-          });
-          _updateHomeHighlight();
-        }
-      });
-    }
     // 离线收益：进入首页即结算并更新在线时间戳。
     _checkOfflineReward();
     // 首页 BGM（跟随音效开关）。
@@ -196,83 +169,6 @@ class _HomeScreenState extends State<HomeScreen>
         ),
       );
     });
-  }
-
-  /// 根据当前步骤计算高亮区域（GlobalKey -> 屏幕 Rect）。
-  void _updateHomeHighlight() {
-    if (!_homeTutorialActive ||
-        _homeStepIndex >= _homeSteps.length) {
-      _homeHighlightRect = null;
-      return;
-    }
-    final step = _homeSteps[_homeStepIndex];
-    GlobalKey? target;
-    switch (step.highlight) {
-      case TutorialHighlight.homeLevels:
-        target = _levelListKey;
-        break;
-      case TutorialHighlight.homeParking:
-        target = _parkingEntryKey;
-        break;
-      case TutorialHighlight.homeShop:
-        target = _shopRowKey;
-        break;
-      default:
-        target = null;
-    }
-    Rect? rect;
-    if (target != null) {
-      final ctx = target.currentContext;
-      if (ctx != null) {
-        final box = ctx.findRenderObject() as RenderBox?;
-        if (box != null && box.hasSize && box.attached) {
-          rect = box.localToGlobal(Offset.zero) & box.size;
-        }
-      }
-    }
-    // 修复：关卡入口在首页滚动列表下方，首屏可能不可见。
-    // 引导激活时自动滚动到目标，保证高亮真正在玩家视野内。
-    if (target != null && rect != null) {
-      final targetCtx = target.currentContext;
-      if (targetCtx != null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && _homeTutorialActive) {
-            Scrollable.ensureVisible(
-              targetCtx,
-              duration: const Duration(milliseconds: 350),
-              alignment: 0.5,
-            );
-          }
-        });
-      }
-    }
-    setState(() => _homeHighlightRect = rect);
-  }
-
-  void _advanceHomeTutorial() {
-    if (_homeStepIndex < _homeSteps.length - 1) {
-      setState(() => _homeStepIndex++);
-      _updateHomeHighlight();
-    } else {
-      // 引导结束：标记完成并直接进入选关页（新玩家衔接 L1 合成教学）。
-      _finishHomeTutorial();
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) =>
-              LevelSelectScreen(data: data, repo: widget.repo),
-        ),
-      );
-    }
-  }
-
-  void _finishHomeTutorial() {
-    setState(() {
-      _homeTutorialActive = false;
-      _homeHighlightRect = null;
-    });
-    widget.data.tutorialCompleted.add(_homeTutorialKey);
-    widget.repo.save(widget.data);
-    _analytics.tutorialComplete('home');
   }
 
   String _dateFor(DateTime d) =>
@@ -620,20 +516,6 @@ class _HomeScreenState extends State<HomeScreen>
               ],
             ),
           ),
-          // 首启引导覆盖层（最顶层，轻量版：不拦截点击，玩家可直接点入口）。
-          if (_homeTutorialActive)
-            Positioned.fill(
-              child: TutorialOverlay(
-                steps: _homeSteps,
-                onComplete: _finishHomeTutorial,
-                onActionDetected: (_) {},
-                highlightRect: _homeHighlightRect,
-                showNext: true,
-                nextLabel: '开始游戏',
-                externalStep: _homeStepIndex,
-                onNextTap: _advanceHomeTutorial,
-              ),
-            ),
         ],
       ),
     );

@@ -8,10 +8,8 @@ import '../game/game_config.dart';
 import '../game/music_player.dart';
 import '../game/merge_game.dart';
 import '../theme/app_theme.dart';
-import '../models/vehicle.dart';
 import '../models/level.dart';
 import '../save/save_repository.dart';
-import '../widgets/tutorial_overlay.dart';
 import '../widgets/vehicle_image.dart';
 
 class GameScreen extends StatefulWidget {
@@ -36,56 +34,16 @@ class _GameScreenState extends State<GameScreen> {
   bool _finished = false;
   bool _hammering = false;
 
-  // 教程高亮区域追踪
+  // 板块锚点（供滚动定位等复用；原教学高亮已移除）
   final GlobalKey _stockBarKey = GlobalKey();
   final GlobalKey _toolsKey = GlobalKey();
   final GlobalKey _boardKey = GlobalKey();
   final GlobalKey _hammerToolKey = GlobalKey();
   final GlobalKey _undoToolKey = GlobalKey();
   final GlobalKey _addCardsToolKey = GlobalKey();
-  Rect? _currentHighlightRect;
-
-  void _updateHighlightRect() {
-    if (!_tutorialActive || _tutorialStepIndex >= _tutorialSteps.length) {
-      _currentHighlightRect = null;
-      return;
-    }
-    final step = _tutorialSteps[_tutorialStepIndex];
-    GlobalKey? targetKey;
-    switch (step.highlight) {
-      case TutorialHighlight.stockPile: targetKey = _stockBarKey; break;
-      case TutorialHighlight.board: targetKey = _boardKey; break;
-      case TutorialHighlight.hammerTool: targetKey = _hammerToolKey; break;
-      case TutorialHighlight.undoTool: targetKey = _undoToolKey; break;
-      case TutorialHighlight.addCardsTool: targetKey = _addCardsToolKey; break;
-      case TutorialHighlight.coinsDisplay: targetKey = _toolsKey; break;
-      case TutorialHighlight.homeLevels:
-      case TutorialHighlight.homeParking:
-      case TutorialHighlight.homeShop:
-      case TutorialHighlight.none: targetKey = null; break;
-    }
-    if (targetKey == null) { _currentHighlightRect = null; return; }
-    final box = targetKey.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) { _currentHighlightRect = null; return; }
-    _currentHighlightRect = box.localToGlobal(Offset.zero) & box.size;
-  }
-
-  void _scheduleHighlightUpdate() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _tutorialActive) {
-        _updateHighlightRect();
-        setState(() {});
-      }
-    });
-  }
 
   /// 双倍卡生效中：本关通关金币 ×2。
   bool _doubleCoin = false;
-
-  /// 教程状态
-  bool _tutorialActive = false;
-  List<TutorialStep> _tutorialSteps = const [];
-  int _tutorialStepIndex = 0;
 
   static final int _hammerCost = GameConfig.hammerCost;
   static final int _undoCost = GameConfig.undoCost;
@@ -113,7 +71,6 @@ class _GameScreenState extends State<GameScreen> {
     };
     _game.feedback.soundOn = widget.data.soundOn;
     _game.feedback.vibrateOn = widget.data.vibrateOn;
-    _game.onPlayerAction = _onPlayerAction;
     _analytics = AnalyticsService(widget.data, widget.repo);
     _analytics.levelStart(widget.level);
     _applyBoosters();
@@ -124,68 +81,9 @@ class _GameScreenState extends State<GameScreen> {
           '同级车拖一起合成，最高档三合一会升空消失';
     }
 
-    // 教程:前 3 关开启引导（2026-08-19 重做轻量版后恢复启用：
-    // 无全屏遮罩、不拦截点击、动作检测 + 按钮双通道推进，永不卡死）。
-    final tutorialScript = TutorialScript.getScript(widget.level.id);
-    if (tutorialScript != null &&
-        !widget.data.tutorialCompleted.contains(widget.level.id)) {
-      _tutorialActive = true;
-      _tutorialSteps = tutorialScript;
-      _tutorialStepIndex = 0;
-      // 激活后立即（postFrame）计算首步高亮，否则首步只有气泡没有高亮框。
-      _scheduleHighlightUpdate();
-    }
     // 合成场景 BGM（跟随音效开关；返回首页由 home 的 didPopNext 恢复）。
     if (widget.data.soundOn) {
       MusicPlayer.instance.play(MusicPlayer.merge);
-    }
-  }
-
-  void _advanceTutorial() {
-    if (!_tutorialActive) return;
-    if (_tutorialStepIndex < _tutorialSteps.length - 1) {
-      setState(() => _tutorialStepIndex++);
-      _scheduleHighlightUpdate();
-    } else {
-      setState(() => _tutorialActive = false);
-      widget.data.tutorialCompleted.add(widget.level.id);
-      widget.repo.save(widget.data);
-      _analytics.tutorialComplete('merge');
-    }
-  }
-
-  void _notifyTutorialAction(TutorialAction action) {
-    if (!_tutorialActive) return;
-    final currentStep = _tutorialSteps[_tutorialStepIndex];
-    if (currentStep.action == action && currentStep.blocking) {
-      _advanceTutorial();
-    }
-  }
-
-  void _skipTutorial() {
-    setState(() => _tutorialActive = false);
-    widget.data.tutorialCompleted.add(widget.level.id);
-    widget.repo.save(widget.data);
-    _analytics.tutorialComplete('merge', skipped: true);
-  }
-
-  void _onPlayerAction(String action, VehicleType? tier) {
-    switch (action) {
-      case 'draw':
-        _notifyTutorialAction(TutorialAction.draw);
-        break;
-      case 'merge':
-        _notifyTutorialAction(TutorialAction.merge);
-        break;
-      case 'hammer':
-        _notifyTutorialAction(TutorialAction.hammer);
-        break;
-      case 'move':
-        _notifyTutorialAction(TutorialAction.move);
-        break;
-      case 'reveal':
-        _notifyTutorialAction(TutorialAction.reveal);
-        break;
     }
   }
 
@@ -563,18 +461,6 @@ class _GameScreenState extends State<GameScreen> {
                   ? _buildLandscapeLayout()
                   : _buildPortraitLayout(),
             ),
-            // 修复：TutorialOverlay 必须放在 SafeArea 外层——高亮 rect 用的是
-            // localToGlobal（全屏坐标），若 overlay 在 SafeArea 内，两者坐标系
-            // 差一个 SafeArea 偏移（状态栏高度），高亮框会整体错位、与界面对不上。
-            if (_tutorialActive)
-              Positioned.fill(
-                child: TutorialOverlay(
-                  steps: _tutorialSteps,
-                  onComplete: _skipTutorial,
-                  onActionDetected: (action) => _notifyTutorialAction(action),
-                  highlightRect: _currentHighlightRect,
-                ),
-              ),
           ],
         ),
       ),

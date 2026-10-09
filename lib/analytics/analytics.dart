@@ -69,11 +69,6 @@ class AnalyticsService {
     _log('app_launch', {'first': isFirst});
   }
 
-  /// 新手引导完成或跳过（scope: home/merge/parking）。
-  void tutorialComplete(String scope, {bool skipped = false}) {
-    _log('tutorial_done', {'scope': scope, 'skipped': skipped});
-  }
-
   /// 离线收益发放。
   void offlineReward(int reward, int hours) {
     _log('offline_reward', {'reward': reward, 'hours': hours});
