@@ -136,6 +136,7 @@ class _GameScreenState extends State<GameScreen> {
     _game.score.dispose();
     _game.produced.dispose();
     _game.stockLeft.dispose();
+    _game.cellPx.dispose();
     _game.hint.dispose();
     _game.combo.dispose();
     _game.timeLeft.dispose();
@@ -693,24 +694,23 @@ class _GameScreenState extends State<GameScreen> {
           key: _stockBarKey,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var i = 0; i < next.length; i++)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: GestureDetector(
-                      onTap: left > 0 && !_finished
-                          ? () => _game.drawStock(i)
-                          : null,
-                      child: SizedBox(
-                        width: 34,
-                        height: 34,
-                        child: VehicleImage(vehicle: next[i], size: 34),
-                      ),
+            FittedBox(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var i = 0; i < next.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 6),
+                    _stockCard(
+                      next[i],
+                      index: i,
+                      size: 44,
+                      leading: i == 0,
+                      enabled: left > 0 && !_finished,
+                      onTap: () => _game.drawStock(i),
                     ),
-                  ),
-              ],
+                  ],
+                ],
+              ),
             ),
             const SizedBox(height: 4),
             Text(
@@ -1164,81 +1164,87 @@ class _GameScreenState extends State<GameScreen> {
         return ValueListenableBuilder<String?>(
           valueListenable: _game.hint,
           builder: (context, hint, _) {
-            return ValueListenableBuilder<int?>(
-              valueListenable: _game.heldStock,
-              builder: (context, held, _) {
-                return Padding(
-                  key: _stockBarKey,
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (hint != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Text(
-                            hint,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                                color: AppColors.coralDeep, fontSize: 12),
-                          ),
-                        ),
-                      Row(
-                        children: [
-                          // 待选牌堆：60px 大卡，可直接点拿。
-                          for (var i = 0; i < next.length; i++)
-                            _stockCard(
-                              next[i],
-                              index: i,
-                              selected: held == i,
-                              enabled: left > 0 && !_finished,
-                              onTap: () => _game.selectStock(i),
+            return ValueListenableBuilder<double>(
+              valueListenable: _game.cellPx,
+              builder: (context, cellPx, _) {
+                return LayoutBuilder(builder: (context, bc) {
+                  final n = next.length;
+                  // 牌堆卡与棋盘格同尺寸：棋盘格子大（如 3x3 关）牌堆卡也大，
+                  // 格子小（如 6x6 关）也小，消除"两套尺寸"的割裂感。
+                  // 张数信息改为牌堆下方一行小字，让出横向空间给卡片本身。
+                  const slotPad = 6.0;
+                  const cardGap = 8.0;
+                  // 32 = 外层左右 padding，+2 = 牌槽描边，避免边界像素溢出。
+                  final byWidth =
+                      (bc.maxWidth - 34 - slotPad * 2 - cardGap * (n - 1)) / n;
+                  var size = cellPx * 0.96;
+                  if (size > byWidth) size = byWidth;
+                  size = size.clamp(36.0, 104.0);
+                  return Padding(
+                    key: _stockBarKey,
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (hint != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Text(
+                              hint,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                  color: AppColors.coralDeep, fontSize: 12),
                             ),
-                          // 弹性区：小屏时 chip 可压缩（内部文字省略），永不溢出。
-                          Expanded(
-                            child: Align(
-                              alignment: Alignment.centerRight,
-                              child: _chip(
-                                gradient: const [
-                                  AppColors.surfaceLight,
-                                  AppColors.surfaceLight
-                                ],
-                                shadow: true,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.style,
-                                        size: 15, color: AppColors.ink2),
-                                    const SizedBox(width: 4),
-                                    Flexible(
-                                      child: Text(
-                                        widget.level.endless
-                                            ? '无限牌堆'
-                                            : (left > 0
-                                                ? '牌堆剩 $left 张'
-                                                : '牌已用完'),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          color: left > 0
-                                              ? AppColors.ink2
-                                              : AppColors.ink3,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                          ),
+                        Center(
+                          child: Container(
+                            padding: const EdgeInsets.all(slotPad),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1EAEF),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: const Color(0xFFE2D8E4),
+                                width: 1,
                               ),
                             ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                for (var i = 0; i < n; i++) ...[
+                                  if (i > 0) const SizedBox(width: cardGap),
+                                  _stockCard(
+                                    next[i],
+                                    index: i,
+                                    size: size,
+                                    // 第一张是下一张要出的牌，用金边强调。
+                                    leading: i == 0,
+                                    enabled: left > 0 && !_finished,
+                                    onTap: () => _game.drawStock(i),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          widget.level.endless
+                              ? '🂠 无限牌堆 · 点卡片出牌'
+                              : (left > 0
+                                  ? '🂠 牌堆剩 $left 张 · 点卡片出牌'
+                                  : '🂠 牌已用完'),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: left > 0 ? AppColors.ink2 : AppColors.ink3,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                });
               },
             );
           },
@@ -1247,52 +1253,74 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  /// 牌堆卡：64px 可拿取的实体卡。拿起 = 上浮 + 金边 + 光晕；
-  /// 拿起后点棋盘空格精确落子，再点这张卡 = 智能自动放置。
+  /// 牌堆卡：与棋盘上的卡同款视觉（同色系渐变底 + 同比例 emoji + 同圆角比），
+  /// 尺寸跟随棋盘格子，玩家一眼能预判"这张牌落下去就是这么大一张"。
   Widget _stockCard(
     VehicleType vehicle, {
     required int index,
-    required bool selected,
+    required double size,
+    required bool leading,
     required bool enabled,
     required VoidCallback onTap,
   }) {
-    const size = 60.0;
+    final light = Color.lerp(vehicle.color, Colors.white, 0.66)!;
+    final deep = Color.lerp(vehicle.color, Colors.white, 0.82)!;
+    final radius = size * 0.14;
     return GestureDetector(
+      key: ValueKey('stockCard$index'),
       onTap: enabled ? onTap : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        curve: Curves.easeOut,
-        transform: Matrix4.translationValues(0, selected ? -6 : 0, 0),
+      child: Container(
         width: size,
         height: size,
-        margin: const EdgeInsets.only(right: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? const Color(0xFFFFB300) : const Color(0xFFEDE7F0),
-            width: selected ? 2.5 : 1,
+          borderRadius: BorderRadius.circular(radius),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [light, deep],
           ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFFFFC107).withValues(alpha: 0.45),
-                    blurRadius: 14,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : const [
-                  BoxShadow(
-                    color: AppColors.shadow,
-                    blurRadius: 6,
-                    offset: Offset(0, 3),
-                  ),
-                ],
+          border: Border.all(
+            color: leading
+                ? const Color(0xFFFFC107)
+                : vehicle.color.withValues(alpha: 0.6),
+            width: leading ? 2.4 : 1.4,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: vehicle.color.withValues(alpha: 0.25),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
-        child: Opacity(
-          opacity: enabled ? 1.0 : 0.45,
-          child: Center(
-            child: VehicleImage(vehicle: vehicle, size: size - 14),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(radius),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // 顶部高光（与棋盘卡一致）。
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.center,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.32),
+                      Colors.white.withValues(alpha: 0.0),
+                    ],
+                  ),
+                ),
+              ),
+              Center(
+                child: Opacity(
+                  opacity: enabled ? 1.0 : 0.45,
+                  child: Text(
+                    vehicle.icon,
+                    style: TextStyle(fontSize: size * 0.62),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

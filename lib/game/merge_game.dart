@@ -73,9 +73,12 @@ class MergeGame extends FlameGame {
   /// 牌堆剩余张数。牌堆点一下出一张牌。
   final ValueNotifier<int> stockLeft = ValueNotifier<int>(0);
 
-  /// 当前"拿起"的牌堆卡下标（0..2，对应牌堆预览）。
-  /// null = 未拿起。拿起后可点棋盘空格精确落子，或再点一次自动放置。
-  final ValueNotifier<int?> heldStock = ValueNotifier<int?>(null);
+  /// 当前棋盘格子的像素边长（随布局变化）。
+  /// UI 侧的牌堆卡据此缩放，保证"待出的牌"与"棋盘上的卡"视觉体量一致
+  /// （否则 3x3 大格关卡里牌堆显得极小，6x6 小格关卡里又显得过大）。
+  /// 注意：只能在帧末通知——onGameResize 发生在 build 期间，同步 setValue
+  /// 会触发 "setState during build"。
+  final ValueNotifier<double> cellPx = ValueNotifier<double>(64);
 
   /// 连消计数（连续合成升级，短暂时间内叠加）。
   final ValueNotifier<int> combo = ValueNotifier<int>(0);
@@ -330,6 +333,21 @@ class MergeGame extends FlameGame {
       s.position = _cellPos(s.col, s.row);
       _stackSprites.add(s);
     }
+    // 帧末再通知 UI（onGameResize 处于 build 阶段，同步通知会抛错）。
+    if ((cellPx.value - _cellSize).abs() > 0.5) {
+      final v = _cellSize;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_disposed) cellPx.value = v;
+      });
+    }
+  }
+
+  bool _disposed = false;
+
+  @override
+  void onDispose() {
+    _disposed = true;
+    super.onDispose();
   }
 
   @override
@@ -442,79 +460,6 @@ class MergeGame extends FlameGame {
     }
   }
 
-  /// 点牌堆卡：第一次点 = 拿起（可挑落点）；再点同一张 = 智能自动放置。
-  void selectStock(int index) {
-    if (_ended) return;
-    final source = level.endless ? _upcoming : _deck;
-    if (index < 0 || index >= source.length) return;
-    if (board.isFull) {
-      hint.value = '棋盘满了，先合成腾出位置';
-      feedback.play(Sfx.error);
-      return;
-    }
-    if (heldStock.value == index) {
-      // 快速通道：再点一次直接智能放置。
-      heldStock.value = null;
-      _refreshPlaceTargets();
-      drawStock(index);
-      return;
-    }
-    heldStock.value = index;
-    _refreshPlaceTargets();
-    final tier = source[index];
-    hint.value = '已拿起 ${tier.icon} ${tier.name} — 点棋盘空格放下'
-        '（再点一次牌堆自动放置）';
-    feedback.tap();
-  }
-
-  /// 把拿起的牌放到指定空格。成功返回 true。
-  bool placeHeldAt(int col, int row) {
-    final held = heldStock.value;
-    if (held == null || _ended) return false;
-    heldStock.value = null;
-    _refreshPlaceTargets();
-
-    final source = level.endless ? _upcoming : _deck;
-    if (held >= source.length) return false;
-    // 目标必须是可用空格（障碍格不可放）。
-    final occupied = board.at(col, row);
-    if ((occupied != null && !occupied.isEmpty) ||
-        board.obstacleAt(col, row) != null) {
-      return false;
-    }
-    final tier = source.removeAt(held);
-    if (!level.endless) stockLeft.value = _deck.length;
-    board.placeAt(col, row, StackData(tier));
-    _addStack(col, row);
-    board.revealNear(col, row);
-    hint.value = null;
-    feedback.play(Sfx.place);
-    feedback.tap();
-    _consumeMove();
-    _refreshGoal();
-    onPlayerAction?.call('draw', tier);
-    return true;
-  }
-
-  /// 同步棋盘空格的"可落子"高亮（拿起牌堆卡时全部可用空格亮起）。
-  void _refreshPlaceTargets() {
-    final holding = heldStock.value != null;
-    for (final c in children.whereType<CellSprite>()) {
-      final s = board.at(c.col, c.row);
-      final empty = s == null || s.isEmpty;
-      c.placeTarget = holding &&
-          empty &&
-          board.obstacleAt(c.col, c.row) == null;
-    }
-  }
-
-  /// 取消拿起（点棋盘卡片 / 点已占用格时调用）。
-  void cancelHeldStock() {
-    if (heldStock.value == null) return;
-    heldStock.value = null;
-    _refreshPlaceTargets();
-  }
-
   /// 限步关卡：每次成功放置/移动消耗 1 步。
   void _consumeMove() {
     if (level.movesLimit == null) return;
@@ -541,7 +486,6 @@ class MergeGame extends FlameGame {
   }
 
   void _end(bool won, {MergeFailReason? failReason}) {
-    heldStock.value = null;
     if (_ended) return;
     _ended = true;
     _failReason = won ? null : failReason;
@@ -753,10 +697,6 @@ class MergeGame extends FlameGame {
       _hammerAt(col, row);
       return;
     }
-    if (heldStock.value != null) {
-      cancelHeldStock();
-      return;
-    }
     final sel = _selected;
     if (sel == null) {
       _select(col, row);
@@ -772,17 +712,10 @@ class MergeGame extends FlameGame {
     _tryMove(sel.col, sel.row, col, row);
   }
 
-  /// 点空格：拿着牌堆卡 → 精确落子；有选中的卡就移过去；锤子模式下清除锁链障碍。
+  /// 点空格：有选中的卡就移过去；锤子模式下清除锁链障碍。
   void _onTapCell(int col, int row) {
     if (hammerArmed) {
       _hammerObstacle(col, row);
-      return;
-    }
-    if (heldStock.value != null) {
-      // 空格放牌；障碍格/占用格点一下 = 取消拿起。
-      if (!placeHeldAt(col, row)) {
-        cancelHeldStock();
-      }
       return;
     }
     final sel = _selected;
@@ -1255,9 +1188,6 @@ class CellSprite extends PositionComponent with TapCallbacks {
   /// 拖拽落点预览：当前磁吸目标格高亮金环。
   bool dropTarget = false;
 
-  /// 拿起牌堆卡时的"可落子"高亮：金色虚线感描边 + 淡金填充。
-  bool placeTarget = false;
-
   double _lastSize = -1;
   RRect _rr = RRect.fromRectAndRadius(Rect.zero, const Radius.circular(0));
   RRect _inset = RRect.fromRectAndRadius(Rect.zero, const Radius.circular(0));
@@ -1316,24 +1246,6 @@ class CellSprite extends PositionComponent with TapCallbacks {
           ..color = const Color(0xFFFFD54F)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 3,
-      );
-    }
-
-    // 拿着牌堆卡：可用空格亮起淡金填充 + 金色描边，提示"可以放这里"。
-    if (placeTarget) {
-      canvas.drawRRect(
-        _inset,
-        Paint()..color = const Color(0x2EFFC107),
-      );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          _rr.outerRect.deflate(2),
-          Radius.circular(_rr.tlRadius.x),
-        ),
-        Paint()
-          ..color = const Color(0xFFFFC107)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.5,
       );
     }
 
