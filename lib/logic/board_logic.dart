@@ -170,6 +170,46 @@ class BoardLogic {
     return cell;
   }
 
+  /// 智能落点：优先放在同等级普通卡的四邻空格（为下一步合成铺路），
+  /// 其次万能卡邻格（万能卡可与任意等级合并）；都没有则退回随机空格。
+  /// 返回落点；满盘返回 null。
+  ({int col, int row})? placeTierSmart(VehicleType tier) {
+    if (isFull) return null;
+    final empties = <({int col, int row})>[];
+    final nextToSame = <({int col, int row})>[];
+    final nextToWild = <({int col, int row})>[];
+    for (var c = 0; c < cols; c++) {
+      for (var r = 0; r < rows; r++) {
+        final s = _grid[_idx(c, r)];
+        if ((s == null || s.isEmpty) && _usable(c, r)) {
+          empties.add((col: c, row: r));
+          // 四邻有同等级普通卡 → 一步就能合成；有万能卡 → 也能立即合并。
+          for (final (dc, dr) in [(1, 0), (-1, 0), (0, 1), (0, -1)]) {
+            final nc = c + dc, nr = r + dr;
+            if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) continue;
+            final adj = _grid[_idx(nc, nr)];
+            if (adj == null || adj.isEmpty) continue;
+            if (!adj.isBomb && adj.tier == tier) {
+              nextToSame.add((col: c, row: r));
+              break;
+            }
+            if (adj.isWildcard) {
+              nextToWild.add((col: c, row: r));
+              break;
+            }
+          }
+        }
+      }
+    }
+    final pool = nextToSame.isNotEmpty
+        ? nextToSame
+        : (nextToWild.isNotEmpty ? nextToWild : empties);
+    if (pool.isEmpty) return null;
+    final cell = pool[_random.nextInt(pool.length)];
+    _grid[_idx(cell.col, cell.row)] = StackData(tier);
+    return cell;
+  }
+
   /// 在随机空格放入一张万能卡。满盘返回 null。
   ({int col, int row})? placeWildcard() {
     final cell = _randomEmptyCell();

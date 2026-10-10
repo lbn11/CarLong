@@ -1,4 +1,4 @@
-import 'package:flame/game.dart';
+import 'package:flame/game.dart' hide Matrix4;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -9,6 +9,7 @@ import '../game/music_player.dart';
 import '../game/merge_game.dart';
 import '../theme/app_theme.dart';
 import '../models/level.dart';
+import '../models/vehicle.dart';
 import '../save/save_repository.dart';
 import '../widgets/vehicle_image.dart';
 
@@ -839,17 +840,22 @@ class _GameScreenState extends State<GameScreen> {
                   backgroundColor: const Color(0x22FFFFFF),
                 ),
               ),
-              _chip(
-                gradient: const [AppColors.surfaceLight, AppColors.surfaceLight],
-                shadow: true,
-                child: Text(
-                  widget.level.endless
-                      ? '🌌 无尽模式'
-                      : '第 ${widget.level.id} 关 · ${widget.level.name}',
-                  style: const TextStyle(
-                      color: AppColors.ink1,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14),
+              // 弹性标题：小屏自动省略，永不把 HUD 撑溢出。
+              Flexible(
+                child: _chip(
+                  gradient: const [AppColors.surfaceLight, AppColors.surfaceLight],
+                  shadow: true,
+                  child: Text(
+                    widget.level.endless
+                        ? '🌌 无尽模式'
+                        : '第 ${widget.level.id} 关 · ${widget.level.name}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: AppColors.ink1,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14),
+                  ),
                 ),
               ),
               const Spacer(),
@@ -1158,71 +1164,138 @@ class _GameScreenState extends State<GameScreen> {
         return ValueListenableBuilder<String?>(
           valueListenable: _game.hint,
           builder: (context, hint, _) {
-            return Padding(
-              key: _stockBarKey,
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (hint != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Text(
-                        hint,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                            color: AppColors.coralDeep, fontSize: 12),
-                      ),
-                    ),
-                  Row(
+            return ValueListenableBuilder<int?>(
+              valueListenable: _game.heldStock,
+              builder: (context, held, _) {
+                return Padding(
+                  key: _stockBarKey,
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      for (var i = 0; i < next.length; i++)
-                        GestureDetector(
-                          onTap: left > 0 && !_finished
-                              ? () => _game.drawStock(i)
-                              : null,
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: SizedBox(
-                              width: 46,
-                              height: 46,
-                              child: VehicleImage(vehicle: next[i], size: 46),
-                            ),
+                      if (hint != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Text(
+                            hint,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                color: AppColors.coralDeep, fontSize: 12),
                           ),
                         ),
-                      const Spacer(),
-                      _chip(
-                        gradient: const [AppColors.surfaceLight, AppColors.surfaceLight],
-                        shadow: true,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.style,
-                                size: 15, color: AppColors.ink2),
-                            const SizedBox(width: 4),
-                            Text(
-                              widget.level.endless
-                                  ? '无限牌堆'
-                                  : (left > 0 ? '牌堆剩 $left 张' : '牌已用完'),
-                              style: TextStyle(
-                                color:
-                                    left > 0 ? AppColors.ink2 : AppColors.ink3,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
+                      Row(
+                        children: [
+                          // 待选牌堆：60px 大卡，可直接点拿。
+                          for (var i = 0; i < next.length; i++)
+                            _stockCard(
+                              next[i],
+                              index: i,
+                              selected: held == i,
+                              enabled: left > 0 && !_finished,
+                              onTap: () => _game.selectStock(i),
+                            ),
+                          // 弹性区：小屏时 chip 可压缩（内部文字省略），永不溢出。
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: _chip(
+                                gradient: const [
+                                  AppColors.surfaceLight,
+                                  AppColors.surfaceLight
+                                ],
+                                shadow: true,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.style,
+                                        size: 15, color: AppColors.ink2),
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        widget.level.endless
+                                            ? '无限牌堆'
+                                            : (left > 0
+                                                ? '牌堆剩 $left 张'
+                                                : '牌已用完'),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: left > 0
+                                              ? AppColors.ink2
+                                              : AppColors.ink3,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
+                );
+              },
             );
           },
         );
       },
+    );
+  }
+
+  /// 牌堆卡：64px 可拿取的实体卡。拿起 = 上浮 + 金边 + 光晕；
+  /// 拿起后点棋盘空格精确落子，再点这张卡 = 智能自动放置。
+  Widget _stockCard(
+    VehicleType vehicle, {
+    required int index,
+    required bool selected,
+    required bool enabled,
+    required VoidCallback onTap,
+  }) {
+    const size = 60.0;
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOut,
+        transform: Matrix4.translationValues(0, selected ? -6 : 0, 0),
+        width: size,
+        height: size,
+        margin: const EdgeInsets.only(right: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? const Color(0xFFFFB300) : const Color(0xFFEDE7F0),
+            width: selected ? 2.5 : 1,
+          ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFFFFC107).withValues(alpha: 0.45),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : const [
+                  BoxShadow(
+                    color: AppColors.shadow,
+                    blurRadius: 6,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+        ),
+        child: Opacity(
+          opacity: enabled ? 1.0 : 0.45,
+          child: Center(
+            child: VehicleImage(vehicle: vehicle, size: size - 14),
+          ),
+        ),
+      ),
     );
   }
 
