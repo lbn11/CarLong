@@ -8,7 +8,6 @@ class MusicPlayer {
 
   static final MusicPlayer instance = MusicPlayer._();
 
-  String? _current;
   bool enabled = true;
 
   static const home = 'bgm_home.wav';
@@ -16,19 +15,21 @@ class MusicPlayer {
   static const parking = 'bgm_parking.wav';
 
   /// 切换/播放场景 BGM（自动停掉上一首）。
+  // 音乐暂时关闭：保留接口，但不播放任何 BGM。
+  // 恢复步骤：1) 恢复 lib/game/music_player.dart 里的 _current 字段；
+  //           2) 取消下面整段注释即可。
   Future<void> play(String asset) async {
-    if (!enabled || asset == _current) return;
-    _current = asset;
-    try {
-      await FlameAudio.bgm.stop();
-      await FlameAudio.bgm.play(asset, volume: 0.55);
-    } catch (_) {
-      _current = null;
-    }
+    // if (!enabled || asset == _current) return;
+    // _current = asset;
+    // try {
+    //   await FlameAudio.bgm.stop();
+    //   await FlameAudio.bgm.play(asset, volume: 0.55);
+    // } catch (_) {
+    //   _current = null;
+    // }
   }
 
   Future<void> stop() async {
-    _current = null;
     try {
       await FlameAudio.bgm.stop();
     } catch (_) {}
@@ -38,7 +39,6 @@ class MusicPlayer {
   void syncEnabled(bool on, String? currentSceneAsset) {
     enabled = on;
     if (!on) {
-      _current = null;
       FlameAudio.bgm.stop();
     } else if (currentSceneAsset != null) {
       play(currentSceneAsset);

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
@@ -13,8 +14,27 @@ import 'audio_feedback.dart';
 import 'vehicle_icons.dart';
 
 /// 在指定圆角矩形上绘制不透明的迷雾层（隐藏卡面/盖住空格）。
+/// 视觉内容与尺寸唯一对应，烘焙成 [ui.Picture] 缓存，避免每个迷雾格
+/// 每帧都重建 shader / 模糊遮罩（GPU 资源反复分配）。
+final Map<({int w, int h}), ui.Picture> _fogCache = <({int w, int h}), ui.Picture>{};
+
 void paintFog(Canvas canvas, RRect rr) {
-  final rect = rr.outerRect;
+  final w = rr.outerRect.width.round();
+  final h = rr.outerRect.height.round();
+  final key = (w: w, h: h);
+  var picture = _fogCache[key];
+  if (picture == null) {
+    picture = _buildFogPicture(w, h, rr.tlRadius.x);
+    _fogCache[key] = picture;
+  }
+  canvas.drawPicture(picture);
+}
+
+ui.Picture _buildFogPicture(int w, int h, double radius) {
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder);
+  final rect = Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble());
+  final rr = RRect.fromRectAndRadius(rect, Radius.circular(radius));
   canvas.drawRRect(
     rr,
     Paint()
@@ -45,6 +65,7 @@ void paintFog(Canvas canvas, RRect rr) {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5,
   );
+  return recorder.endRecording();
 }
 
 /// 核心游戏。负责棋盘渲染、交互、生成与胜负判定。
@@ -1591,6 +1612,7 @@ class StackSprite extends PositionComponent
   Paint? _gloss;
   Paint? _badgeGradient;
   int _lastKind = -1; // 0=普通车 1=万能卡 2=炸弹，类型变化时重算卡面。
+  int _lastTier = -2; // 车辆等级变化（升级合成）时重算卡面颜色。
   late final Paint _shadow = Paint()
     ..color = const Color(0x4D000000)
     ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
@@ -1607,11 +1629,39 @@ class StackSprite extends PositionComponent
   // 特殊卡（万能卡/炸弹）专属描边，运行时按类型着色。
   late final Paint _ring = Paint()..style = PaintingStyle.stroke;
 
+  // ---- 静态部分烘焙：投影/渐变/高光/图标/能力徽章记录成 Picture ----
+  ui.Picture? _face;
+  int _faceKeySize = -1;
+  int _faceKeyKind = -1;
+  int _faceKeyTier = -1;
+
+  /// 右下角 "x2" 徽章的缓存 Picture（按尺寸重建）。
+  ui.Picture? _badgePic;
+  int _badgePicSize = -1;
+
+  // 动态叠加层复用 Paint，避免每帧分配。
+  late final Paint _selGlow = Paint()
+    ..color = const Color(0xFFFFD54F).withValues(alpha: 0.5)
+    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9);
+  late final Paint _hintRing = Paint()
+    ..color = const Color(0xFF66BB6A).withValues(alpha: 0.85)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 2.4;
+  late final Paint _pulseFill = Paint();
+
   void _ensureVisualCache() {
     final kind = data.isBomb ? 2 : (data.isWildcard ? 1 : 0);
-    if (size.x == _lastSize && kind == _lastKind) return;
+    if (size.x == _lastSize &&
+        kind == _lastKind &&
+        data.tier.id == _lastTier) {
+      return;
+    }
     _lastSize = size.x;
     _lastKind = kind;
+    _lastTier = data.tier.id;
+    // 尺寸/类型/等级变了，静态 Picture 缓存全部作废，下次用到时重建。
+    _face = null;
+    _badgePic = null;
     final rect = Rect.fromLTWH(0, 0, size.x, size.y);
     final r = size.x * 0.14;
     _rr = RRect.fromRectAndRadius(rect, Radius.circular(r));
@@ -1689,21 +1739,87 @@ class StackSprite extends PositionComponent
       ).createShader(badgeRect.outerRect);
   }
 
+  /// 把卡面静态部分（投影/渐变/高光/图标/能力徽章）烘焙成一张 Picture。
+  /// 每帧渲染只需回放一次，不再逐帧排版文字、分配 Paint 或重复模糊填充。
+  void _ensureFace() {
+    final keySize = (size.x * 64).round();
+    if (_face != null &&
+        _faceKeySize == keySize &&
+        _faceKeyKind == _lastKind &&
+        _faceKeyTier == _lastTier) {
+      return;
+    }
+    _faceKeySize = keySize;
+    _faceKeyKind = _lastKind;
+    _faceKeyTier = _lastTier;
+    final recorder = ui.PictureRecorder();
+    final c = Canvas(recorder);
+    final rr = _rr;
+    // 柔和投影(单层)：普通车用同色投影强化身份色，特殊卡用中性投影。
+    c.drawRRect(
+      RRect.fromRectAndRadius(rr.outerRect.translate(0, 3.5), rr.tlRadius),
+      (data.isBomb || data.isWildcard) ? _shadow : _tierShadow,
+    );
+    // 卡面渐变 + 顶部高光。
+    c.drawRRect(rr, _gradient!);
+    c.drawRRect(_glossRR, _gloss!);
+    // 图标 + 能力徽章。
+    _drawIcon(c);
+    _drawAbilityBadge(c);
+    _face = recorder.endRecording();
+  }
+
+  void _ensureBadgePic() {
+    final keySize = (size.x * 64).round();
+    if (_badgePic != null && _badgePicSize == keySize) return;
+    _badgePicSize = keySize;
+    final recorder = ui.PictureRecorder();
+    final c = Canvas(recorder);
+    final w = size.x * 0.44;
+    final h = w * 0.5;
+    final badgeRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: Offset(size.x * 0.74, size.y * 0.86),
+        width: w,
+        height: h,
+      ),
+      Radius.circular(h / 2),
+    );
+    c.drawRRect(
+      badgeRect,
+      _badgeGradient!,
+    );
+    c.drawRRect(
+      badgeRect,
+      Paint()
+        ..color = const Color(0xFFFFD54F)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5,
+    );
+    _paintText(
+      c,
+      'x2',
+      fontSize: size.x * 0.22,
+      color: const Color(0xFFFFD54F),
+      center: Offset(size.x * 0.74, size.y * 0.86),
+    );
+    _badgePic = recorder.endRecording();
+  }
+
   @override
   void render(Canvas canvas) {
     _ensureVisualCache();
+    _ensureFace();
     final rr = _rr;
 
-    // 选中光晕
+    // 选中光晕（软金黄，垫底）。
     if (selected) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           rr.outerRect.inflate(5),
           Radius.circular(rr.tlRadius.x + 3),
         ),
-        Paint()
-          ..color = const Color(0xFFFFD54F).withValues(alpha: 0.5)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9),
+        _selGlow,
       );
     }
 
@@ -1714,29 +1830,14 @@ class StackSprite extends PositionComponent
           rr.outerRect.inflate(3),
           Radius.circular(rr.tlRadius.x + 2),
         ),
-        Paint()
-          ..color = const Color(0xFF66BB6A).withValues(alpha: 0.85)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.4,
+        _hintRing,
       );
     }
 
-    // 柔和投影(单层)：普通车用同色投影强化身份色，特殊卡用中性投影。
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        rr.outerRect.translate(0, 3.5),
-        rr.tlRadius,
-      ),
-      (data.isBomb || data.isWildcard) ? _shadow : _tierShadow,
-    );
+    // 静态卡面（投影 / 渐变 / 高光 / 图标 / 能力徽章）一次回放。
+    canvas.drawPicture(_face!);
 
-    // 卡面渐变:上亮下深
-    canvas.drawRRect(rr, _gradient!);
-
-    // 顶部高光
-    canvas.drawRRect(_glossRR, _gloss!);
-
-    // 边框/选中描边
+    // 边框/选中描边（选中态完全覆盖省的边框高亮，与旧视觉一致）。
     if (selected) {
       canvas.drawRRect(rr, _selBorder);
     } else if (data.isBomb || data.isWildcard) {
@@ -1745,19 +1846,14 @@ class StackSprite extends PositionComponent
       canvas.drawRRect(rr, _border);
     }
 
-    // 合并闪光
+    // 合并闪光（覆盖在卡面上，含图标）。
     if (_pulsing) {
-      canvas.drawRRect(
-        rr,
-        Paint()
-          ..color = const Color(0xFFFFFFFF)
-              .withValues(alpha: 0.45 * sin(pi * _pulseT)),
-      );
+      _pulseFill.color = const Color(0xFFFFFFFF)
+          .withValues(alpha: 0.45 * sin(pi * _pulseT));
+      canvas.drawRRect(rr, _pulseFill);
     }
 
-    _drawIcon(canvas);
     if (data.count == 2) _drawBadge(canvas);
-    _drawAbilityBadge(canvas);
 
     // 迷雾覆盖：隐藏卡面。
     if (game.board.isFogged(col, row)) {
@@ -1788,34 +1884,8 @@ class StackSprite extends PositionComponent
   }
 
   void _drawBadge(Canvas canvas) {
-    final w = size.x * 0.44;
-    final h = w * 0.5;
-    final badgeRect = RRect.fromRectAndRadius(
-      Rect.fromCenter(
-        center: Offset(size.x * 0.74, size.y * 0.86),
-        width: w,
-        height: h,
-      ),
-      Radius.circular(h / 2),
-    );
-    canvas.drawRRect(
-      badgeRect,
-      _badgeGradient!,
-    );
-    canvas.drawRRect(
-      badgeRect,
-      Paint()
-        ..color = const Color(0xFFFFD54F)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5,
-    );
-    _paintText(
-      canvas,
-      'x2',
-      fontSize: size.x * 0.22,
-      color: const Color(0xFFFFD54F),
-      center: Offset(size.x * 0.74, size.y * 0.86),
-    );
+    _ensureBadgePic();
+    canvas.drawPicture(_badgePic!);
   }
 
   /// 右上角能力标识小徽章（非 none 时绘制半透明深底药丸 + 能力文字）。
@@ -1948,6 +2018,7 @@ class BurstParticles extends PositionComponent {
   final double _life;
   double _t = 0;
   final List<_BurstDot> _dots = [];
+  final Paint _paint = Paint();
 
   BurstParticles(
     Vector2 position,
@@ -1984,10 +2055,9 @@ class BurstParticles extends PositionComponent {
   @override
   void render(Canvas canvas) {
     final alpha = (1 - _t / _life).clamp(0.0, 1.0);
-    final paint = Paint();
     for (final d in _dots) {
-      paint.color = d.color.withValues(alpha: alpha);
-      canvas.drawCircle(Offset(d.position.x, d.position.y), d.size, paint);
+      _paint.color = d.color.withValues(alpha: alpha);
+      canvas.drawCircle(Offset(d.position.x, d.position.y), d.size, _paint);
     }
   }
 }
@@ -2074,6 +2144,7 @@ class Shockwave extends PositionComponent {
   final double maxRadius;
   final double _life;
   double _t = 0;
+  final Paint _paint = Paint();
 
   Shockwave(
     Vector2 position, {
@@ -2091,11 +2162,12 @@ class Shockwave extends PositionComponent {
   @override
   void render(Canvas canvas) {
     final k = (_t / _life).clamp(0.0, 1.0);
-    final paint = Paint()
+    _paint
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1 + (1 - k) * 7
       ..color = color.withValues(alpha: (1 - k) * 0.85);
-    canvas.drawCircle(Offset.zero, maxRadius * Curves.easeOut.transform(k), paint);
+    canvas.drawCircle(
+        Offset.zero, maxRadius * Curves.easeOut.transform(k), _paint);
   }
 }
 
@@ -2104,6 +2176,7 @@ class Confetti extends PositionComponent {
   final double _life = 1.5;
   double _t = 0;
   late final List<_ConfettiPiece> _pieces;
+  final Paint _paint = Paint();
 
   Confetti(Vector2 position, {int count = 36}) : super(position: position) {
     final rnd = Random();
@@ -2141,9 +2214,8 @@ class Confetti extends PositionComponent {
   @override
   void render(Canvas canvas) {
     final alpha = (1 - _t / _life).clamp(0.0, 1.0);
-    final paint = Paint();
     for (final p in _pieces) {
-      paint.color = p.color.withValues(alpha: alpha);
+      _paint.color = p.color.withValues(alpha: alpha);
       canvas.save();
       canvas.translate(p.position.x, p.position.y);
       canvas.rotate(p.rotation);
@@ -2152,7 +2224,7 @@ class Confetti extends PositionComponent {
           Rect.fromCenter(center: Offset.zero, width: p.size * 1.7, height: p.size),
           const Radius.circular(2),
         ),
-        paint,
+        _paint,
       );
       canvas.restore();
     }

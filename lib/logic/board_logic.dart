@@ -67,6 +67,12 @@ class BoardLogic {
   int producedCount = 0;
   int totalMerges = 0;
 
+  /// [hasPossibleMove] 的结果缓存。棋盘每次变化后失效，
+  /// 避免在每帧的死局检测里重复跑整套 BFS（满盘时开销极大）。
+  bool? _possibleMoveCache;
+
+  void _invalidate() => _possibleMoveCache = null;
+
   BoardLogic(this.level, {Random? random})
       : cols = level.cols,
         rows = level.rows,
@@ -118,6 +124,7 @@ class BoardLogic {
   /// 直接在某格放置一张卡片（测试/初始化用）。
   void placeAt(int col, int row, StackData data) {
     _grid[_idx(col, row)] = data;
+    _invalidate();
   }
 
   /// 是否已无可用空格（空格、或已清除的空卡位都不算；障碍格视为占满）。
@@ -167,6 +174,7 @@ class BoardLogic {
     if (empties.isEmpty) return null;
     final cell = empties[_random.nextInt(empties.length)];
     _grid[_idx(cell.col, cell.row)] = StackData(tier);
+    _invalidate();
     return cell;
   }
 
@@ -207,6 +215,7 @@ class BoardLogic {
     if (pool.isEmpty) return null;
     final cell = pool[_random.nextInt(pool.length)];
     _grid[_idx(cell.col, cell.row)] = StackData(tier);
+    _invalidate();
     return cell;
   }
 
@@ -216,6 +225,7 @@ class BoardLogic {
     if (cell == null) return null;
     _grid[_idx(cell.col, cell.row)] =
         StackData(VehicleType.bicycle, isWildcard: true);
+    _invalidate();
     return cell;
   }
 
@@ -224,6 +234,7 @@ class BoardLogic {
     final cell = _randomEmptyCell();
     if (cell == null) return null;
     _grid[_idx(cell.col, cell.row)] = StackData(VehicleType.bicycle, isBomb: true);
+    _invalidate();
     return cell;
   }
 
@@ -311,6 +322,7 @@ class BoardLogic {
     if (bestIdx == -1) return null;
     final data = _grid[bestIdx]!;
     _grid[bestIdx] = null;
+    _invalidate();
     return (col: bestIdx % cols, row: bestIdx ~/ cols, tier: data.tier);
   }
 
@@ -319,6 +331,7 @@ class BoardLogic {
     final i = _idx(col, row);
     final data = _grid[i];
     _grid[i] = null;
+    _invalidate();
     return data;
   }
 
@@ -347,6 +360,7 @@ class BoardLogic {
       ..clear()
       ..addAll(snap.obstacles);
     _fogged.setAll(0, snap.fogged);
+    _invalidate();
   }
 
   /// 把 (from) 处的卡片移动到 (to)。
@@ -359,6 +373,7 @@ class BoardLogic {
   ///  - 万能卡可与任意卡片合并（等效为该等级 1 张）。
   ///  - 炸弹卡只与炸弹卡合并，集满 3 张引爆，清空 3×3 内的卡片与冰/锁。
   MoveResult move(int fc, int fr, int tc, int tr) {
+    _invalidate();
     final from = _grid[_idx(fc, fr)];
     if (from == null || (fc == tc && fr == tr)) {
       return const MoveResult();
@@ -567,8 +582,16 @@ class BoardLogic {
   }
 
   /// 是否存在任意可合并操作（用于提示，含万能卡与炸弹）。
-  /// 修复：BFS 搜索判断同等级卡是否可达（不只是数数量）。
+  /// 结果缓存到 [_possibleMoveCache]，棋盘被改写时由 [_invalidate] 失效。
   bool get hasPossibleMove {
+    final cached = _possibleMoveCache;
+    if (cached != null) return cached;
+    final result = _computePossibleMove();
+    _possibleMoveCache = result;
+    return result;
+  }
+
+  bool _computePossibleMove() {
     var wildcards = 0;
     var bombs = 0;
     final normalByTier = <VehicleType, int>{};
@@ -606,8 +629,9 @@ class BoardLogic {
     final queue = <int>[_idx(col, row)];
     visited.add(_idx(col, row));
 
-    while (queue.isNotEmpty) {
-      final curr = queue.removeAt(0);
+    var head = 0;
+    while (head < queue.length) {
+      final curr = queue[head++];
       final cc = curr % cols;
       final cr = curr ~/ cols;
 
@@ -689,6 +713,7 @@ class BoardLogic {
     for (var k = 0; k < cards.length; k++) {
       _grid[slots[k % slots.length]] = cards[k];
     }
+    _invalidate();
   }
 
   /// 提示一步：返回一个"立即能合并/引爆"的操作 (from -> to)，供高亮与文案提示。

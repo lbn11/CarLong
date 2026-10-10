@@ -1404,24 +1404,36 @@ class _AmbientPainter extends CustomPainter {
 
   _AmbientPainter(this.t);
 
-  void _orb(Canvas canvas, Size size, double fx, double fy, double radius,
-      Color color, double phase) {
-    final dx = math.sin(phase) * 22.0;
-    final dy = math.cos(phase * 0.8) * 16.0;
-    final center = Offset(size.width * fx + dx, size.height * fy + dy);
-    final paint = Paint()
-      ..shader = ui.Gradient.radial(center, radius, [
-        color.withValues(alpha: 0.10),
-        color.withValues(alpha: 0.0),
-      ]);
-    canvas.drawCircle(center, radius, paint);
-  }
+  /// 固定光晕规格：(fx, fy, 半径, 颜色, 相位基准, 相位速度)。
+  static const _orbSpecs = <(double, double, double, Color, double, double)>[
+    (0.16, 0.30, 190, AppColors.accent, 0.0, 1.1),
+    (0.86, 0.62, 230, Color(0xFFFFCA28), 2.1, 0.9),
+    (0.62, 0.12, 160, Color(0xFFB39DDB), 4.0, 1.3),
+  ];
+
+  /// shader 只与固定规格有关，进程级缓存一份（以原点为圆心），
+  /// 每次绘制用 canvas.translate 把圆心挪到光晕位置，避免每帧重建渐变 shader。
+  static final List<Paint> _orbPaints = [
+    for (final s in _orbSpecs)
+      Paint()
+        ..shader = ui.Gradient.radial(Offset.zero, s.$3, [
+          s.$4.withValues(alpha: 0.10),
+          s.$4.withValues(alpha: 0.0),
+        ]),
+  ];
 
   @override
   void paint(Canvas canvas, Size size) {
-    _orb(canvas, size, 0.16, 0.30, 190, AppColors.accent, t * 1.1);
-    _orb(canvas, size, 0.86, 0.62, 230, const Color(0xFFFFCA28), t * 0.9 + 2.1);
-    _orb(canvas, size, 0.62, 0.12, 160, const Color(0xFFB39DDB), t * 1.3 + 4.0);
+    for (var i = 0; i < _orbSpecs.length; i++) {
+      final s = _orbSpecs[i];
+      final phase = s.$5 + t * s.$6;
+      final dx = math.sin(phase) * 22.0;
+      final dy = math.cos(phase * 0.8) * 16.0;
+      canvas.save();
+      canvas.translate(size.width * s.$1 + dx, size.height * s.$2 + dy);
+      canvas.drawCircle(Offset.zero, s.$3, _orbPaints[i]);
+      canvas.restore();
+    }
   }
 
   @override
