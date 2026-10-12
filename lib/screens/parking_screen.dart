@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../analytics/analytics.dart';
 import '../game/audio_feedback.dart';
+import '../widgets/pressable.dart';
 import '../game/game_config.dart';
 import '../game/music_player.dart';
 import '../game/parking_daily_challenge.dart';
@@ -103,6 +104,8 @@ class _ParkingScreenState extends State<ParkingScreen> {
     // 音效/触感跟随全局开关。
     _audio.soundOn = widget.data.soundOn;
     _audio.vibrateOn = widget.data.vibrateOn;
+    // 同步全局振动开关，供 Pressable 等 UI 层触感入口使用。
+    AudioFeedback.globalVibrateOn = widget.data.vibrateOn;
     unawaited(_audio.load());
     // 目标车位幽灵车呼吸脉冲。
     _ghostTimer = Timer.periodic(const Duration(milliseconds: 900), (_) {
@@ -191,6 +194,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
     if (_markMode && !_game.hasWon && !_game.hasLost) {
       _game.toggleMark(row, col);
       _audio.play(Sfx.tick);
+      unawaited(_audio.select());
       return;
     }
 
@@ -257,6 +261,9 @@ class _ParkingScreenState extends State<ParkingScreen> {
         } else {
           _showToast('🚧 前方被挡住了');
         }
+        // 滑不动的失败反馈：error 音 + 拒绝触感，配合 toast 明确告知。
+        _audio.play(Sfx.error);
+        unawaited(_audio.reject());
       }
     } else {
       final v = _game.vehicleAt(row, col);
@@ -936,7 +943,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
 
   Widget _buildItemButton(String key, String icon, String label, Color color) {
     final count = widget.data.boosters[key] ?? 0;
-    return GestureDetector(
+    return Pressable(
       onTap: count > 0 ? () => _activateItem(key) : null,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1030,6 +1037,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
       widget.data.boosters[key] = count - 1;
       widget.repo.save(widget.data);
       _audio.play(Sfx.place);
+      unawaited(_audio.merge());
       setState(() {});
     }
     
@@ -1050,7 +1058,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
           // 道具按钮（仅在停车模式可用）
           if (!_game.hasWon && !_game.hasLost) ...[
             // 标记模式切换
-            GestureDetector(
+            Pressable(
               onTap: () => setState(() {
                 _markMode = !_markMode;
                 _activeItem = null;
@@ -1572,7 +1580,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
       bg = Color.lerp(bg, const Color(0xFF26C6DA), 0.45)!;
     }
 
-    return GestureDetector(
+    return Pressable(
       behavior: HitTestBehavior.opaque,
       key: ValueKey('cell-$row-$col'),
       onTap: () => _handleCellTap(row, col),

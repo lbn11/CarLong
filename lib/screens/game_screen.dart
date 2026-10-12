@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../analytics/analytics.dart';
+import '../game/audio_feedback.dart';
 import '../game/daily_challenge.dart';
 import '../game/game_config.dart';
 import '../game/music_player.dart';
@@ -11,6 +12,7 @@ import '../theme/app_theme.dart';
 import '../models/level.dart';
 import '../models/vehicle.dart';
 import '../save/save_repository.dart';
+import '../widgets/pressable.dart';
 import '../widgets/vehicle_image.dart';
 
 class GameScreen extends StatefulWidget {
@@ -72,6 +74,8 @@ class _GameScreenState extends State<GameScreen> {
     };
     _game.feedback.soundOn = widget.data.soundOn;
     _game.feedback.vibrateOn = widget.data.vibrateOn;
+    // 同步全局振动开关，供 Pressable 等 UI 层触感入口使用。
+    AudioFeedback.globalVibrateOn = widget.data.vibrateOn;
     _analytics = AnalyticsService(widget.data, widget.repo);
     _analytics.levelStart(widget.level);
     _applyBoosters();
@@ -1266,7 +1270,7 @@ class _GameScreenState extends State<GameScreen> {
     final light = Color.lerp(vehicle.color, Colors.white, 0.66)!;
     final deep = Color.lerp(vehicle.color, Colors.white, 0.82)!;
     final radius = size * 0.14;
-    return GestureDetector(
+    return Pressable(
       key: ValueKey('stockCard$index'),
       onTap: enabled ? onTap : null,
       child: Container(

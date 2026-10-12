@@ -6,6 +6,7 @@ import '../save/save_repository.dart';
 import '../services/parking_chapters.dart';
 import '../services/parking_generator.dart';
 import '../theme/app_theme.dart';
+import '../widgets/pressable.dart';
 import 'parking_screen.dart';
 
 /// 停车关卡选择屏（按车型章节分组，章节解锁与合成图鉴双向联动）。
@@ -204,7 +205,7 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
 
   Widget _levelTile(ParkingLevel level) {
     final stars = widget.data.parkingBestStars[level.id] ?? 0;
-    return GestureDetector(
+    return Pressable(
       onTap: () async {
         // 等对局返回后强制重绘：ParkingScreen 直接改的是共享的 data，
         // 不 setState 的话本页仍显示旧星级，看起来像"通关没被记录"。

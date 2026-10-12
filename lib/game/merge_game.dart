@@ -429,8 +429,11 @@ class MergeGame extends FlameGame {
       final ticks = _timeLeftSec.ceil();
       if (ticks != timeLeft.value) {
         timeLeft.value = ticks;
-        // 最后 10 秒每秒滴答提醒。
-        if (ticks > 0 && ticks <= 10) feedback.play(Sfx.tick);
+        // 最后 10 秒每秒滴答 + 轻振，紧迫感拉满。
+        if (ticks > 0 && ticks <= 10) {
+          feedback.play(Sfx.tick);
+          feedback.select();
+        }
       }
       if (_timeLeftSec <= 0) {
         hint.value = '⏰ 时间到！';
@@ -726,6 +729,7 @@ class MergeGame extends FlameGame {
     if (sel.col == col && sel.row == row) {
       _selected = null;
       _refreshSelection();
+      feedback.select();
       return;
     }
     _selected = null;
@@ -749,6 +753,8 @@ class MergeGame extends FlameGame {
   void _select(int col, int row) {
     _selected = (col: col, row: row);
     _refreshSelection();
+    // 点选反馈：tick 音（触感由 onDragStart 起手时给，避免重复触发）。
+    feedback.play(Sfx.tick);
   }
 
   /// 拖拽释放：执行移动/合并/交换，并驱动对应动画。
@@ -781,6 +787,9 @@ class MergeGame extends FlameGame {
     final result = board.move(fc, fr, tc, tr);
     if (!result.valid) {
       _undoStack.removeLast();
+      // 无效移动不再静默：error 音 + 短促拒绝触感，明确告诉玩家"这步不行"。
+      feedback.play(Sfx.error);
+      feedback.reject();
       return false;
     }
     _consumeMove();
@@ -919,7 +928,8 @@ class MergeGame extends FlameGame {
         combo: _combo,
       );
       feedback.play(Sfx.merge);
-      feedback.tap();
+      // 触感随连消升档：x1 合成感、x2+ 重击感，越连越带劲。
+      feedback.combo(_combo);
     }
     // 修复：非升级合并（2 张同档）也算"合成动作"，供新手教学推进
     // （L1 教程"拖两张合并"不升级，若只在 upgraded 时回调会卡住）。
@@ -1563,6 +1573,8 @@ class StackSprite extends PositionComponent
     position.y -= _liftY;
     game._dragSrc = (col, row);
     game._setMergeHints((col, row));
+    // 拿起反馈：清脆的 selectionClick（真正的 tap 会走到 _select 只补 tick 音）。
+    game.feedback.select();
   }
 
   @override

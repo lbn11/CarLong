@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/vehicle.dart';
 import '../save/save_repository.dart';
 import '../theme/app_theme.dart';
+import '../widgets/pressable.dart';
 import '../widgets/vehicle_image.dart';
 
 /// 交通图鉴：按 5 大车系分组展示全部车辆，首次合成点亮。
@@ -280,7 +281,7 @@ class CollectionScreen extends StatelessWidget {
     @override
     Widget build(BuildContext context) {
       final image = VehicleImage(vehicle: vehicle, size: 36);
-      return GestureDetector(
+      return Pressable(
         onTap: onTap,
         child: Container(
         width: 96,
