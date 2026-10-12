@@ -2,7 +2,9 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../game/audio_feedback.dart';
 import '../game/daily_challenge.dart';
 import '../game/game_config.dart';
 import '../game/music_player.dart';
@@ -276,6 +278,7 @@ class _HomeScreenState extends State<HomeScreen>
                     style: TextStyle(color: AppColors.ink1)),
                 activeTrackColor: AppColors.accent,
                 onChanged: (v) {
+                  AudioFeedback.uiTap();
                   setDialogState(() => data.soundOn = v);
                   widget.repo.save(data);
                   // BGM 跟随音效开关。
@@ -289,6 +292,10 @@ class _HomeScreenState extends State<HomeScreen>
                     style: TextStyle(color: AppColors.ink1)),
                 activeTrackColor: AppColors.accent,
                 onChanged: (v) {
+                  // 振动总开关：切换时立即给一次确认触感（开着才振动时，
+                  // 关掉前给最后一次，打开后从此有了）。
+                  HapticFeedback.selectionClick();
+                  AudioFeedback.globalVibrateOn = v;
                   setDialogState(() => data.vibrateOn = v);
                   widget.repo.save(data);
                   setState(() {});

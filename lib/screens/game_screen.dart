@@ -819,7 +819,12 @@ class _GameScreenState extends State<GameScreen> {
     required VoidCallback? onPressed,
   }) {
     return IconButton(
-      onPressed: onPressed,
+      onPressed: onPressed == null
+          ? null
+          : () {
+              AudioFeedback.uiTap();
+              onPressed();
+            },
       tooltip: tooltip,
       icon: Icon(icon, color: Colors.white70, size: 20),
       padding: EdgeInsets.zero,
@@ -838,7 +843,10 @@ class _GameScreenState extends State<GameScreen> {
               IconButton(
                 onPressed: _finished
                     ? null
-                    : () => Navigator.of(context).pop(),
+                    : () {
+                        AudioFeedback.uiTap();
+                        Navigator.of(context).pop();
+                      },
                 icon: const Icon(Icons.arrow_back, color: Colors.white70),
                 style: IconButton.styleFrom(
                   backgroundColor: const Color(0x22FFFFFF),
@@ -910,7 +918,12 @@ class _GameScreenState extends State<GameScreen> {
                 ),
               ),
               IconButton(
-                onPressed: _finished ? null : _showPause,
+                onPressed: _finished
+                    ? null
+                    : () {
+                        AudioFeedback.uiTap();
+                        _showPause();
+                      },
                 tooltip: '暂停',
                 icon: const Icon(Icons.pause_circle_outline,
                     color: Colors.white70),

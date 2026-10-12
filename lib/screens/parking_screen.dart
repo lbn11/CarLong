@@ -64,6 +64,9 @@ class _ParkingScreenState extends State<ParkingScreen> {
   /// 死局弹窗已弹出标记（同一死局只弹一次，棋盘恢复可动后重置）。
   bool _deadlockDialogShown = false;
 
+  /// 限时紧迫提示去重：记录上次已提示的剩余秒数（每秒只提示一次）。
+  int? _lastUrgentTick;
+
   /// 操作反馈提示（如"横车只能左右滑"），2 秒后自动消失。
   String? _toast;
   Timer? _toastTimer;
@@ -119,6 +122,13 @@ class _ParkingScreenState extends State<ParkingScreen> {
 
   void _onGameUpdate() {
     if (!mounted) return;
+    // 限时最后 10 秒：每秒 tick 音 + 轻振，与合成模式的紧迫感一致。
+    final tl = _game.timeLeft;
+    if (tl != null && tl > 0 && tl <= 10 && tl != _lastUrgentTick) {
+      _lastUrgentTick = tl;
+      _audio.play(Sfx.tick);
+      unawaited(_audio.select());
+    }
     // 死局检测：无车可动时弹窗引导，避免无限僵持（每次死局只弹一次）。
     if (_game.isDeadlocked && !_deadlockDialogShown) {
       _deadlockDialogShown = true;
@@ -501,6 +511,9 @@ class _ParkingScreenState extends State<ParkingScreen> {
       }
     });
     if (h == null) {
+      // 无解提示：error 音 + 拒绝触感，别让玩家觉得"点了没反应"。
+      _audio.play(Sfx.error);
+      unawaited(_audio.reject());
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('暂时找不到解法，试试撤销或重置'),
@@ -856,7 +869,10 @@ class _ParkingScreenState extends State<ParkingScreen> {
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back, color: AppColors.ink1),
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              AudioFeedback.uiTap();
+              Navigator.of(context).pop();
+            },
           ),
           Expanded(
             child: SingleChildScrollView(
@@ -911,7 +927,10 @@ class _ParkingScreenState extends State<ParkingScreen> {
                   IconButton(
                     icon: const Icon(Icons.help_outline,
                         color: AppColors.ink2, size: 20),
-                    onPressed: _showHelpDialog,
+                    onPressed: () {
+                      AudioFeedback.uiTap();
+                      _showHelpDialog();
+                    },
                   ),
                 ],
               ),
@@ -1139,7 +1158,10 @@ class _ParkingScreenState extends State<ParkingScreen> {
           if (_game.hasWon || _game.hasLost) ...[
             const SizedBox(width: 12),
             ElevatedButton.icon(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                AudioFeedback.uiTap();
+                Navigator.of(context).pop();
+              },
               icon: const Icon(Icons.check),
               label: const Text('完成'),
               style: ElevatedButton.styleFrom(

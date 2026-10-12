@@ -156,6 +156,7 @@ class MergeGame extends FlameGame {
 
   /// 拖拽落点预览格（磁吸目标，高亮显示）。
   ({int col, int row})? _dropPreview;
+  bool _dropPreviewValid = true;
 
   /// 清道夫关"棋盘已清空"提醒只发一次的标记（棋盘重新有牌后复位）。
   bool _emptyBoardHinted = false;
@@ -1150,12 +1151,15 @@ class MergeGame extends FlameGame {
   }
 
   /// 更新拖拽落点预览高亮（同格重复调用无副作用）。
-  void updateDropPreview(({int col, int row})? cell) {
-    if (cell == _dropPreview) return;
+  /// [valid] 表示该落点能否真正落下，决定预览环是金色还是红色。
+  void updateDropPreview(({int col, int row})? cell, {bool valid = true}) {
+    if (cell == _dropPreview && valid == _dropPreviewValid) return;
     _dropPreview = cell;
+    _dropPreviewValid = valid;
     for (final s in children.whereType<CellSprite>()) {
       s.dropTarget =
           cell != null && s.col == cell.col && s.row == cell.row;
+      s.dropValid = valid;
     }
   }
 
@@ -1216,8 +1220,11 @@ class CellSprite extends PositionComponent with TapCallbacks {
 
   CellSprite({required this.game, required this.col, required this.row});
 
-  /// 拖拽落点预览：当前磁吸目标格高亮金环。
+  /// 拖拽落点预览：当前磁吸目标格高亮环（金色=可落，红色=松手会弹回）。
   bool dropTarget = false;
+
+  /// 落点是否合法（与 [MergeGame._canDropOn] 一致），决定预览环颜色。
+  bool dropValid = true;
 
   double _lastSize = -1;
   RRect _rr = RRect.fromRectAndRadius(Rect.zero, const Radius.circular(0));
@@ -1266,7 +1273,8 @@ class CellSprite extends PositionComponent with TapCallbacks {
     canvas.drawRRect(_inset, _topShade!);
     canvas.drawRRect(_inset, _bottomLight!);
 
-    // 拖拽落点预览：磁吸目标格金环，松手即落到这里。
+    // 拖拽落点预览：磁吸目标格高亮环。金色=松手即落这里；红色=放不下，
+    // 提前告知省得松手弹回后才知道（配合松手时的 error 音+拒绝触感）。
     if (dropTarget) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
@@ -1274,7 +1282,9 @@ class CellSprite extends PositionComponent with TapCallbacks {
           Radius.circular(_rr.tlRadius.x + 2),
         ),
         Paint()
-          ..color = const Color(0xFFFFD54F)
+          ..color = dropValid
+              ? const Color(0xFFFFD54F)
+              : const Color(0xFFEF5350)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 3,
       );
@@ -1581,8 +1591,13 @@ class StackSprite extends PositionComponent
   void onDragUpdate(DragUpdateEvent event) {
     _dragDist += event.localDelta.length;
     position.add(event.localDelta);
-    // 实时落点预览：与松手判定同一函数，所见即所得。
-    game.updateDropPreview(game.resolveDrop(position + size / 2, col, row));
+    // 实时落点预览：与松手判定同一函数，所见即所得；
+    // 同时标注落点合法性，红色环=松手会弹回。
+    final drop = game.resolveDrop(position + size / 2, col, row);
+    game.updateDropPreview(
+      drop,
+      valid: drop == null || game._canDropOn(col, row, drop.col, drop.row),
+    );
   }
 
   @override

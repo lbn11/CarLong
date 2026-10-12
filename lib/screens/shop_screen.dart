@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../analytics/analytics.dart';
+import '../game/audio_feedback.dart';
 import '../game/game_config.dart';
 import '../save/save_repository.dart';
 import '../theme/app_theme.dart';
@@ -62,6 +63,7 @@ class _ShopScreenState extends State<ShopScreen> {
 
   /// 激励广告（模拟）：点击后模拟"观看完成"立即发奖。
   void _watchAd() {
+    AudioFeedback.uiTap();
     final left = _adLeftToday;
     if (left <= 0) return;
     final today = _today();
@@ -82,6 +84,7 @@ class _ShopScreenState extends State<ShopScreen> {
 
   /// 金币礼包（模拟 IAP）：600 金币档。
   void _buyCoinPack() {
+    AudioFeedback.uiTap();
     data.addCoins(_coinPackAmount);
     widget.repo.save(data);
     _analytics.iapPurchase('coin_pack_600', _coinPackAmount);
@@ -152,6 +155,7 @@ class _ShopScreenState extends State<ShopScreen> {
 
   void _openChest() {
     if (data.coins < _chestCost) return;
+    AudioFeedback.uiTap();
     setState(() => data.coins -= _chestCost);
     widget.repo.save(data);
 
