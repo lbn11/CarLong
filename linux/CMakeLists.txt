@@ -16,6 +16,16 @@ cmake_policy(SET CMP0063 NEW)
 # Load bundled libraries from the lib/ directory relative to the binary.
 set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
 
+# musl + glibc-compat 兼容层（postmarketOS 等）：Flutter 引擎 so 依赖 glibc 的
+# libdl.so.2/libc.so.6。只用 rpath-link/-rpath 让链接器与运行期加载器能在
+# 兼容层里找到这些库——不能加 -L，否则链接器会误用兼容层的 libc.so
+# （其引用的 libc_nonshared.a 在兼容层中不存在）。目录不存在时不生效，
+# glibc 发行版零影响。
+if(EXISTS "/usr/glibc-compat/lib/libdl.so.2")
+  add_link_options("-Wl,-rpath-link,/usr/glibc-compat/lib"
+                   "-Wl,-rpath,/usr/glibc-compat/lib")
+endif()
+
 # Root filesystem for cross-building.
 if(FLUTTER_TARGET_PLATFORM_SYSROOT)
   set(CMAKE_SYSROOT ${FLUTTER_TARGET_PLATFORM_SYSROOT})
