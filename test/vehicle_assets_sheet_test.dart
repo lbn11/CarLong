@@ -1,3 +1,5 @@
+@Tags(<String>['ci-heavy'])
+library;
 import 'package:merge_fleet/models/vehicle.dart';
 import 'dart:io';
 

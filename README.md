@@ -30,6 +30,17 @@
 > 并把 `libgstreamer-plugins-base1.0-dev` 解压到 `~/gstapp-dev`（见 `tool/run_linux.sh`，
 > 因本机 mesa 被 apt hold 无法整包装 dev 包）。
 
+## 测试
+
+```bash
+./tool/test.sh   # 本机快速验证：跳过 ci-heavy 标签的整屏 widget 测试
+```
+
+> musl（postmarketOS 等）上 `flutter_tester` 线程栈浅，pump 整屏的 widget 测试会
+> StackOverflow，这些测试打了 `@Tags(['ci-heavy'])`，由 CI（`ubuntu-latest`，见
+> `.github/workflows/test.yml`）跑全量。glibc 环境（含本机容器以外的常规 Linux/macOS）
+> `flutter test` 可直接全量跑。
+
 ## 目录
 
 ```

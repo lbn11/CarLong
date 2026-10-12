@@ -1,3 +1,5 @@
+@Tags(<String>['ci-heavy'])
+library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:merge_fleet/models/level.dart';

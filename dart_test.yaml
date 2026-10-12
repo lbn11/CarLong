@@ -1,0 +1,7 @@
+# 本机（musl aarch64）flutter_tester 线程栈浅，整体页面 widget 测试
+# （pump 整屏 500+ 层元素挂载）会 StackOverflow——真机/CI(glibc) 不受影响。
+# 这些文件已打 @Tags(['ci-heavy'])：
+#   本机快速验证： flutter test --exclude-tags ci-heavy
+#   完整套件：     见 .github/workflows/test.yml（ubuntu-latest）
+tags:
+  ci-heavy:
