@@ -910,6 +910,7 @@ class MergeGame extends FlameGame {
           color: const Color(0xFF80CBC4), fontSize: 16, dy: -_cellSize * 0.5);
     }
 
+    void Function()? onArrive;
     if (result.upgraded) {
       // 连续合成：窗口内升级则连消叠加，奖励递增。
       _combo = _comboTimer > 0 ? _combo + 1 : 1;
@@ -921,16 +922,22 @@ class MergeGame extends FlameGame {
       final producedTier = board.at(tc, tr)?.tier;
       if (producedTier != null) onTierProduced?.call(producedTier);
       onPlayerAction?.call('merge', producedTier);
-      _spawnJuice(
-        tc,
-        tr,
-        points: 50 + comboBonus,
-        tierColor: dstSprite?.data.tier.color,
-        combo: _combo,
-      );
-      feedback.play(Sfx.merge);
-      // 触感随连消升档：x1 合成感、x2+ 重击感，越连越带劲。
-      feedback.combo(_combo);
+      // 特效与音效/触感延迟到卡片飞抵终点的瞬间：打击点落在"碰撞"上
+      // 而不是"起飞"上（拖拽路径同样受益——短飞后同样在落格瞬间炸）。
+      final juiceColor = dstSprite?.data.tier.color;
+      final juicePoints = 50 + comboBonus;
+      final juiceCombo = _combo;
+      onArrive = () {
+        _spawnJuice(
+          tc,
+          tr,
+          points: juicePoints,
+          tierColor: juiceColor,
+          combo: juiceCombo,
+        );
+        feedback.play(Sfx.merge);
+        feedback.combo(juiceCombo);
+      };
     }
     // 修复：非升级合并（2 张同档）也算"合成动作"，供新手教学推进
     // （L1 教程"拖两张合并"不升级，若只在 upgraded 时回调会卡住）。
@@ -981,7 +988,15 @@ class MergeGame extends FlameGame {
       }
     }
 
-    _animateMove(fc, fr, tc, tr, hadDst: dstSprite != null, sameTier: sameTier);
+    _animateMove(
+      fc,
+      fr,
+      tc,
+      tr,
+      hadDst: dstSprite != null,
+      sameTier: sameTier,
+      onArrive: onArrive,
+    );
     return true;
   }
 
@@ -1043,6 +1058,7 @@ class MergeGame extends FlameGame {
   }
 
   /// 三种情况的视觉动画：移动 / 合并 / 交换。
+  /// [onArrive] 在卡飞抵终点的瞬间触发（合成特效与飞行同步，而非起飞即炸）。
   void _animateMove(
     int fc,
     int fr,
@@ -1050,28 +1066,36 @@ class MergeGame extends FlameGame {
     int tr, {
     required bool hadDst,
     required bool sameTier,
+    void Function()? onArrive,
   }) {
     final src = _findStack(fc, fr);
-    if (src == null) return;
+    if (src == null) {
+      onArrive?.call();
+      return;
+    }
     final targetPos = _cellPos(tc, tr);
 
     if (!hadDst) {
-      // 移动到空格
+      // 移动到空格：飞过去 + 落地小弹跳。
       src.flyTo(targetPos, onDone: () {
         src.col = tc;
         src.row = tr;
+        src.pulse(0.12);
       });
     } else if (sameTier) {
-      // 合并：源卡飞过去消失，目标卡升级脉冲
+      // 合并：源卡飞过去消失，目标卡升级脉冲，落地的瞬间炸特效。
       final dst = _findStack(tc, tr);
       src.flyTo(
         targetPos,
         removeAfter: true,
-        onDone: () => _stackSprites.remove(src),
+        onDone: () {
+          _stackSprites.remove(src);
+          dst?.pulse();
+          onArrive?.call();
+        },
       );
-      dst?.pulse();
     } else {
-      // 交换：两张卡交叉飞
+      // 交换：两张卡交叉飞。
       final dst = _findStack(tc, tr);
       final srcPos = _cellPos(fc, fr);
       src.flyTo(targetPos, onDone: () {
@@ -1082,6 +1106,7 @@ class MergeGame extends FlameGame {
         dst.col = fc;
         dst.row = fr;
       });
+      onArrive?.call();
     }
   }
 
@@ -1460,6 +1485,7 @@ class StackSprite extends PositionComponent
 
   bool _pulsing = false;
   double _pulseT = 0;
+  double _pulseAmp = 0.35;
 
   bool _spawning = false;
   double _spawnT = 0;
@@ -1468,6 +1494,16 @@ class StackSprite extends PositionComponent
   double _removeT = 0;
 
   double _dragDist = 0;
+
+  /// 选中态缩放过渡（0→1 平滑跟随 selected 标志）：选中的卡"拿起来"。
+  double _selScaleT = 0;
+
+  /// 当前动画帧的基础缩放（spawn/pulse/drag 写入），最终 scale 在 update
+  /// 末尾统一 = _animScale × (1 + 选中放大系数)。
+  double _animScale = 1;
+
+  /// 提示环/选中光晕呼吸相位。
+  double _breathT = 0;
 
   /// 拖拽悬浮偏移量：卡片抬到手指上方，避免拇指遮挡（松手时归零）。
   double _liftY = 0;
@@ -1483,7 +1519,7 @@ class StackSprite extends PositionComponent
   void spawn() {
     _spawning = true;
     _spawnT = 0;
-    scale = Vector2.all(0.01);
+    _animScale = 0.01;
   }
 
   void flyTo(
@@ -1499,10 +1535,11 @@ class StackSprite extends PositionComponent
     _flying = true;
   }
 
-  /// 合并脉冲：放大再回弹。
-  void pulse() {
+  /// 合并脉冲：放大再回弹（[amp] 控制幅度，移动落地用小幅度）。
+  void pulse([double amp = 0.35]) {
     _pulsing = true;
     _pulseT = 0;
+    _pulseAmp = amp;
   }
 
   /// 缩小消失（自动清理低阶车时用）。
@@ -1515,13 +1552,19 @@ class StackSprite extends PositionComponent
   void update(double dt) {
     super.update(dt);
 
+    _breathT += dt;
+
+    // 选中缩放平滑跟随（拿起/放下都有过渡，不跳变）。
+    final selTarget = selected ? 1.0 : 0.0;
+    _selScaleT += (selTarget - _selScaleT) * (dt * 14).clamp(0.0, 1.0);
+
     if (_spawning) {
       _spawnT += dt;
       final t = (_spawnT / 0.18).clamp(0.0, 1.0);
-      scale = Vector2.all(max(0.01, Curves.easeOutBack.transform(t)));
+      _animScale = max(0.01, Curves.easeOutBack.transform(t));
       if (t >= 1) {
         _spawning = false;
-        scale = Vector2.all(1);
+        _animScale = 1;
       }
     }
 
@@ -1542,19 +1585,23 @@ class StackSprite extends PositionComponent
     if (_pulsing) {
       _pulseT += dt;
       final t = (_pulseT / 0.3).clamp(0.0, 1.0);
-      scale = Vector2.all(1 + 0.35 * sin(pi * t));
+      _animScale = 1 + _pulseAmp * sin(pi * t);
       if (t >= 1) {
         _pulsing = false;
-        scale = Vector2.all(1);
+        _animScale = 1;
       }
     }
 
     if (_removing) {
       _removeT += dt;
       final t = (_removeT / 0.18).clamp(0.0, 1.0);
-      scale = Vector2.all(1 - Curves.easeIn.transform(t));
+      _animScale = 1 - Curves.easeIn.transform(t);
       if (t >= 1) removeFromParent();
     }
+
+    // 最终缩放 = 动画基础缩放 × 选中放大。选中的卡"拿起来"，
+    // 取消选中平滑放回，与金圈呼吸一起构成选中态的体感。
+    scale = Vector2.all(_animScale * (1 + 0.06 * _selScaleT));
   }
 
   @override
@@ -1577,7 +1624,7 @@ class StackSprite extends PositionComponent
     super.onDragStart(event);
     _dragDist = 0;
     priority = 1;
-    scale = Vector2.all(1.08);
+    _animScale = 1.08;
     // 悬浮偏移：卡片小幅抬到手指上方（0.55 格），拇指不挡卡面又不突兀。
     _liftY = game._cellSize * 0.55;
     position.y -= _liftY;
@@ -1604,7 +1651,7 @@ class StackSprite extends PositionComponent
   void onDragEnd(DragEndEvent event) {
     super.onDragEnd(event);
     priority = 0;
-    scale = Vector2.all(1);
+    _animScale = 1;
     if (_dragDist < 14) {
       // 距离很小：视为点击（选中）。回弹悬浮偏移后按原逻辑处理。
       position.y += _liftY;
@@ -1625,7 +1672,7 @@ class StackSprite extends PositionComponent
   void onDragCancel(DragCancelEvent event) {
     super.onDragCancel(event);
     priority = 0;
-    scale = Vector2.all(1);
+    _animScale = 1;
     _liftY = 0;
     game._dragSrc = null;
     game.updateDropPreview(null);
@@ -1839,19 +1886,23 @@ class StackSprite extends PositionComponent
     _ensureFace();
     final rr = _rr;
 
-    // 选中光晕（软金黄，垫底）。
+    // 选中光晕（软金黄，垫底）：呼吸明暗，让"已选中"是活的而不是贴纸。
     if (selected) {
+      _selGlow.color = const Color(0xFFFFD54F)
+          .withValues(alpha: 0.38 + 0.17 * sin(_breathT * 4.2));
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          rr.outerRect.inflate(5),
+          rr.outerRect.inflate(5 + 1.5 * sin(_breathT * 4.2)),
           Radius.circular(rr.tlRadius.x + 3),
         ),
         _selGlow,
       );
     }
 
-    // 可合并提示环：细绿环，与选中金环区分，提示"拖到这里能合"。
+    // 可合并提示环：细绿环呼吸闪烁，与选中金环区分，提示"拖到这里能合"。
     if (mergeHint && !selected) {
+      _hintRing.color = const Color(0xFF66BB6A)
+          .withValues(alpha: 0.5 + 0.4 * (0.5 + 0.5 * sin(_breathT * 5)));
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           rr.outerRect.inflate(3),
