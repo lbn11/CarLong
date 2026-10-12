@@ -33,6 +33,20 @@ class MergeGameApp extends StatelessWidget {
       title: '车水马龙',
       debugShowCheckedModeBanner: false,
       navigatorObservers: [musicRouteObserver],
+      // 游戏 HUD/棋盘都是固定尺寸布局：系统大字体钳制到 1.3 倍，
+      // 既照顾低视力用户，又避免文字撑爆棋盘与按钮。
+      builder: (context, child) {
+        final media = MediaQuery.of(context);
+        return MediaQuery(
+          data: media.copyWith(
+            textScaler: media.textScaler.clamp(
+              minScaleFactor: 1.0,
+              maxScaleFactor: 1.3,
+            ),
+          ),
+          child: child!,
+        );
+      },
       theme: ThemeData(
         useMaterial3: true,
         fontFamily: 'Baloo2',

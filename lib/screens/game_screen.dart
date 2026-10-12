@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flame/game.dart' hide Matrix4;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -457,20 +459,68 @@ class _GameScreenState extends State<GameScreen> {
   Widget build(BuildContext context) {
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
-    return Scaffold(
-      backgroundColor: AppColors.bg1,
-      body: GlowBackground(
-        child: Stack(
-          children: [
-            SafeArea(
-              child: isLandscape
-                  ? _buildLandscapeLayout()
-                  : _buildPortraitLayout(),
-            ),
-          ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        unawaited(_handleBack());
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.bg1,
+        body: GlowBackground(
+          child: Stack(
+            children: [
+              SafeArea(
+                child: isLandscape
+                    ? _buildLandscapeLayout()
+                    : _buildPortraitLayout(),
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  /// 系统返回/手势：对局中先确认，防误退丢进度。
+  Future<void> _handleBack() async {
+    if (_finished) {
+      Navigator.of(context).pop();
+      return;
+    }
+    _game.pauseEngine();
+    final quit = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceLight,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('退出本关？',
+            style: TextStyle(color: AppColors.ink1, fontWeight: FontWeight.w800)),
+        content: const Text('当前对局进度将丢失',
+            style: TextStyle(color: AppColors.ink2, fontSize: 14)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('继续玩'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accent,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('退出'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (quit == true) {
+      Navigator.of(context).pop();
+    } else {
+      _game.resumeEngine();
+    }
   }
 
   /// 竖屏：HUD 在上、牌堆和道具在下的上下布局。
@@ -828,7 +878,8 @@ class _GameScreenState extends State<GameScreen> {
       tooltip: tooltip,
       icon: Icon(icon, color: Colors.white70, size: 20),
       padding: EdgeInsets.zero,
-      constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+      // 人因：触控热区至少 44pt（视觉图标保持 20 不变）。
+      constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
       style: IconButton.styleFrom(backgroundColor: const Color(0x22FFFFFF)),
     );
   }

@@ -40,7 +40,8 @@ class ParkingScreen extends StatefulWidget {
   State<ParkingScreen> createState() => _ParkingScreenState();
 }
 
-class _ParkingScreenState extends State<ParkingScreen> {
+class _ParkingScreenState extends State<ParkingScreen>
+    with WidgetsBindingObserver {
   late final ParkingGame _game;
   final AudioFeedback _audio = AudioFeedback();
   late final AnalyticsService _analytics;
@@ -101,6 +102,8 @@ class _ParkingScreenState extends State<ParkingScreen> {
   @override
   void initState() {
     super.initState();
+    // 后台切换时暂停/恢复计时（接电话、回微信不该被扣时间）。
+    WidgetsBinding.instance.addObserver(this);
     _analytics = AnalyticsService(widget.data, widget.repo);
     _game = ParkingGame(widget.level);
     _game.addListener(_onGameUpdate);
@@ -146,6 +149,8 @@ class _ParkingScreenState extends State<ParkingScreen> {
 
   /// 死局弹窗：撤销 3 步 / 道具提示 / 重新开始。
   void _showDeadlockDialog() {
+    // 死局弹窗打开时停表（限时关读选项不该被扣时间）。
+    _game.pauseTimer();
     showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -185,11 +190,26 @@ class _ParkingScreenState extends State<ParkingScreen> {
           ),
         ],
       ),
-    );
+    ).then((_) {
+      if (mounted) _game.resumeTimer();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_game.hasWon || _game.hasLost) return;
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden) {
+      _game.pauseTimer();
+    } else if (state == AppLifecycleState.resumed) {
+      _game.resumeTimer();
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _toastTimer?.cancel();
     _ghostTimer?.cancel();
     _game.removeListener(_onGameUpdate);
@@ -524,6 +544,8 @@ class _ParkingScreenState extends State<ParkingScreen> {
   }
 
   void _showHelpDialog() {
+    // 帮助弹窗打开时停表（用户在读说明，不该被扣时间）。
+    _game.pauseTimer();
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -570,7 +592,153 @@ class _ParkingScreenState extends State<ParkingScreen> {
           ),
         ],
       ),
+    ).then((_) {
+      if (mounted) _game.resumeTimer();
+    });
+  }
+
+  /// 暂停弹窗：停表并给继续/重开/主页（与合成模式同一套交互）。
+  Future<void> _showPauseDialog() async {
+    AudioFeedback.uiTap();
+    _game.pauseTimer();
+    final action = await showDialog<String>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceLight,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('暂停中',
+            style: TextStyle(color: AppColors.ink1, fontWeight: FontWeight.w800)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _pauseAction(Icons.play_arrow, '继续游戏', () {
+              Navigator.of(ctx).pop('resume');
+            }),
+            _pauseAction(Icons.refresh, '重新开始', () {
+              Navigator.of(ctx).pop('restart');
+            }),
+            _pauseAction(Icons.home, '返回主页', () {
+              Navigator.of(ctx).pop('home');
+            }),
+          ],
+        ),
+      ),
     );
+    if (!mounted) return;
+    switch (action) {
+      case 'restart':
+        _resetGame();
+      case 'home':
+        Navigator.of(context).pop();
+      default:
+        _game.resumeTimer();
+    }
+  }
+
+  Widget _pauseAction(IconData icon, String label, VoidCallback onTap) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Material(
+        color: AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              children: [
+                Icon(icon, color: AppColors.ink2, size: 20),
+                const SizedBox(width: 10),
+                Text(label,
+                    style: const TextStyle(
+                        color: AppColors.ink1, fontSize: 16)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 底栏「重置」先确认：一步误触不该清空整盘步数与标记。
+  Future<void> _confirmReset() async {
+    AudioFeedback.uiTap();
+    _game.pauseTimer();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceLight,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('重新开始本关？',
+            style: TextStyle(color: AppColors.ink1, fontWeight: FontWeight.w800)),
+        content: const Text('当前步数与标记将全部丢失',
+            style: TextStyle(color: AppColors.ink2, fontSize: 14)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accent,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('重开'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (confirmed == true) {
+      _resetGame();
+    } else {
+      _game.resumeTimer();
+    }
+  }
+
+  /// 系统返回/手势：对局中先确认，防误退丢进度。
+  Future<void> _handleBack() async {
+    if (_game.hasWon || _game.hasLost) {
+      Navigator.of(context).pop();
+      return;
+    }
+    _game.pauseTimer();
+    final quit = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceLight,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('退出本关？',
+            style: TextStyle(color: AppColors.ink1, fontWeight: FontWeight.w800)),
+        content: const Text('当前对局进度将丢失',
+            style: TextStyle(color: AppColors.ink2, fontSize: 14)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('继续玩'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accent,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('退出'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (quit == true) {
+      Navigator.of(context).pop();
+    } else {
+      _game.resumeTimer();
+    }
   }
 
   @override
@@ -578,18 +746,25 @@ class _ParkingScreenState extends State<ParkingScreen> {
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
 
-    return Scaffold(
-      backgroundColor: AppColors.bg1,
-      body: GlowBackground(
-        child: SafeArea(
-          child: Stack(
-            children: [
-              isLandscape
-                  ? _buildLandscapeLayout()
-                  : _buildPortraitLayout(),
-              if (_game.hasWon || _game.hasLost)
-                _buildResultOverlay(),
-            ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        unawaited(_handleBack());
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.bg1,
+        body: GlowBackground(
+          child: SafeArea(
+            child: Stack(
+              children: [
+                isLandscape
+                    ? _buildLandscapeLayout()
+                    : _buildPortraitLayout(),
+                if (_game.hasWon || _game.hasLost)
+                  _buildResultOverlay(),
+              ],
+            ),
           ),
         ),
       ),
@@ -925,6 +1100,14 @@ class _ParkingScreenState extends State<ParkingScreen> {
                   ],
                   const SizedBox(width: 6),
                   IconButton(
+                    icon: const Icon(Icons.pause_circle_outline,
+                        color: AppColors.ink2, size: 20),
+                    tooltip: '暂停',
+                    onPressed: _game.hasWon || _game.hasLost
+                        ? null
+                        : _showPauseDialog,
+                  ),
+                  IconButton(
                     icon: const Icon(Icons.help_outline,
                         color: AppColors.ink2, size: 20),
                     onPressed: () {
@@ -965,7 +1148,8 @@ class _ParkingScreenState extends State<ParkingScreen> {
     return Pressable(
       onTap: count > 0 ? () => _activateItem(key) : null,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        constraints: const BoxConstraints(minHeight: 44),
         decoration: BoxDecoration(
           color: count > 0 ? color.withValues(alpha: 0.15) : AppColors.surfaceLight,
           borderRadius: BorderRadius.circular(8),
@@ -981,7 +1165,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
             Text(
               '$label ×$count',
               style: TextStyle(
-                fontSize: 9,
+                fontSize: 11,
                 color: count > 0 ? AppColors.ink2 : AppColors.ink3,
                 fontWeight: FontWeight.w600,
               ),
@@ -1085,6 +1269,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
               }),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                constraints: const BoxConstraints(minHeight: 44),
                 decoration: BoxDecoration(
                   color: _markMode ? const Color(0xFFFFCA28).withValues(alpha: 0.2) : AppColors.surfaceLight,
                   borderRadius: BorderRadius.circular(8),
@@ -1100,7 +1285,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
                     Text(
                       '标记',
                       style: TextStyle(
-                        fontSize: 9,
+                        fontSize: 11,
                         color: _markMode ? const Color(0xFFFFCA28) : AppColors.ink2,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1147,7 +1332,7 @@ class _ParkingScreenState extends State<ParkingScreen> {
           ),
           const SizedBox(width: 12),
           ElevatedButton.icon(
-            onPressed: _resetGame,
+            onPressed: _confirmReset,
             icon: const Icon(Icons.refresh),
             label: const Text('重置'),
             style: ElevatedButton.styleFrom(

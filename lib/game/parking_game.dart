@@ -119,6 +119,9 @@ class ParkingGame extends ChangeNotifier {
   bool _won = false;
   bool _lost = false;
 
+  /// 计时暂停计数（后台切换/弹窗打开可叠加暂停，成对 pause/resume）。
+  int _pauseCount = 0;
+
   ParkingGame(this.level) {
     _initGrid();
     _initVehicles();
@@ -196,6 +199,7 @@ class ParkingGame extends ChangeNotifier {
   }
 
   void _startTimer() {
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (_won || _lost) return;
       _elapsedSeconds++;
@@ -207,6 +211,19 @@ class ParkingGame extends ChangeNotifier {
       }
       notifyListeners();
     });
+  }
+
+  /// 暂停计时：App 退后台/弹窗打开时调用，注意力离开不应被扣时间。
+  /// 可叠加（计数制），与 [resumeTimer] 成对调用。
+  void pauseTimer() {
+    _pauseCount++;
+    _timer?.cancel();
+  }
+
+  /// 恢复计时：与 [pauseTimer] 成对调用；已胜/负则不恢复。
+  void resumeTimer() {
+    if (_pauseCount > 0) _pauseCount--;
+    if (_pauseCount == 0 && !_won && !_lost) _startTimer();
   }
 
   /// 计算车辆以 (row,col) 为 anchor 时占用的所有格子。
@@ -740,6 +757,7 @@ class ParkingGame extends ChangeNotifier {
     _elapsedSeconds = 0;
     _won = false;
     _lost = false;
+    _pauseCount = 0;
     _initGrid();
     _initVehicles();
     _startTimer();
