@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 
+import '../game/audio_feedback.dart';
 import '../models/vehicle.dart';
 import '../save/save_repository.dart';
 import '../theme/app_theme.dart';
+import '../widgets/candy_ui.dart';
 import '../widgets/pressable.dart';
 import '../widgets/vehicle_image.dart';
 
-/// 交通图鉴：按 5 大车系分组展示全部车辆，首次合成点亮。
+/// 交通图鉴：按车系分组展示全部车辆，首次合成点亮。
+///
+/// 视觉设计：每个车系一个身份色（陆地绿 / 重装棕 / 轨道靛 / 水上蓝 / 航空靛 / 太空紫），
+/// 卡片用车型渐变打底；未收集用"灰度 + 问号"而不是空洞灰块，保持收藏欲但不惩罚感。
 class CollectionScreen extends StatelessWidget {
   final PlayerData data;
   final SaveRepository repo;
@@ -23,52 +28,27 @@ class CollectionScreen extends StatelessWidget {
         child: SafeArea(
           child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.arrow_back, color: AppColors.ink2),
-                      style: IconButton.styleFrom(
-                        backgroundColor: AppColors.ink3.withValues(alpha: 0.14),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Text('交通图鉴',
-                        style: TextStyle(
-                            color: AppColors.ink1,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900)),
-                    const Spacer(),
-                    _chip(
-                      gradient: const [Color(0xFFFFD54F), Color(0xFFFF9800)],
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('📖', style: TextStyle(fontSize: 14)),
-                          const SizedBox(width: 4),
-                          Text('$owned/$total',
-                              style: const TextStyle(
-                                  color: Color(0xFF4E342E),
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 14)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+              CandyAppBar(
+                title: '车辆图鉴',
+                subtitle: '每一辆都值得被收藏',
+                accent: AppColors.grape,
+                onBack: () => Navigator.of(context).pop(),
+                actions: [
+                  SoftChip(
+                    label: '$owned/$total',
+                    icon: Icons.auto_stories_rounded,
+                    color: AppColors.lemon,
+                    solid: true,
+                  ),
+                  const SizedBox(width: 10),
+                ],
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(
-                    value: total == 0 ? 0 : owned / total,
-                    minHeight: 6,
-                    backgroundColor: AppColors.ink3.withValues(alpha: 0.18),
-                    color: AppColors.accent,
-                  ),
+                padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+                child: CandyProgress(
+                  value: total == 0 ? 0 : owned / total,
+                  color: AppColors.grape,
+                  height: 10,
                 ),
               ),
               Expanded(
@@ -76,10 +56,8 @@ class CollectionScreen extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                   children: [
                     for (final family in VehicleCategory.values) ...[
-                      _buildFamilyHeader(family),
-                      const SizedBox(height: 8),
-                      _buildFamilyGrid(context, family),
-                      const SizedBox(height: 18),
+                      _buildFamilySection(context, family),
+                      const SizedBox(height: 16),
                     ],
                   ],
                 ),
@@ -91,210 +69,239 @@ class CollectionScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFamilyHeader(VehicleCategory family) {
-    return Row(
+  Widget _buildFamilySection(BuildContext context, VehicleCategory family) {
+    final tiers = VehicleType.values.where((t) => t.category == family).toList();
+    final done = tiers.where((t) => data.collection.contains(t.id)).length;
+    final color = familyColor(family);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: _familyColor(family).withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(10),
+        SectionTitle(
+          title: '${familyIcon(family)} ${family.label}系',
+          subtitle: '${familySub(family)} · 已收 $done/${tiers.length}',
+          accent: color,
+        ),
+        const SizedBox(height: 10),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 0.86,
           ),
-          child: Text(
-            '${family.label} ${_familyIcon(family)}',
-            style: TextStyle(
-              color: AppColors.ink1,
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
+          itemCount: tiers.length,
+          itemBuilder: (context, i) => _CollectionCard(
+            vehicle: tiers[i],
+            unlocked: data.collection.contains(tiers[i].id),
+            onTap: () => _showDetail(context, tiers[i]),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 车型详情糖果抽屉（大图 + 名称 + 车系 + 解锁状态）。
+  void _showDetail(BuildContext context, VehicleType vehicle) {
+    final unlocked = data.collection.contains(vehicle.id);
+    final family = vehicle.category;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        margin: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.surfaceLight,
+              Color.lerp(vehicle.color, Colors.white, 0.90)!,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: vehicle.color.withValues(alpha: 0.34)),
+          boxShadow: [
+            BoxShadow(
+              color: vehicle.color.withValues(alpha: 0.30),
+              blurRadius: 26,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 抽屉把手
+                Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: AppColors.ink3.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  width: double.infinity,
+                  height: 150,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.white,
+                        Color.lerp(vehicle.color, Colors.white, 0.78)!,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                        color: vehicle.color.withValues(alpha: 0.40), width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: vehicle.color.withValues(alpha: 0.24),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: VehicleImage(vehicle: vehicle, size: 140),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(vehicle.icon, style: const TextStyle(fontSize: 22)),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(vehicle.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: AppColors.ink1,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SoftChip(
+                  label: '${family.label}系 · ${familySub(family)}',
+                  color: familyColor(family),
+                ),
+                const SizedBox(height: 12),
+                SoftChip(
+                  label: unlocked
+                      ? '已收集 · 第 ${vehicle.id + 1}/${VehicleType.values.length} 号'
+                      : '未发现 · 合成或停车解锁',
+                  icon: unlocked ? Icons.check_circle : Icons.search,
+                  color: unlocked ? AppColors.mint : AppColors.ink3,
+                  solid: unlocked,
+                ),
+                const SizedBox(height: 16),
+                CandyButton(
+                  label: '收好了',
+                  size: CandyButtonSize.medium,
+                  colors: AppTheme.gradientOf(vehicle.color),
+                  onTap: () {
+                    AudioFeedback.uiTap();
+                    Navigator.of(ctx).pop();
+                  },
+                ),
+              ],
             ),
           ),
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            _familySub(family),
-            style: const TextStyle(color: AppColors.ink3, fontSize: 11),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFamilyGrid(BuildContext context, VehicleCategory family) {
-    final tiers = VehicleType.values.where((t) => t.category == family).toList();
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: [
-        for (final tier in tiers)
-          _CollectionCard(
-            vehicle: tier,
-            unlocked: data.collection.contains(tier.id),
-            onTap: () => _showDetail(context, tier),
-          ),
-      ],
-    );
-  }
-
-  /// 车型详情弹层（#88）：大图 + 名称 + 车系 + 解锁状态。
-  void _showDetail(BuildContext context, VehicleType vehicle) {
-    final unlocked = data.collection.contains(vehicle.id);
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: AppColors.surfaceLight,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 220,
-                height: 150,
-                padding: const EdgeInsets.all(12),
-                decoration: AppTheme.tierCard(vehicle.color, radius: 20),
-                child: VehicleImage(vehicle: vehicle, size: 150),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(vehicle.icon, style: const TextStyle(fontSize: 22)),
-                  const SizedBox(width: 8),
-                  Text(vehicle.name,
-                      style: const TextStyle(
-                          color: AppColors.ink1,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900)),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _familyColor(vehicle.category).withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  '${vehicle.category.label}系 · ${_familySub(vehicle.category)}',
-                  style: const TextStyle(
-                      color: AppColors.ink2,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700),
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                unlocked
-                    ? '✅ 已收集 · 等级 ${vehicle.id + 1}/${VehicleType.values.length}'
-                    : '🔒 未收集 · 合成或停车通关解锁',
-                style: TextStyle(
-                  color: unlocked ? const Color(0xFF66BB6A) : AppColors.ink3,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.coral,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(999)),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 40, vertical: 12),
-                ),
-                child: const Text('好',
-                    style: TextStyle(fontWeight: FontWeight.w900)),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Color _familyColor(VehicleCategory family) => switch (family) {
-        VehicleCategory.land => const Color(0xFF66BB6A),
-        VehicleCategory.heavy => const Color(0xFF8D6E63),
-        VehicleCategory.rail => const Color(0xFF5C6BC0),
-        VehicleCategory.maritime => const Color(0xFF0288D1),
-        VehicleCategory.air => const Color(0xFF3949AB),
-        VehicleCategory.space => const Color(0xFF7E57C2),
-      };
-
-  String _familyIcon(VehicleCategory family) => switch (family) {
-        VehicleCategory.land => '🚗',
-        VehicleCategory.heavy => '🚛',
-        VehicleCategory.rail => '🚄',
-        VehicleCategory.maritime => '🚢',
-        VehicleCategory.air => '✈️',
-        VehicleCategory.space => '🚀',
-      };
-
-  String _familySub(VehicleCategory family) => switch (family) {
-        VehicleCategory.land => '马路上的日常出行',
-        VehicleCategory.heavy => '重量级的物流主力',
-        VehicleCategory.rail => '奔跑在钢铁轨道上',
-        VehicleCategory.maritime => '乘风破浪的水上交通',
-        VehicleCategory.air => '划破云层的钢铁之翼',
-        VehicleCategory.space => '飞向星辰大海',
-      };
-
-  Widget _chip({
-    required List<Color> gradient,
-    required Widget child,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: gradient,
-        ),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: child,
     );
   }
 }
 
-  /// 单辆车辆的图鉴卡片：点亮显示真实 3D 车模，未点亮显示去色剪影。
-  class _CollectionCard extends StatelessWidget {
-    final VehicleType vehicle;
-    final bool unlocked;
-    final VoidCallback onTap;
+/// 车系身份色（全项目统一入口，替代原先散布在各处的 family 颜色表）。
+Color familyColor(VehicleCategory family) => switch (family) {
+      VehicleCategory.land => AppColors.forest,
+      VehicleCategory.heavy => AppColors.cocoa,
+      VehicleCategory.rail => const Color(0xFF6C79F2),
+      VehicleCategory.maritime => AppColors.sky,
+      VehicleCategory.air => const Color(0xFF5B8DEF),
+      VehicleCategory.space => AppColors.grape,
+    };
 
-    const _CollectionCard({
-      required this.vehicle,
-      required this.unlocked,
-      required this.onTap,
-    });
+String familyIcon(VehicleCategory family) => switch (family) {
+      VehicleCategory.land => '🚗',
+      VehicleCategory.heavy => '🚛',
+      VehicleCategory.rail => '🚄',
+      VehicleCategory.maritime => '🚢',
+      VehicleCategory.air => '✈️',
+      VehicleCategory.space => '🚀',
+    };
 
-    @override
-    Widget build(BuildContext context) {
-      final image = VehicleImage(vehicle: vehicle, size: 36);
-      return Pressable(
-        onTap: onTap,
-        child: Container(
-        width: 96,
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: unlocked
-            ? AppTheme.tierCard(vehicle.color, radius: 16)
-            : AppTheme.card(radius: 16),
+String familySub(VehicleCategory family) => switch (family) {
+      VehicleCategory.land => '马路上的日常出行',
+      VehicleCategory.heavy => '重量级的物流主力',
+      VehicleCategory.rail => '奔跑在钢铁轨道上',
+      VehicleCategory.maritime => '乘风破浪的水上交通',
+      VehicleCategory.air => '划破云层的钢铁之翼',
+      VehicleCategory.space => '飞向星辰大海',
+    };
+
+/// 单辆车的图鉴卡：点亮显示真实 3D 车模，未点亮显示去色剪影。
+class _CollectionCard extends StatelessWidget {
+  const _CollectionCard({
+    required this.vehicle,
+    required this.unlocked,
+    required this.onTap,
+  });
+
+  final VehicleType vehicle;
+  final bool unlocked;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final image = VehicleImage(vehicle: vehicle, size: 52);
+    return Pressable(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: unlocked
+              ? LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.white,
+                    Color.lerp(vehicle.color, Colors.white, 0.80)!,
+                  ],
+                )
+              : null,
+          color: unlocked ? null : AppColors.surfaceSoft,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: unlocked
+                ? vehicle.color.withValues(alpha: 0.45)
+                : AppColors.ink3.withValues(alpha: 0.20),
+            width: unlocked ? 2 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: unlocked
+                  ? vehicle.color.withValues(alpha: 0.22)
+                  : AppColors.shadow.withValues(alpha: 0.5),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SizedBox(
-              width: 56,
-              height: 48,
+              height: 46,
               child: unlocked
                   ? image
                   : ColorFiltered(
@@ -304,29 +311,36 @@ class CollectionScreen extends StatelessWidget {
                         0.33, 0.33, 0.33, 0, 0,
                         0, 0, 0, 1, 0,
                       ]),
-                      child: Opacity(opacity: 0.4, child: image),
+                      child: Opacity(opacity: 0.45, child: image),
                     ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              unlocked ? vehicle.name : '???',
-              style: TextStyle(
-                color: unlocked ? AppTheme.tierInk(vehicle.color) : AppColors.ink3,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                unlocked ? vehicle.name : '???',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: unlocked
+                      ? AppTheme.deepen(vehicle.color, 0.42)
+                      : AppColors.ink3,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 1),
             Text(
               unlocked ? vehicle.icon : '未发现',
               style: TextStyle(
                 color: unlocked ? AppColors.ink2 : AppColors.ink3,
-                fontSize: 10,
+                fontSize: 11,
               ),
             ),
           ],
         ),
-        ),
-      );
-    }
+      ),
+    );
   }
+}

@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 
+import '../game/audio_feedback.dart';
 import '../theme/app_theme.dart';
 import '../models/level.dart';
 import '../save/save_repository.dart';
+import '../widgets/candy_ui.dart';
+import '../widgets/pressable.dart';
 import '../widgets/vehicle_image.dart';
 import 'game_screen.dart';
 
 /// 完整关卡选择页：从首页「全部关卡」进入。
+///
+/// 视觉设计：每章一个身份色（按章节顺序循环彩虹），章节头用糖果色条 +
+/// 进度；关卡卡做成「浮雕糖果砖」——车型渐变打底、顶部三分高光、右下角一枚
+/// 半透明大车型图标做水印，视觉重量靠近 Kitchen/《Royal Match》的关卡地图。
 class LevelSelectScreen extends StatefulWidget {
   final PlayerData data;
   final SaveRepository repo;
@@ -17,10 +24,22 @@ class LevelSelectScreen extends StatefulWidget {
   State<LevelSelectScreen> createState() => _LevelSelectScreenState();
 }
 
+/// 章节身份色：按章循环，让长列表一路往下看得见颜色变化。
+const List<Color> _chapterColors = [
+  AppColors.mint,
+  AppColors.sky,
+  AppColors.grape,
+  AppColors.blossom,
+  AppColors.sun,
+  AppColors.aqua,
+  AppColors.coral,
+];
+
 class _LevelSelectScreenState extends State<LevelSelectScreen> {
   PlayerData get data => widget.data;
 
   Future<void> _openLevel(LevelDefinition level) async {
+    AudioFeedback.uiTap();
     final result = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => GameScreen(level: level, data: data, repo: widget.repo),
@@ -28,10 +47,10 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
     );
     if (result == true && mounted) {
       // 通关后刷新星星/进度。
+      // ignore: use_build_context_synchronously
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) =>
-              LevelSelectScreen(data: data, repo: widget.repo),
+          builder: (_) => LevelSelectScreen(data: data, repo: widget.repo),
         ),
       );
     }
@@ -41,70 +60,76 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
   Widget build(BuildContext context) {
     final completed =
         levels.where((l) => (data.bestStars[l.id] ?? 0) > 0).length;
+    final total = levels.length;
     return Scaffold(
       backgroundColor: AppColors.bg1,
-      appBar: AppBar(
-        backgroundColor: AppColors.bg1,
-        foregroundColor: AppColors.ink1,
-        title: const Text('选择关卡',
-            style: TextStyle(fontWeight: FontWeight.w900)),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Center(
-              child: Text('已完成 $completed/${levels.length}',
-                  style: const TextStyle(
-                      color: AppColors.ink3, fontSize: 12)),
-            ),
-          ),
-        ],
-      ),
       body: GlowBackground(
-        child: CustomScrollView(
-          slivers: [
-            for (final chapter in levelChapters) ..._chapterSlivers(chapter),
-          ],
+        child: SafeArea(
+          child: Column(
+            children: [
+              CandyAppBar(
+                title: '关卡地图',
+                subtitle: '已完成 $completed/$total 关 · 慢慢来，一关一关开',
+                accent: AppColors.sky,
+                onBack: () => Navigator.of(context).pop(),
+                actions: [
+                  CoinPill(amount: data.coins, compact: true),
+                  const SizedBox(width: 10),
+                ],
+              ),
+              Expanded(
+                child: CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+                        child: TotalProgressCard(
+                          completed: completed,
+                          total: total,
+                          stars: data.bestStars.values.fold(0, (a, b) => a + b),
+                        ),
+                      ),
+                    ),
+                    for (var i = 0; i < levelChapters.length; i++)
+                      ..._chapterSlivers(
+                          levelChapters[i], _chapterColors[i % _chapterColors.length]),
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  /// 单章渲染：章节标题条 + 该章关卡网格。
-  List<Widget> _chapterSlivers(LevelChapter chapter) {
+  /// 单章渲染：章节色条头 + 该章关卡网格。
+  List<Widget> _chapterSlivers(LevelChapter chapter, Color chapterColor) {
     final idx = levelChapters.indexOf(chapter);
-    final endId =
-        idx + 1 < levelChapters.length ? levelChapters[idx + 1].startId : 1 << 30;
-    final cl = levels.where((l) => l.id >= chapter.startId && l.id < endId).toList();
+    final endId = idx + 1 < levelChapters.length
+        ? levelChapters[idx + 1].startId
+        : 1 << 30;
+    final cl =
+        levels.where((l) => l.id >= chapter.startId && l.id < endId).toList();
+    if (cl.isEmpty) return const [];
+    final cleared = cl.where((l) => (data.bestStars[l.id] ?? 0) > 0).length;
+    final unlockedCount = cl.where((l) => l.id <= data.unlockedLevel).length;
+    final locked = unlockedCount == 0;
+
     return [
       SliverToBoxAdapter(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 18, 16, 10),
-          child: Row(
-            children: [
-              Container(
-                width: 4,
-                height: 22,
-                decoration: BoxDecoration(
-                  color: AppColors.coral,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(chapter.title,
-                      style: const TextStyle(
-                          color: AppColors.ink1,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 2),
-                  Text(chapter.subtitle,
-                      style: const TextStyle(
-                          color: AppColors.ink3, fontSize: 12)),
-                ],
-              ),
-            ],
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+          child: SectionTitle(
+            title: chapter.title,
+            subtitle: chapter.subtitle,
+            accent: chapterColor,
+            trailing: SoftChip(
+              label: '$cleared/${cl.length}',
+              icon: locked ? Icons.lock_outline : Icons.flag_rounded,
+              color: chapterColor,
+            ),
           ),
         ),
       ),
@@ -115,7 +140,7 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
             crossAxisCount: 2,
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
-            childAspectRatio: 1.15,
+            childAspectRatio: 1.12,
           ),
           delegate: SliverChildBuilderDelegate(
             (context, index) {
@@ -126,6 +151,7 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
                 unlocked: unlocked,
                 best: data.bestScores[level.id] ?? 0,
                 bestStars: data.bestStars[level.id] ?? 0,
+                accent: chapterColor,
                 onTap: unlocked ? () => _openLevel(level) : null,
               );
             },
@@ -137,46 +163,160 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
   }
 }
 
-class LevelCard extends StatelessWidget {
-  final LevelDefinition level;
-  final bool unlocked;
-  final int best;
-  final int bestStars;
-  final VoidCallback? onTap;
+/// 顶部总进度：一屏之内先给「我到哪了」的安心感。
+class TotalProgressCard extends StatelessWidget {
+  const TotalProgressCard({
+    super.key,
+    required this.completed,
+    required this.total,
+    required this.stars,
+  });
 
+  final int completed;
+  final int total;
+  final int stars;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = total == 0 ? 0.0 : completed / total;
+    return CandyCard(
+      accent: AppColors.sky,
+      radius: 24,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text('⭐', style: TextStyle(fontSize: 16)),
+                    const SizedBox(width: 5),
+                    Text('$stars',
+                        style: const TextStyle(
+                            color: AppColors.ink1,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900)),
+                    const SizedBox(width: 4),
+                    Text('累计星星',
+                        style: TextStyle(
+                            color: AppColors.ink3,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                CandyProgress(value: progress, color: AppColors.sky, height: 9),
+                const SizedBox(height: 6),
+                Text(
+                  progress >= 1
+                      ? '全部关卡都已点亮，了不起！'
+                      : '再过 ${total - completed} 关就全部点亮啦',
+                  style: const TextStyle(color: AppColors.ink2, fontSize: 11.5),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 14),
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              gradient: AppTheme.gradientFor(AppColors.sun),
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.sun.withValues(alpha: 0.36),
+                  blurRadius: 14,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: const Icon(Icons.auto_awesome_rounded,
+                color: Colors.white, size: 28),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class LevelCard extends StatelessWidget {
   const LevelCard({
     super.key,
     required this.level,
     required this.unlocked,
     required this.best,
     required this.bestStars,
+    required this.accent,
     this.onTap,
   });
 
-  Color get _accent => level.targetTier?.color ?? const Color(0xFFF2784E);
+  final LevelDefinition level;
+  final bool unlocked;
+  final int best;
+  final int bestStars;
+  final VoidCallback? onTap;
+
+  /// 所属章节身份色（未解锁时作为灰化的基准）。
+  final Color accent;
+
+  /// 卡片强调色：优先目标车型色（颜色=车型身份），无目标车时回落章节色。
+  Color get _accent => level.targetTier?.color ?? accent;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: Ink(
-        decoration: unlocked
-            ? AppTheme.tierCard(_accent)
-            : BoxDecoration(
-                color: AppColors.surfaceSoft,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: AppColors.ink3.withValues(alpha: 0.4),
+    final c = unlocked ? _accent : AppColors.ink3;
+    return Pressable(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: unlocked
+              ? LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.white,
+                    Color.lerp(c, Colors.white, 0.86)!,
+                  ],
+                )
+              : null,
+          color: unlocked ? null : AppColors.surfaceSoft,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: c.withValues(alpha: unlocked ? 0.42 : 0.20),
+            width: unlocked ? 2 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: unlocked
+                  ? c.withValues(alpha: 0.22)
+                  : AppColors.shadow.withValues(alpha: 0.5),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: Stack(
+            children: [
+              // 右下角巨型水印车标：给卡片"内容感"，同时不抢主信息。
+              if (unlocked && level.targetTier != null)
+                Positioned(
+                  right: -14,
+                  bottom: -16,
+                  child: IgnorePointer(
+                    child: Opacity(
+                      opacity: 0.16,
+                      child: VehicleImage(vehicle: level.targetTier!, size: 96),
+                    ),
+                  ),
                 ),
-              ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Stack(
-              children: [
-                Column(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(13, 11, 13, 11),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
@@ -185,54 +325,52 @@ class LevelCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: _accent.withValues(alpha: 0.22),
-                            borderRadius: BorderRadius.circular(8),
+                            gradient: unlocked
+                                ? AppTheme.gradientFor(c)
+                                : null,
+                            color: unlocked
+                                ? null
+                                : AppColors.ink3.withValues(alpha: 0.16),
+                            borderRadius: BorderRadius.circular(9),
                           ),
                           child: Text(
                             '第 ${level.id} 关',
                             style: TextStyle(
-                                color: AppTheme.tierInk(_accent),
-                                fontWeight: FontWeight.w700,
-                                fontSize: 10),
+                                color: unlocked ? Colors.white : AppColors.ink3,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 10.5),
                           ),
                         ),
                         const Spacer(),
                         if (!unlocked)
-                          const Icon(Icons.lock, color: AppColors.ink3, size: 16)
+                          const Icon(Icons.lock_rounded,
+                              color: AppColors.ink3, size: 16)
                         else
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: List.generate(
-                              3,
-                              (i) => Text(
-                                i < bestStars ? '⭐' : '☆',
-                                style: const TextStyle(fontSize: 11),
-                              ),
-                            ),
-                          ),
+                          StarRow(stars: bestStars, size: 13),
                       ],
                     ),
                     const Spacer(),
                     Center(
                       child: Container(
-                        width: 54,
-                        height: 54,
+                        width: 58,
+                        height: 58,
                         decoration: BoxDecoration(
                           color: unlocked
-                              ? _accent.withValues(alpha: 0.16)
-                              : AppColors.ink3.withValues(alpha: 0.25),
+                              ? c.withValues(alpha: 0.18)
+                              : AppColors.ink3.withValues(alpha: 0.10),
                           shape: BoxShape.circle,
                         ),
                         child: Center(
                           child: level.targetTier != null
                               ? Padding(
-                                  padding: const EdgeInsets.all(7),
+                                  padding: const EdgeInsets.all(8),
                                   child: Opacity(
-                                    opacity: unlocked ? 1.0 : 0.4,
-                                    child: VehicleImage(vehicle: level.targetTier!, size: 40),
+                                    opacity: unlocked ? 1.0 : 0.35,
+                                    child: VehicleImage(
+                                        vehicle: level.targetTier!, size: 42),
                                   ),
                                 )
-                              : Icon(Icons.grid_view,
+                              : Icon(Icons.grid_view_rounded,
                                   size: 26,
                                   color: unlocked
                                       ? AppColors.ink2
@@ -245,25 +383,29 @@ class LevelCard extends StatelessWidget {
                       level.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          color: AppColors.ink1,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800),
+                      style: TextStyle(
+                          color: unlocked ? AppColors.ink1 : AppColors.ink3,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      best > 0 ? '最佳 $best 分' : '未通关',
+                      best > 0
+                          ? '最佳 $best 分'
+                          : (unlocked ? '还没挑战过' : '通过前面关卡解锁'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                           color: best > 0
                               ? AppColors.sun
-                              : AppColors.ink3,
-                          fontSize: 11,
+                              : (unlocked ? AppColors.ink2 : AppColors.ink3),
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w700),
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

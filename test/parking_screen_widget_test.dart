@@ -82,7 +82,8 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('cell-3-2')));
     await tester.pumpAndSettle(); // 跑完入场动画 + 胜利彩带
 
-    expect(find.text('停车成功!'), findsOneWidget);
+    // 胜利结算卡标题（新糖果版文案，弱化"成功/失败"的胜负感）。
+    expect(find.text('停好啦！'), findsOneWidget);
 
     // 接入校验：胜利后目标车型点亮图鉴、最佳星级落盘、解锁下一关。
     expect(data.collection.contains(VehicleType.sedan.index), isTrue);

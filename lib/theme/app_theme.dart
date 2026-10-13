@@ -55,6 +55,22 @@ class AppColors {
   static const sky = Color(0xFF4CC2FF);
   static const mint = Color(0xFF3ED598);
   static const grape = Color(0xFFA78BFA);
+  /// 扩展 identity 色（模块身份色：每个玩法/系统一个专属色，
+  /// 玩家靠颜色导航，不必读字）——全部低饱和高明度，久看不累。
+  static const lemon = Color(0xFFFFD166);
+  static const blossom = Color(0xFFFF9EC4);
+  static const taro = Color(0xFFB79BFF);
+  static const aqua = Color(0xFF64D8E6);
+  static const melon = Color(0xFFFF9473);
+  static const forest = Color(0xFF4CC38A);
+  static const cocoa = Color(0xFFB08968);
+
+  /// 卡面顶端的一线高光（模拟边缘受光，营造立体精致感）。
+  static const whiteGlint = Color(0xFFFFFFFF);
+
+  /// 柔和分割/描边（比 ink3 更淡，用于大面积留白处的结构线）。
+  static const hairline = Color(0xFFEDE6F2);
+
   /// 浅色柔和阴影（~rgba(50,32,86,.14)）。
   static const shadow = Color(0x24323256);
 
@@ -164,6 +180,63 @@ class AppTheme {
         backgroundColor: background ?? AppColors.surfaceLight,
         foregroundColor: AppColors.ink1,
       );
+
+  // ===== Candy Pop 质感工具（糖果休闲风）=====
+
+  /// 把任意色加深一档（用于渐变第二色/描边），保留色相只压明度。
+  static Color deepen(Color c, [double amount = 0.18]) =>
+      Color.lerp(c, Colors.black, amount)!;
+
+  /// 把任意色提亮一档（用于渐变第一色，制造"受光面"）。
+  static Color lighten(Color c, [double amount = 0.3]) =>
+      Color.lerp(c, Colors.white, amount)!;
+
+  /// 单色 → 渐变双色（亮版 → 本色），统一 pill 按钮/进度条的渐变方向感。
+  static List<Color> gradientOf(Color c) =>
+      [lighten(c, 0.32), deepen(c, 0.10)];
+
+  /// [gradientOf] 的立即可用版（BoxDecoration.gradient 直接吃）。
+  static LinearGradient gradientFor(Color c) => LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: gradientOf(c),
+      );
+
+  /// 次级/取消按钮的柔和渐变（灰紫），避免抢主 CTA 的注意力。
+  static const List<Color> softGradient = [
+    Color(0xFFF3EEF7),
+    Color(0xFFE7E0EE),
+  ];
+
+  /// 棋盘/卡片的"糖霜"底座：极浅奶油 + 顶部一线白 + 柔和外投影。
+  ///
+  /// 用于包裹大面积游戏区，让裸棋盘变成"托盘上的糖块"。
+  static BoxDecoration frostedPanel({
+    Color? accent,
+    double radius = 26,
+    EdgeInsets? padding,
+  }) {
+    final c = accent ?? AppColors.coral;
+    return BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          AppColors.surfaceLight,
+          Color.lerp(c, Colors.white, 0.93)!,
+        ],
+      ),
+      borderRadius: BorderRadius.circular(radius),
+      border: Border.all(color: c.withValues(alpha: 0.26)),
+      boxShadow: [
+        BoxShadow(
+          color: c.withValues(alpha: 0.16),
+          blurRadius: 22,
+          offset: const Offset(0, 8),
+        ),
+      ],
+    );
+  }
 }
 
 /// 浅色背景 + 三处彩色径向光晕（珊瑚左上 / 晴空右上 / 葡萄底部），

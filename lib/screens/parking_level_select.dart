@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 
+import '../game/audio_feedback.dart';
 import '../game/parking_daily_challenge.dart';
 import '../models/parking_level.dart';
 import '../save/save_repository.dart';
 import '../services/parking_chapters.dart';
 import '../services/parking_generator.dart';
 import '../theme/app_theme.dart';
+import '../widgets/candy_ui.dart';
 import '../widgets/pressable.dart';
 import 'parking_screen.dart';
 
 /// 停车关卡选择屏（按车型章节分组，章节解锁与合成图鉴双向联动）。
+///
+/// 视觉设计：整页走薄荷身份色（停车=绿地 dio），章节卡头用车型身份色渐变条，
+/// 关卡格做成统一圆角"糖块"，已通关的格带星 avatars。
 class ParkingLevelSelectScreen extends StatefulWidget {
   final PlayerData data;
   final SaveRepository repo;
@@ -50,39 +55,42 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final total = _levels.length;
+    final cleared =
+        _levels.where((l) => (widget.data.parkingBestStars[l.id] ?? 0) > 0).length;
     return Scaffold(
       backgroundColor: AppColors.bg1,
-      appBar: AppBar(
-        backgroundColor: AppColors.bg1,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.ink1),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text('停车模式', style: TextStyle(color: AppColors.ink1)),
-      ),
       body: GlowBackground(
-        child: Column(
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(12),
-              child: Text(
-                '把目标车辆停到停车位上 · 章节随合成图鉴解锁',
-                style: TextStyle(color: AppColors.ink2, fontSize: 14),
+        child: SafeArea(
+          child: Column(
+            children: [
+              CandyAppBar(
+                title: '停车模式',
+                subtitle: cleared == 0
+                    ? '把车轻轻停进格子就好，别有负担'
+                    : '已停稳 $cleared/$total 关 · 越停越顺手',
+                accent: AppColors.mint,
+                onBack: () => Navigator.of(context).pop(),
+                actions: [
+                  CoinPill(amount: widget.data.coins, compact: true),
+                  const SizedBox(width: 10),
+                ],
               ),
-            ),
-            Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-                itemCount: ParkingChapters.all.length + 1, // +1 for daily challenge
-                separatorBuilder: (_, _) => const SizedBox(height: 14),
-                itemBuilder: (context, i) {
-                  if (i == 0) return _buildDailyChallengeCard();
-                  return _chapterCard(ParkingChapters.all[i - 1]);
-                },
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(14, 4, 14, 20),
+                  children: [
+                    _buildDailyChallengeCard(),
+                    const SizedBox(height: 14),
+                    for (final chapter in ParkingChapters.all) ...[
+                      _chapterCard(chapter),
+                      const SizedBox(height: 14),
+                    ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -93,42 +101,57 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
     final accessible = _chapterAccessible(chapter);
     final cleared =
         levels.where((l) => (widget.data.parkingBestStars[l.id] ?? 0) > 0).length;
+    final tier = chapter.tier.color;
 
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: AppColors.surfaceLight,
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppColors.surfaceLight,
+            Color.lerp(tier, Colors.white, accessible ? 0.94 : 0.97)!,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: accessible ? chapter.tier.color.withValues(alpha: 0.5) : AppColors.ink3.withValues(alpha: 0.3),
+          color: accessible
+              ? tier.withValues(alpha: 0.34)
+              : AppColors.ink3.withValues(alpha: 0.18),
           width: accessible ? 2 : 1,
         ),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 14,
-            offset: Offset(0, 5),
+            color: accessible
+                ? tier.withValues(alpha: 0.18)
+                : AppColors.shadow.withValues(alpha: 0.5),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 章节头：车型图标 + 名称 + 进度 / 锁定提示
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
             child: Row(
               children: [
                 Container(
-                  width: 42,
-                  height: 42,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    color: chapter.tier.color.withValues(alpha: 0.16),
-                    shape: BoxShape.circle,
+                    gradient: accessible ? AppTheme.gradientFor(tier) : null,
+                    color: accessible
+                        ? null
+                        : AppColors.ink3.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(15),
                   ),
                   child: Center(
                     child: accessible
-                        ? Text(chapter.tier.icon, style: const TextStyle(fontSize: 22))
-                        : const Icon(Icons.lock_outline,
+                        ? Text(chapter.tier.icon,
+                            style: const TextStyle(fontSize: 22))
+                        : const Icon(Icons.lock_person_rounded,
                             color: AppColors.ink3, size: 20),
                   ),
                 ),
@@ -139,9 +162,11 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                     children: [
                       Text(
                         chapter.title,
-                        style: const TextStyle(
-                          color: AppColors.ink1,
-                          fontWeight: FontWeight.w800,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: accessible ? AppColors.ink1 : AppColors.ink2,
+                          fontWeight: FontWeight.w900,
                           fontSize: 16,
                         ),
                       ),
@@ -150,49 +175,63 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                         accessible
                             ? '${chapter.subtitle} · 已通关 $cleared/${levels.length}'
                             : ParkingChapters.lockReason(chapter),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: accessible ? AppColors.ink2 : AppColors.ink3,
-                          fontSize: 12,
+                          fontSize: 11.5,
                         ),
                       ),
                     ],
                   ),
                 ),
+                if (accessible)
+                  SoftChip(
+                    label: '$cleared/${levels.length}',
+                    color: tier,
+                  ),
               ],
             ),
           ),
           if (accessible)
             Padding(
-              padding: const EdgeInsets.only(bottom: 14, left: 4, right: 4),
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
               child: GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 5,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                  childAspectRatio: 0.95,
+                  crossAxisSpacing: 7,
+                  mainAxisSpacing: 7,
+                  childAspectRatio: 0.92,
                 ),
                 itemCount: levels.length,
-                itemBuilder: (context, i) => _levelTile(levels[i]),
+                itemBuilder: (context, i) => _levelTile(levels[i], tier),
               ),
             )
           else
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 18),
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: AppColors.ink3.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(18),
+                  color: AppColors.ink3.withValues(alpha: 0.07),
                 ),
-                child: Column(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.lock_outline, color: AppColors.ink3, size: 26),
-                    const SizedBox(height: 6),
-                    Text(
-                      ParkingChapters.lockReason(chapter),
-                      style: const TextStyle(color: AppColors.ink3, fontSize: 13),
+                    const Icon(Icons.lock_clock_rounded,
+                        color: AppColors.ink3, size: 20),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        ParkingChapters.lockReason(chapter),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: AppColors.ink3, fontSize: 12.5),
+                      ),
                     ),
                   ],
                 ),
@@ -203,10 +242,13 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
     );
   }
 
-  Widget _levelTile(ParkingLevel level) {
+  Widget _levelTile(ParkingLevel level, Color chapterColor) {
     final stars = widget.data.parkingBestStars[level.id] ?? 0;
+    final cleared = stars > 0;
+    final accent = cleared ? AppColors.sun : chapterColor;
     return Pressable(
       onTap: () async {
+        AudioFeedback.uiTap();
         // 等对局返回后强制重绘：ParkingScreen 直接改的是共享的 data，
         // 不 setState 的话本页仍显示旧星级，看起来像"通关没被记录"。
         await Navigator.of(context).push(MaterialPageRoute(
@@ -220,17 +262,24 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
       },
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          color: Colors.white,
-          border: Border.all(
-            color: AppColors.sky,
-            width: 2,
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.white,
+              Color.lerp(accent, Colors.white, 0.88)!,
+            ],
           ),
-          boxShadow: const [
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(
+            color: accent.withValues(alpha: cleared ? 0.42 : 0.24),
+            width: cleared ? 1.8 : 1,
+          ),
+          boxShadow: [
             BoxShadow(
-              color: AppColors.shadow,
-              blurRadius: 10,
-              offset: Offset(0, 4),
+              color: accent.withValues(alpha: cleared ? 0.20 : 0.12),
+              blurRadius: 9,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
@@ -239,24 +288,18 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
           children: [
             Text(
               '${level.id}',
-              style: const TextStyle(
-                color: AppColors.ink1,
-                fontWeight: FontWeight.bold,
+              style: TextStyle(
+                color: AppTheme.deepen(accent, 0.34),
+                fontWeight: FontWeight.w900,
                 fontSize: 15,
               ),
             ),
-            const SizedBox(height: 3),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(3, (i) => Icon(
-                i < stars ? Icons.star : Icons.star_border,
-                size: 11,
-                color: i < stars ? AppColors.sun : AppColors.ink3,
-              )),
-            ),
+            const SizedBox(height: 2),
+            StarRow(stars: stars, size: 11),
+            const SizedBox(height: 1),
             Text(
               level.targetTier.icon,
-              style: const TextStyle(fontSize: 13),
+              style: TextStyle(fontSize: 13, color: AppColors.ink2),
             ),
           ],
         ),
@@ -268,92 +311,80 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
     final cleared = widget.data.dailyClearedDate == ParkingDailyChallenge.todayKey;
     final streak = widget.data.dailyStreak;
     final level = ParkingDailyChallenge.today();
-    final accent = level.targetTier.color;
+    final accent = cleared ? AppColors.mint : level.targetTier.color;
 
-    return Material(
-      color: Colors.transparent,
-      child: Ink(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color.lerp(Colors.white, accent, 0.16)!,
-              Color.lerp(Colors.white, accent, 0.08)!,
-            ],
+    return CandyCard(
+      accent: accent,
+      radius: 26,
+      padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              gradient: AppTheme.gradientFor(accent),
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.34),
+                  blurRadius: 13,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Icon(
+              cleared ? Icons.check_rounded : Icons.today_rounded,
+              color: Colors.white,
+              size: 27,
+            ),
           ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: accent.withValues(alpha: 0.35)),
-          boxShadow: const [
-            BoxShadow(
-                color: AppColors.shadow, blurRadius: 10, offset: Offset(0, 4)),
-          ],
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: cleared ? null : _openParkingDaily,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.30),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.calendar_today,
-                      color: Color(0xFFB39DDB), size: 22),
+                const Text('每日停车挑战',
+                    style: TextStyle(
+                        color: AppColors.ink1,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16)),
+                const SizedBox(height: 3),
+                Text(
+                  cleared
+                      ? '今天已经停好啦${streak > 0 ? ' · 连续 $streak 天' : ''}'
+                      : streak >= 2
+                          ? '连续 $streak 天 · 完成领 +${ParkingDailyChallenge.reward + ParkingDailyChallenge.streakBonus(streak)} 🪙'
+                          : '今天的一局，完成领 +${ParkingDailyChallenge.reward} 🪙',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      color: cleared ? AppColors.mint : AppColors.ink2,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('每日停车挑战',
-                          style: TextStyle(
-                              color: AppColors.ink1,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15)),
-                      const SizedBox(height: 2),
-                      Text(
-                        cleared
-                            ? '今日已完成${streak > 0 ? ' · 连续 $streak 天' : ''}'
-                            : streak >= 2
-                                ? '连续 $streak 天 · 完成领 +${ParkingDailyChallenge.reward + ParkingDailyChallenge.streakBonus(streak)} 🪙'
-                                : '完成今日挑战，领 +${ParkingDailyChallenge.reward} 🪙',
-                        style: TextStyle(
-                            color: cleared ? const Color(0xFF66BB6A) : AppColors.ink2,
-                            fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                if (cleared)
-                  const Icon(Icons.check_circle, color: Color(0xFF66BB6A), size: 26)
-                else
-                  FilledButton.icon(
-                    onPressed: _openParkingDaily,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: accent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-                    ),
-                    icon: const Icon(Icons.play_arrow, size: 18),
-                    label: const Text('挑战'),
-                  ),
               ],
             ),
           ),
-        ),
+          const SizedBox(width: 8),
+          if (cleared)
+            SoftChip(label: '已完成', icon: Icons.check_circle, color: AppColors.mint, solid: true)
+          else
+            CandyButton(
+              label: '停车去',
+              icon: Icons.play_arrow_rounded,
+              size: CandyButtonSize.small,
+              dense: true,
+              colors: AppTheme.gradientOf(accent),
+              onTap: _openParkingDaily,
+            ),
+        ],
       ),
     );
   }
 
   void _openParkingDaily() async {
+    AudioFeedback.uiTap();
     final level = ParkingDailyChallenge.today();
     await Navigator.of(context).push(
       MaterialPageRoute(

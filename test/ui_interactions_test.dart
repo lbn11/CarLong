@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:merge_fleet/save/save_repository.dart';
 import 'package:merge_fleet/screens/collection_screen.dart';
 import 'package:merge_fleet/screens/shop_screen.dart';
+import 'package:merge_fleet/widgets/candy_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// UI 交互冒烟（任务81）：商店购买 / 图鉴详情 / 经济弹层 关键路径不崩。
@@ -34,8 +35,10 @@ void main() {
       home: ShopScreen(data: data, repo: repo),
     ));
     await tester.pumpAndSettle();
-    final chestBtn = tester.widget<FilledButton>(find.byType(FilledButton).first);
-    expect(chestBtn.onPressed, isNull); // 金币不足禁用
+    // 主推的宝箱按钮：金币不足时必须是不可点的（新版统一走 CandyButton）。
+    final chestBtn =
+        tester.widget<CandyButton>(find.byType(CandyButton).first);
+    expect(chestBtn.onTap, isNull); // 金币不足禁用
   });
 
   testWidgets('图鉴：点击卡片弹出车型详情', (tester) async {

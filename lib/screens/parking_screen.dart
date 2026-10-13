@@ -16,6 +16,7 @@ import '../save/save_repository.dart';
 import '../services/parking_chapters.dart';
 import '../services/parking_generator.dart';
 import '../theme/app_theme.dart';
+import '../widgets/candy_ui.dart';
 import '../widgets/parking_vehicle_body.dart';
 
 /// 车辆滑动动画时长（选车滑行 / 重置归位）。
@@ -151,46 +152,41 @@ class _ParkingScreenState extends State<ParkingScreen>
   void _showDeadlockDialog() {
     // 死局弹窗打开时停表（限时关读选项不该被扣时间）。
     _game.pauseTimer();
-    showDialog<void>(
-      context: context,
+    CandyChoiceDialog.show<String>(
+      context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceLight,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('🚧 无车可动', textAlign: TextAlign.center),
-        content: const Text(
-          '棋盘陷入死局。可以撤销 3 步、'
-          '用炸弹等道具清出通路，或重新开始本关。',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: AppColors.ink2, fontSize: 14),
+      emoji: '🚧',
+      title: '无车可动',
+      message: '这局卡住了，给你三条路：',
+      accent: AppColors.sun,
+      options: <CandyChoice<String>>[
+        if (_game.canUndo)
+          const CandyChoice<String>(
+            label: '撤销 3 步',
+            value: 'undo',
+            icon: Icons.undo_rounded,
+            highlight: true,
+          ),
+        const CandyChoice<String>(
+          label: '使用道具',
+          value: 'items',
+          icon: Icons.construction_rounded,
         ),
-        actions: [
-          if (_game.canUndo)
-            TextButton(
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                _useUndo();
-              },
-              child: const Text('撤销 3 步'),
-            ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(), // 留在场内使用道具
-            child: const Text('使用道具'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              _resetGame();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.accent,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('重新开始'),
-          ),
-        ],
-      ),
-    ).then((_) {
+        const CandyChoice<String>(
+          label: '重新开始',
+          value: 'restart',
+          icon: Icons.refresh_rounded,
+        ),
+      ],
+    ).then((value) {
+      switch (value) {
+        case 'undo':
+          _useUndo();
+        case 'restart':
+          _resetGame();
+        default:
+          break; // 留在场内使用道具
+      }
       if (mounted) _game.resumeTimer();
     });
   }
@@ -467,7 +463,7 @@ class _ParkingScreenState extends State<ParkingScreen>
             icon: const Icon(Icons.play_circle_fill),
             label: const Text('🎬 看广告'),
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF66BB6A),
+              backgroundColor: AppColors.mint,
               foregroundColor: Colors.white,
             ),
           ),
@@ -546,50 +542,28 @@ class _ParkingScreenState extends State<ParkingScreen>
   void _showHelpDialog() {
     // 帮助弹窗打开时停表（用户在读说明，不该被扣时间）。
     _game.pauseTimer();
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceLight,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            const Text('🅿️', style: TextStyle(fontSize: 22)),
-            const SizedBox(width: 8),
-            Text(
-              '停车模式',
+    CandyDialog.show<void>(
+      context,
+      emoji: '🅿️',
+      color: AppColors.mint,
+      title: '停车模式',
+      confirmLabel: '知道了',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+              '目标：把 ${widget.level.targetTier.icon} ${widget.level.targetTier.name} 开进虚线车位',
               style: const TextStyle(
-                color: AppColors.ink1,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('目标：把 ${widget.level.targetTier.icon} ${widget.level.targetTier.name} 开进虚线车位',
-                style: const TextStyle(color: AppColors.ink1, fontWeight: FontWeight.bold)),
-            const Text('（车位上停着同款半透明"幽灵车"，就是它）',
-                style: TextStyle(color: AppColors.ink2, fontSize: 12)),
-            const SizedBox(height: 12),
-            const Text('• 点击一辆车选中（金色边框）', style: TextStyle(color: AppColors.ink2)),
-            const Text('• 点击空地或车位 — 直线滑行过去', style: TextStyle(color: AppColors.ink2)),
-            const Text('• 碰到 🧱 障碍和其他车会停下', style: TextStyle(color: AppColors.ink2)),
-            const Text('• 其他车是障碍，拖开它们让路', style: TextStyle(color: AppColors.ink2)),
-            const Text('• 可以撤销、重置', style: TextStyle(color: AppColors.ink2)),
-            const Text('• 横/竖长车只能沿车身方向滑动，先挪开挡路的车', style: TextStyle(color: AppColors.ink2)),
-          ],
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.accent,
-            ),
-            child: const Text('知道了'),
-          ),
+                  color: AppColors.ink1, fontWeight: FontWeight.w800)),
+          const Text('（车位上停着同款半透明"幽灵车"，就是它）',
+              style: TextStyle(color: AppColors.ink2, fontSize: 12)),
+          const SizedBox(height: 10),
+          _helpLine('点击一辆车选中（金色边框）'),
+          _helpLine('点击空地或车位 — 直线滑行过去'),
+          _helpLine('碰到 🧱 障碍和其他车会停下'),
+          _helpLine('其他车是障碍，拖开它们让路'),
+          _helpLine('横/竖长车只能沿车身方向滑动'),
+          _helpLine('可以撤销、重置，别怕试错'),
         ],
       ),
     ).then((_) {
@@ -597,33 +571,54 @@ class _ParkingScreenState extends State<ParkingScreen>
     });
   }
 
+  /// 帮助文案行：统一行距与色阶，避免像一堵字墙。
+  Widget _helpLine(String text) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Container(
+                width: 5,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: AppColors.mint,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            ),
+            const SizedBox(width: 7),
+            Expanded(
+              child: Text(text,
+                  style: const TextStyle(
+                      color: AppColors.ink2, fontSize: 13, height: 1.35)),
+            ),
+          ],
+        ),
+      );
+
   /// 暂停弹窗：停表并给继续/重开/主页（与合成模式同一套交互）。
   Future<void> _showPauseDialog() async {
     AudioFeedback.uiTap();
     _game.pauseTimer();
-    final action = await showDialog<String>(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceLight,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('暂停中',
-            style: TextStyle(color: AppColors.ink1, fontWeight: FontWeight.w800)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _pauseAction(Icons.play_arrow, '继续游戏', () {
-              Navigator.of(ctx).pop('resume');
-            }),
-            _pauseAction(Icons.refresh, '重新开始', () {
-              Navigator.of(ctx).pop('restart');
-            }),
-            _pauseAction(Icons.home, '返回主页', () {
-              Navigator.of(ctx).pop('home');
-            }),
-          ],
-        ),
-      ),
+    final action = await CandyChoiceDialog.show<String>(
+      context,
+      emoji: '☕',
+      title: '暂停中',
+      message: '不急，慢慢想下一步',
+      accent: AppColors.grape,
+      options: <CandyChoice<String>>[
+        const CandyChoice<String>(
+            label: '继续游戏',
+            value: 'resume',
+            icon: Icons.play_arrow_rounded,
+            highlight: true),
+        const CandyChoice<String>(
+            label: '重新开始', value: 'restart', icon: Icons.refresh_rounded),
+        const CandyChoice<String>(
+            label: '返回主页', value: 'home', icon: Icons.home_rounded),
+      ],
     );
     if (!mounted) return;
     switch (action) {
@@ -636,61 +631,20 @@ class _ParkingScreenState extends State<ParkingScreen>
     }
   }
 
-  Widget _pauseAction(IconData icon, String label, VoidCallback onTap) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Material(
-        color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Row(
-              children: [
-                Icon(icon, color: AppColors.ink2, size: 20),
-                const SizedBox(width: 10),
-                Text(label,
-                    style: const TextStyle(
-                        color: AppColors.ink1, fontSize: 16)),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   /// 底栏「重置」先确认：一步误触不该清空整盘步数与标记。
   Future<void> _confirmReset() async {
     AudioFeedback.uiTap();
     _game.pauseTimer();
-    final confirmed = await showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceLight,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('重新开始本关？',
-            style: TextStyle(color: AppColors.ink1, fontWeight: FontWeight.w800)),
-        content: const Text('当前步数与标记将全部丢失',
-            style: TextStyle(color: AppColors.ink2, fontSize: 14)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.accent,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('重开'),
-          ),
-        ],
-      ),
+    final confirmed = await CandyDialog.show<bool>(
+      context,
+      emoji: '🔄',
+      color: AppColors.grape,
+      title: '重新开始本关？',
+      message: '当前步数与标记会全部清空。',
+      confirmLabel: '重开',
+      confirmValue: true,
+      cancelLabel: '取消',
+      cancelValue: false,
     );
     if (!mounted) return;
     if (confirmed == true) {
@@ -707,31 +661,16 @@ class _ParkingScreenState extends State<ParkingScreen>
       return;
     }
     _game.pauseTimer();
-    final quit = await showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceLight,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('退出本关？',
-            style: TextStyle(color: AppColors.ink1, fontWeight: FontWeight.w800)),
-        content: const Text('当前对局进度将丢失',
-            style: TextStyle(color: AppColors.ink2, fontSize: 14)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('继续玩'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.accent,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('退出'),
-          ),
-        ],
-      ),
+    final quit = await CandyDialog.show<bool>(
+      context,
+      emoji: '🚪',
+      color: AppColors.grape,
+      title: '退出本关？',
+      message: '这一局的进度会丢掉哦。',
+      confirmLabel: '继续玩',
+      confirmValue: false,
+      cancelLabel: '退出',
+      cancelValue: true,
     );
     if (!mounted) return;
     if (quit == true) {
@@ -806,132 +745,176 @@ class _ParkingScreenState extends State<ParkingScreen>
     );
   }
 
+  /// 结算卡：胜/负共用一张糖卡，只在颜色与文案上区分。
+  /// 失败不用红色警示——「这一局卡住了」比「失败」听起来更容易再来一次。
   Widget _buildResultCard(bool won, bool canNext) {
+    final accent = won ? AppColors.mint : AppColors.grape;
     return Container(
       margin: const EdgeInsets.all(32),
-      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            won ? '🎉' : '😞',
-            style: const TextStyle(fontSize: 48),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            won ? '停车成功!' : '失败',
-            style: const TextStyle(
-              color: AppColors.ink1,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          if (won)
-            _buildStarsRow()
-          else
-            const Text('没有可用的移动了', style: TextStyle(color: AppColors.ink2)),
-          const SizedBox(height: 8),
-          Text(
-            won
-                ? '步数: ${_game.moves} | 时间: ${_game.elapsedSeconds}s'
-                : '没有可用的移动了',
-            style: const TextStyle(color: AppColors.ink2),
-          ),
-          if (won)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text('+$_lastReward 🪙',
-                  style: const TextStyle(
-                      color: Color(0xFFFFD54F),
-                      fontWeight: FontWeight.w800)),
-            ),
-          if (won && _collectionNew)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                '📖 图鉴点亮 ${widget.level.targetTier.icon} +$_collectionBonus 🪙',
-                style: const TextStyle(
-                    color: Color(0xFF159C6A), fontWeight: FontWeight.w800),
-              ),
-            ),
-          if (won && _boosterKey != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                '🎁 获得 ${_boosterLabels[_boosterKey]!} · 合成开局可用',
-                style: const TextStyle(
-                    color: Color(0xFF7E57C2), fontWeight: FontWeight.w800),
-              ),
-            ),
-          if (won && _dailyStreakBonus > 0)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                '🔥 连续挑战奖励 +${ParkingDailyChallenge.reward + _dailyStreakBonus} 🪙',
-                style: const TextStyle(
-                    color: Color(0xFFFF6D00), fontWeight: FontWeight.w800),
-              ),
-            ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (!won && _game.canUndo)
-                Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: FilledButton.icon(
-                    onPressed: () {
-                      // 模拟观看广告：回退 3 步并解除判负（步数/时间随之返还）。
-                      _analytics.toolUse('ad_undo', 0, widget.data.coins);
-                      final n = _game.undoMoves(3);
-                      _settled = false;
-                      setState(() {});
-                      _audio.play(Sfx.undo);
-                      _showToast('🎬 广告撤销 · 回退 $n 步');
-                    },
-                    icon: const Icon(Icons.play_circle_fill),
-                    label: const Text('看广告回退 3 步'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF66BB6A),
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ),
-              FilledButton(
-                onPressed: _resetGame,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.accent,
-                ),
-                child: const Text('重玩'),
-              ),
-              const SizedBox(width: 12),
-              if (canNext)
-                Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: FilledButton(
-                    onPressed: _goNext,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.success,
-                    ),
-                    child: const Text('下一关'),
-                  ),
-                ),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.surfaceLight,
-                  foregroundColor: AppColors.ink1,
-                ),
-                child: const Text('返回'),
-              ),
-            ],
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppColors.surfaceLight,
+            Color.lerp(accent, Colors.white, 0.92)!,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: accent.withValues(alpha: 0.34), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.30),
+            blurRadius: 26,
+            offset: const Offset(0, 10),
           ),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(30),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 顶部彩带头：一句话结果 + 车-icon，情绪的第一落点。
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [accent, AppTheme.deepen(accent, 0.14)],
+                ),
+              ),
+              child: Column(
+                children: [
+                  Text(won ? '🎉' : '🤔', style: const TextStyle(fontSize: 40)),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(widget.level.targetTier.icon,
+                          style: const TextStyle(fontSize: 22)),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          won ? '停好啦！' : '这一局卡住了',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 23,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (won)
+                    _buildStarsRow()
+                  else
+                    const Text('没有可走的移动了 · 撤销一步或换个思路试试',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: AppColors.ink2, fontSize: 13)),
+                  const SizedBox(height: 10),
+                  Text(
+                    '步数 ${_game.moves} · 用时 ${_game.elapsedSeconds}s',
+                    style: const TextStyle(
+                        color: AppColors.ink2,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700),
+                  ),
+                  // 奖励行：统一 chip 化，颜色按奖励类型分（金币/图鉴/道具/连胜）。
+                  if (won) ...[
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        SoftChip(
+                          label: '金币 +$_lastReward 🪙',
+                          color: AppColors.sun,
+                          solid: true,
+                        ),
+                        if (_collectionNew)
+                          SoftChip(
+                            label: '📖 图鉴点亮 +$_collectionBonus 🪙',
+                            color: AppColors.mint,
+                            solid: true,
+                          ),
+                        if (_boosterKey != null)
+                          SoftChip(
+                            label: '🎁 ${_boosterLabels[_boosterKey]!}',
+                            color: AppColors.grape,
+                            solid: true,
+                          ),
+                        if (_dailyStreakBonus > 0)
+                          SoftChip(
+                            label: '🔥 连续 +${ParkingDailyChallenge.reward + _dailyStreakBonus} 🪙',
+                            color: AppColors.melon,
+                            solid: true,
+                          ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  // 失败且有撤销空间：把"救回来"放在最上面，降低重开成本。
+                  if (!won && _game.canUndo) ...[
+                    CandyButton(
+                      label: '看广告回退 3 步',
+                      icon: Icons.play_circle_fill,
+                      colors: AppTheme.gradientOf(AppColors.mint),
+                      expand: true,
+                      onTap: () {
+                        // 模拟观看广告：回退 3 步并解除判负（步数/时间随之返还）。
+                        _analytics.toolUse('ad_undo', 0, widget.data.coins);
+                        final n = _game.undoMoves(3);
+                        _settled = false;
+                        setState(() {});
+                        _audio.play(Sfx.undo);
+                        _showToast('🎬 广告撤销 · 回退 $n 步');
+                      },
+                    ),
+                    const SizedBox(height: 9),
+                  ],
+                  if (canNext)
+                    CandyButton(
+                      label: '下一关 ▶',
+                      icon: Icons.skip_next_rounded,
+                      colors: AppTheme.gradientOf(AppColors.mint),
+                      expand: true,
+                      onTap: _goNext,
+                    )
+                  else
+                    CandyButton(
+                      label: won ? '再玩一次' : '重玩本关',
+                      icon: Icons.refresh_rounded,
+                      colors: AppTheme.gradientOf(AppColors.coral),
+                      expand: true,
+                      onTap: _resetGame,
+                    ),
+                  const SizedBox(height: 9),
+                  CandyButton(
+                    label: '返回',
+                    icon: Icons.home_rounded,
+                    colors: AppTheme.softGradient,
+                    expand: true,
+                    onTap: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1042,13 +1025,15 @@ class _ParkingScreenState extends State<ParkingScreen>
       padding: const EdgeInsets.all(8),
       child: Row(
         children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back, color: AppColors.ink1),
-            onPressed: () {
+          RoundIconButton(
+            icon: Icons.arrow_back_ios_new_rounded,
+            color: AppColors.mint,
+            onTap: () {
               AudioFeedback.uiTap();
               Navigator.of(context).pop();
             },
           ),
+          const SizedBox(width: 6),
           Expanded(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -1099,18 +1084,18 @@ class _ParkingScreenState extends State<ParkingScreen>
                     ),
                   ],
                   const SizedBox(width: 6),
-                  IconButton(
-                    icon: const Icon(Icons.pause_circle_outline,
-                        color: AppColors.ink2, size: 20),
-                    tooltip: '暂停',
-                    onPressed: _game.hasWon || _game.hasLost
+                  RoundIconButton(
+                    icon: Icons.pause_circle_outline,
+                    color: AppColors.grape,
+                    onTap: _game.hasWon || _game.hasLost
                         ? null
                         : _showPauseDialog,
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.help_outline,
-                        color: AppColors.ink2, size: 20),
-                    onPressed: () {
+                  const SizedBox(width: 6),
+                  RoundIconButton(
+                    icon: Icons.help_outline_rounded,
+                    color: AppColors.sky,
+                    onTap: () {
                       AudioFeedback.uiTap();
                       _showHelpDialog();
                     },
@@ -1124,19 +1109,36 @@ class _ParkingScreenState extends State<ParkingScreen>
     );
   }
 
+  /// HUD 信息 chip：统一糖果质感（白 stacked 描边 + 顶部高光 + 同色柔投影），
+  /// 替代原先的纯实色方块——实色方块在浅色背景上压得很重，容易抢棋盘注意力。
   Widget _buildInfoChip(String label, Color color) {
-    final isLight = color.computeLuminance() > 0.5;
+    final isLight = color.computeLuminance() > 0.72;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: color,
+        borderRadius: BorderRadius.circular(13),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color.lerp(color, Colors.white, 0.42)!,
+            color,
+          ],
+        ),
+        border: Border.all(color: color.withValues(alpha: 0.34)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.24),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Text(
         label,
         style: TextStyle(
           color: isLight ? AppColors.ink1 : Colors.white,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w900,
           fontSize: 12,
         ),
       ),
@@ -1295,64 +1297,58 @@ class _ParkingScreenState extends State<ParkingScreen>
               ),
             ),
             const SizedBox(width: 6),
-            _buildItemButton('bomb', '💣', '炸弹', Color(0xFFFF7043)),
+            // 道具身份色与商店统一到糖果色板（原先是各自随手的 Material 原色）。
+            _buildItemButton('bomb', '💣', '炸弹', AppColors.melon),
             const SizedBox(width: 6),
-            _buildItemButton('spring', '🌀', '弹簧', Color(0xFF66BB6A)),
+            _buildItemButton('spring', '🌀', '弹簧', AppColors.forest),
             const SizedBox(width: 6),
-            _buildItemButton('balloon', '🎈', '气球', Color(0xFF42A5F5)),
+            _buildItemButton('balloon', '🎈', '气球', AppColors.sky),
             const SizedBox(width: 6),
-            _buildItemButton('key', '🔑', '钥匙', Color(0xFFFFCA28)),
+            _buildItemButton('key', '🔑', '钥匙', AppColors.lemon),
             const SizedBox(width: 6),
-            _buildItemButton('hammer', '🔨', '锤子', Color(0xFF8D6E63)),
+            _buildItemButton('hammer', '🔨', '锤子', AppColors.cocoa),
             const SizedBox(width: 6),
-            _buildItemButton('doubleMove', '↔️', '双倍', Color(0xFFAB47BC)),
+            _buildItemButton('doubleMove', '↔️', '双倍', AppColors.taro),
             const SizedBox(width: 12),
           ],
-          ElevatedButton.icon(
-            onPressed: _useUndo,
-            icon: const Icon(Icons.undo),
-            label: Text(
-              _game.canUndo ? '撤销 3 步' : '撤销',
-              style: const TextStyle(fontSize: 13),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.surfaceLight,
-              foregroundColor: AppColors.ink1,
-            ),
+          CandyButton(
+            label: _game.canUndo ? '撤销 3 步' : '撤销',
+            icon: Icons.undo_rounded,
+            colors: AppTheme.softGradient,
+            size: CandyButtonSize.small,
+            dense: true,
+            onTap: _useUndo,
           ),
-          const SizedBox(width: 12),
-          ElevatedButton.icon(
-            onPressed: _requestHint,
-            icon: const Icon(Icons.lightbulb_outline),
-            label: const Text('提示'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.accent,
-              foregroundColor: Colors.white,
-            ),
+          const SizedBox(width: 8),
+          CandyButton(
+            label: '提示',
+            icon: Icons.lightbulb_outlined,
+            colors: AppTheme.gradientOf(AppColors.coral),
+            size: CandyButtonSize.small,
+            dense: true,
+            onTap: _requestHint,
           ),
-          const SizedBox(width: 12),
-          ElevatedButton.icon(
-            onPressed: _confirmReset,
-            icon: const Icon(Icons.refresh),
-            label: const Text('重置'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.surfaceLight,
-              foregroundColor: AppColors.ink1,
-            ),
+          const SizedBox(width: 8),
+          CandyButton(
+            label: '重置',
+            icon: Icons.refresh_rounded,
+            colors: AppTheme.softGradient,
+            size: CandyButtonSize.small,
+            dense: true,
+            onTap: _confirmReset,
           ),
           if (_game.hasWon || _game.hasLost) ...[
-            const SizedBox(width: 12),
-            ElevatedButton.icon(
-              onPressed: () {
+            const SizedBox(width: 8),
+            CandyButton(
+              label: '完成',
+              icon: Icons.check_rounded,
+              colors: AppTheme.gradientOf(AppColors.mint),
+              size: CandyButtonSize.small,
+              dense: true,
+              onTap: () {
                 AudioFeedback.uiTap();
                 Navigator.of(context).pop();
               },
-              icon: const Icon(Icons.check),
-              label: const Text('完成'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.success,
-                foregroundColor: Colors.white,
-              ),
             ),
           ],
         ],
@@ -1361,13 +1357,18 @@ class _ParkingScreenState extends State<ParkingScreen>
     );
   }
 
+  /// 棋盘：躺在一块"糖霜托盘"上（原本是裸叠 Strokes 在背景上，像线框图）。
+  /// 托盘只做外框与内边距，不参与坐标计算——棋盘内所有定位都以自身尺寸为准。
   Widget _buildBoard() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final availableSize = math.min(
-          constraints.maxWidth,
-          constraints.maxHeight,
-        );
+    return Container(
+      padding: const EdgeInsets.all(7),
+      decoration: AppTheme.frostedPanel(accent: AppColors.mint, radius: 24),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final availableSize = math.min(
+            constraints.maxWidth,
+            constraints.maxHeight,
+          );
         final cellSize = (availableSize / math.max(_game.rows, _game.cols))
             .clamp(56.0, 140.0);
         final boardW = _game.cols * cellSize;
@@ -1471,7 +1472,8 @@ class _ParkingScreenState extends State<ParkingScreen>
             ],
           ),
         );
-      },
+        },
+      ),
     );
   }
 
@@ -1784,9 +1786,10 @@ class _ParkingScreenState extends State<ParkingScreen>
     // 提示落点格（仅空格）：叠加青色半透明高亮底。
     final isHintTarget = _hintCells.contains((row, col)) && vehicle == null;
     if (isHintTarget) {
-      bg = Color.lerp(bg, const Color(0xFF26C6DA), 0.45)!;
+      bg = Color.lerp(bg, AppColors.hint, 0.45)!;
     }
-
+    // 每格加一点点内发光：上边高光、下边投影，让格子像"扣出来的糖砖"。
+    final isRoad = cell.type == ParkingCellType.road;
     return Pressable(
       behavior: HitTestBehavior.opaque,
       key: ValueKey('cell-$row-$col'),
@@ -1797,12 +1800,28 @@ class _ParkingScreenState extends State<ParkingScreen>
               width: size,
               height: size,
               decoration: BoxDecoration(
-                color: bg,
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color.lerp(bg, Colors.white, isRoad ? 0.55 : 0.40)!,
+                    bg,
+                  ],
+                ),
                 border: Border.all(
-                  color: isHintTarget ? const Color(0xFF26C6DA) : AppColors.ink3.withValues(alpha: 0.18),
+                  color: isHintTarget
+                      ? AppColors.hint
+                      : AppColors.ink3.withValues(alpha: 0.20),
                   width: isHintTarget ? 3 : 1,
                 ),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.shadow.withValues(alpha: 0.5),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
               ),
               child: _buildCellContent(cell, vehicle, size),
             ),

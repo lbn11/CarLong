@@ -49,3 +49,4 @@ app.*.map.json
 
 # ImageGen 原始渲染中间产物 (非游戏资源, 不入库)
 generated-images/
+test/failures/

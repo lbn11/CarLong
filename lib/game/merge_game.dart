@@ -10,6 +10,7 @@ import 'package:flutter/widgets.dart' hide View;
 import '../logic/board_logic.dart';
 import '../models/vehicle.dart';
 import '../models/level.dart';
+import '../theme/app_theme.dart';
 import 'audio_feedback.dart';
 import 'vehicle_icons.dart';
 
@@ -38,30 +39,34 @@ ui.Picture _buildFogPicture(int w, int h, double radius) {
   canvas.drawRRect(
     rr,
     Paint()
-      ..color = const Color(0xFF14161B)
+      // 棋盘底板：奶油→粉雾糖霜，与全局 GlowBackground 同一氛围。
+      ..color = const Color(0xFFFDF7F0)
       ..shader = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: const [Color(0xFF1E232B), Color(0xFF101216)],
+        colors: const [Color(0xFFFDF7F0), Color(0xFFF7ECF6)],
       ).createShader(rect),
   );
   final swirl = Paint()
-    ..color = const Color(0xFF4A5A72)
+    ..color = const Color(0x22FF7A5C)
     ..maskFilter = MaskFilter.blur(BlurStyle.normal, rect.width * 0.12);
   canvas.drawCircle(
     Offset(rect.width * 0.35, rect.height * 0.38),
     rect.width * 0.3,
     swirl,
   );
+  final swirl2 = Paint()
+    ..color = const Color(0x264CC2FF)
+    ..maskFilter = MaskFilter.blur(BlurStyle.normal, rect.width * 0.12);
   canvas.drawCircle(
     Offset(rect.width * 0.68, rect.height * 0.72),
     rect.width * 0.26,
-    swirl,
+    swirl2,
   );
   canvas.drawRRect(
     rr,
     Paint()
-      ..color = const Color(0x66889AB0)
+      ..color = const Color(0x40B79BFF)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5,
   );
@@ -87,6 +92,11 @@ enum MergeFailReason {
 class MergeGame extends FlameGame {
   final LevelDefinition level;
   final BoardLogic board;
+
+  /// Flame 默认画布底色是纯黑，会把 GlowBackground 的奶油渐变整个盖住。
+  /// 改成透明，让 Flutter 侧背景透出来（棋盘底板由 BoardBackdrop 自己画）。
+  @override
+  ui.Color backgroundColor() => const ui.Color(0x00000000);
 
   final ValueNotifier<int> score = ValueNotifier<int>(0);
   final ValueNotifier<int> produced = ValueNotifier<int>(0);
@@ -1254,7 +1264,7 @@ class CellSprite extends PositionComponent with TapCallbacks {
   double _lastSize = -1;
   RRect _rr = RRect.fromRectAndRadius(Rect.zero, const Radius.circular(0));
   RRect _inset = RRect.fromRectAndRadius(Rect.zero, const Radius.circular(0));
-  late final Paint _base = Paint()..color = const Color(0xFFF1EAEF);
+  late final Paint _base = Paint()..color = const Color(0xFFFCF7F2);
   Paint? _topShade;
   Paint? _bottomLight;
 
@@ -1275,12 +1285,12 @@ class CellSprite extends PositionComponent with TapCallbacks {
       Rect.fromLTWH(1.5, 1.5, size.x - 3, size.y - 3),
       Radius.circular(r),
     );
-    // 顶部内阴影，模拟凹槽
+    // 顶部内阴影，模拟凹槽（浅色版：只留一点点，避免把白格压灰）
     _topShade = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: const [Color(0x42000000), Color(0x00000000)],
+        colors: const [Color(0x14000000), Color(0x00000000)],
       ).createShader(_inset.outerRect);
     // 底部微光
     _bottomLight = Paint()
@@ -1809,7 +1819,11 @@ class StackSprite extends PositionComponent
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: const [Color(0xFF3A3F48), Color(0xFF171A1E)],
+        // 徽章跟随车型身份色（糖果版：不再是深灰药丸）。
+        colors: [
+          Color.lerp(data.tier.color, const Color(0xFFFFFFFF), 0.15)!,
+          AppTheme.deepen(data.tier.color, 0.12),
+        ],
       ).createShader(badgeRect.outerRect);
   }
 
@@ -2154,27 +2168,12 @@ class _BurstDot {
   });
 }
 
-/// 环境背景:中心微亮的径向渐变,替代纯黑底。
+/// 环境背景:全局 GlowBackground 已经负责氛围渐变，Flame 层保持透明，
+/// 让 Flutter 侧的奶油→粉雾→天空背景透出来（旧的深空黑底已随糖果化移除）。
 class AmbientBackground extends PositionComponent with HasGameReference<MergeGame> {
-  Shader? _shader;
-  double _w = -1;
-  double _h = -1;
-
   @override
   void render(Canvas canvas) {
-    final w = game.size.x;
-    final h = game.size.y;
-    if (_shader == null || w != _w || h != _h) {
-      _w = w;
-      _h = h;
-      _shader = RadialGradient(
-        center: const Alignment(0.0, -0.3),
-        radius: 1.35,
-        colors: const [Color(0xFF23303E), Color(0xFF171A1E), Color(0xFF0E1013)],
-        stops: const [0.0, 0.55, 1.0],
-      ).createShader(Rect.fromLTWH(0, 0, w, h));
-    }
-    canvas.drawRect(Rect.fromLTWH(0, 0, w, h), Paint()..shader = _shader);
+    // no-op：透明背景（保留组件以兼容挂载点）。
   }
 }
 
@@ -2186,10 +2185,10 @@ class BoardBackdrop extends PositionComponent {
   double _lastH = -1;
   Paint? _panel;
   late final Paint _shadow = Paint()
-    ..color = const Color(0x50000000)
+    ..color = const Color(0x24323256)
     ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14);
   late final Paint _border = Paint()
-    ..color = const Color(0x38FFFFFF)
+    ..color = const Color(0x40B79BFF)
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1.6;
 
@@ -2203,7 +2202,8 @@ class BoardBackdrop extends PositionComponent {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: const [Color(0xFF2A2F38), Color(0xFF1A1E24)],
+          // 棋盘托板：白色 → 极淡紫，和 GlowBackground 融为一体。
+          colors: const [Color(0xFFFDFBF7), Color(0xFFF6EFF8)],
         ).createShader(rect);
     }
     const r = Radius.circular(22);

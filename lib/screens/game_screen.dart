@@ -14,6 +14,7 @@ import '../theme/app_theme.dart';
 import '../models/level.dart';
 import '../models/vehicle.dart';
 import '../save/save_repository.dart';
+import '../widgets/candy_ui.dart';
 import '../widgets/pressable.dart';
 import '../widgets/vehicle_image.dart';
 
@@ -332,24 +333,90 @@ class _GameScreenState extends State<GameScreen> {
     _game.pauseEngine();
     final action = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceLight,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('暂停中',
-            style: TextStyle(color: AppColors.ink1, fontWeight: FontWeight.w800)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _pauseAction(Icons.play_arrow, '继续游戏', () {
-              Navigator.of(ctx).pop('resume');
-            }),
-            _pauseAction(Icons.refresh, '重新开始', () {
-              Navigator.of(ctx).pop('restart');
-            }),
-            _pauseAction(Icons.home, '返回主页', () {
-              Navigator.of(ctx).pop('home');
-            }),
-          ],
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 44),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.surfaceLight,
+                Color.lerp(AppColors.grape, Colors.white, 0.93)!,
+              ],
+            ),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: AppColors.grape.withValues(alpha: 0.30)),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.grape.withValues(alpha: 0.26),
+                blurRadius: 24,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.gradientFor(AppColors.grape),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.pause_rounded,
+                        color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text('暂停中',
+                      style: TextStyle(
+                          color: AppColors.ink1,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900)),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.only(left: 58),
+                child: Text(
+                  widget.level.endless
+                      ? '休息一下，随时回来接着合'
+                      : '不着急，慢慢想下一步',
+                  style: const TextStyle(
+                      color: AppColors.ink2, fontSize: 12.5),
+                ),
+              ),
+              const SizedBox(height: 16),
+              CandyButton(
+                label: '继续游戏',
+                icon: Icons.play_arrow_rounded,
+                colors: AppTheme.gradientOf(AppColors.grape),
+                expand: true,
+                onTap: () => Navigator.of(ctx).pop('resume'),
+              ),
+              const SizedBox(height: 9),
+              CandyButton(
+                label: '重新开始',
+                icon: Icons.refresh_rounded,
+                colors: AppTheme.softGradient,
+                expand: true,
+                onTap: () => Navigator.of(ctx).pop('restart'),
+              ),
+              const SizedBox(height: 9),
+              CandyButton(
+                label: '返回主页',
+                icon: Icons.home_rounded,
+                colors: AppTheme.softGradient,
+                expand: true,
+                onTap: () => Navigator.of(ctx).pop('home'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -362,32 +429,6 @@ class _GameScreenState extends State<GameScreen> {
       default:
         _game.resumeEngine();
     }
-  }
-
-  Widget _pauseAction(IconData icon, String label, VoidCallback onTap) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Material(
-        color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Row(
-              children: [
-                Icon(icon, color: AppColors.ink2, size: 20),
-                const SizedBox(width: 10),
-                Text(label,
-                    style: const TextStyle(
-                        color: AppColors.ink1, fontSize: 16)),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   /// 通关星级：限时关看剩余时间比例，普通关看最大连消。
@@ -489,31 +530,16 @@ class _GameScreenState extends State<GameScreen> {
       return;
     }
     _game.pauseEngine();
-    final quit = await showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceLight,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('退出本关？',
-            style: TextStyle(color: AppColors.ink1, fontWeight: FontWeight.w800)),
-        content: const Text('当前对局进度将丢失',
-            style: TextStyle(color: AppColors.ink2, fontSize: 14)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('继续玩'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.accent,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('退出'),
-          ),
-        ],
-      ),
+    final quit = await CandyDialog.show<bool>(
+      context,
+      emoji: '🚪',
+      color: AppColors.grape,
+      title: '退出本关？',
+      message: '当前这局的进度会丢掉哦，确定要走吗？',
+      confirmLabel: '继续玩',
+      confirmValue: false,
+      cancelLabel: '退出',
+      cancelValue: true,
     );
     if (!mounted) return;
     if (quit == true) {
@@ -726,7 +752,7 @@ class _GameScreenState extends State<GameScreen> {
         return _chip(
           gradient: urgent
               ? const [Color(0xFFE53935), Color(0xFFC62828)]
-              : const [Color(0xFF2A2F38), Color(0xFF1F242C)],
+              : AppTheme.gradientOf(AppColors.aqua),
           shadow: urgent,
           child: Text('⏱ $t s',
               style: TextStyle(
@@ -868,19 +894,43 @@ class _GameScreenState extends State<GameScreen> {
     required String tooltip,
     required VoidCallback? onPressed,
   }) {
-    return IconButton(
-      onPressed: onPressed == null
-          ? null
-          : () {
-              AudioFeedback.uiTap();
-              onPressed();
-            },
-      tooltip: tooltip,
-      icon: Icon(icon, color: Colors.white70, size: 20),
-      padding: EdgeInsets.zero,
-      // 人因：触控热区至少 44pt（视觉图标保持 20 不变）。
-      constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-      style: IconButton.styleFrom(backgroundColor: const Color(0x22FFFFFF)),
+    return Pressable(
+      onTap: onPressed,
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          gradient: onPressed != null
+              ? LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.surfaceLight,
+                    Color.lerp(AppColors.grape, Colors.white, 0.90)!,
+                  ],
+                )
+              : null,
+          color: onPressed != null ? null : AppColors.surfaceSoft,
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(
+            color: onPressed != null
+                ? AppColors.grape.withValues(alpha: 0.30)
+                : AppColors.ink3.withValues(alpha: 0.18),
+          ),
+          boxShadow: onPressed != null
+              ? [
+                  BoxShadow(
+                    color: AppColors.grape.withValues(alpha: 0.22),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
+        ),
+        child: Icon(icon,
+            size: 17,
+            color: onPressed != null ? AppColors.ink1 : AppColors.ink3),
+      ),
     );
   }
 
@@ -891,17 +941,15 @@ class _GameScreenState extends State<GameScreen> {
         children: [
           Row(
             children: [
-              IconButton(
-                onPressed: _finished
+              RoundIconButton(
+                icon: Icons.arrow_back_ios_new_rounded,
+                color: AppColors.coral,
+                onTap: _finished
                     ? null
                     : () {
                         AudioFeedback.uiTap();
                         Navigator.of(context).pop();
                       },
-                icon: const Icon(Icons.arrow_back, color: Colors.white70),
-                style: IconButton.styleFrom(
-                  backgroundColor: const Color(0x22FFFFFF),
-                ),
               ),
               // 弹性标题：小屏自动省略，永不把 HUD 撑溢出。
               Flexible(
@@ -968,19 +1016,15 @@ class _GameScreenState extends State<GameScreen> {
                   ),
                 ),
               ),
-              IconButton(
-                onPressed: _finished
+              RoundIconButton(
+                icon: Icons.pause_circle_outline,
+                color: AppColors.grape,
+                onTap: _finished
                     ? null
                     : () {
                         AudioFeedback.uiTap();
                         _showPause();
                       },
-                tooltip: '暂停',
-                icon: const Icon(Icons.pause_circle_outline,
-                    color: Colors.white70),
-                style: IconButton.styleFrom(
-                  backgroundColor: const Color(0x22FFFFFF),
-                ),
               ),
             ],
           ),
@@ -1147,16 +1191,23 @@ class _GameScreenState extends State<GameScreen> {
     }
     return Container(
       margin: EdgeInsets.fromLTRB(compact ? 0 : 12, 0, compact ? 0 : 12, 2),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0x22FF5E7A)),
-        boxShadow: const [
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppColors.surfaceLight,
+            Color.lerp(AppColors.coralDeep, Colors.white, 0.92)!,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.coralDeep.withValues(alpha: 0.22)),
+        boxShadow: [
           BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 6,
-            offset: Offset(0, 2),
+            color: AppColors.coralDeep.withValues(alpha: 0.16),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -1196,29 +1247,34 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
+  /// 统一 chip 质感：给定渐变后自动补顶部白高光 + 同色柔投影，
+  /// 让 HUD 上的一堆小标签像"一排糖果"而不是各自 принципи不同的色块。
   Widget _chip({
     required List<Color> gradient,
     required Widget child,
     bool shadow = false,
   }) {
+    final base = gradient.last;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: gradient,
+          colors: [
+            Color.lerp(gradient.first, Colors.white, 0.30)!,
+            base,
+          ],
         ),
         borderRadius: BorderRadius.circular(14),
-        boxShadow: shadow
-            ? const [
-                BoxShadow(
-                  color: Color(0x55000000),
-                  blurRadius: 8,
-                  offset: Offset(0, 3),
-                ),
-              ]
-            : null,
+        border: Border.all(color: Colors.white.withValues(alpha: 0.55)),
+        boxShadow: [
+          BoxShadow(
+            color: base.withValues(alpha: shadow ? 0.34 : 0.16),
+            blurRadius: shadow ? 12 : 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: child,
     );
@@ -1268,13 +1324,9 @@ class _GameScreenState extends State<GameScreen> {
                         Center(
                           child: Container(
                             padding: const EdgeInsets.all(slotPad),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF1EAEF),
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(
-                                color: const Color(0xFFE2D8E4),
-                                width: 1,
-                              ),
+                            decoration: AppTheme.frostedPanel(
+                              accent: AppColors.grape,
+                              radius: 22,
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -1490,58 +1542,63 @@ class _GameScreenState extends State<GameScreen> {
     bool danger = false,
   }) {
     final on = enabled ? onTap : null;
+    // 身份色：危险操作红、其余用珊瑚，禁用时统一灰。
+    final tint = danger ? AppColors.melon : AppColors.coral;
     return Padding(
       key: key,
       padding: const EdgeInsets.only(left: 8),
-      child: Material(
-        color: Colors.transparent,
-        child: Ink(
+      child: Pressable(
+        onTap: on,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: enabled
-                  ? danger
-                      ? const [Color(0xFFE53935), Color(0xFFC62828)]
-                      : const [AppColors.surfaceLight, AppColors.surfaceLight]
-                  : const [Color(0xFFE7E0E9), Color(0xFFDCD3E0)],
+            gradient: enabled
+                ? LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AppColors.surfaceLight,
+                      Color.lerp(tint, Colors.white, 0.90)!,
+                    ],
+                  )
+                : null,
+            color: enabled ? null : AppColors.surfaceSoft,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: enabled
+                  ? tint.withValues(alpha: 0.32)
+                  : AppColors.ink3.withValues(alpha: 0.18),
             ),
-            borderRadius: BorderRadius.circular(12),
             boxShadow: enabled
-                ? const [
+                ? [
                     BoxShadow(
-                      color: AppColors.shadow,
-                      blurRadius: 6,
-                      offset: Offset(0, 2),
+                      color: tint.withValues(alpha: 0.20),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
                     ),
                   ]
                 : null,
           ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: on,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon,
-                      size: 18,
-                      color: enabled ? AppColors.ink1 : AppColors.ink3),
-                  const SizedBox(height: 2),
-                  Text(
-                    cost == null ? label : '$label $cost',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: enabled
-                          ? AppColors.coralDeep
-                          : AppColors.ink3,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon,
+                  size: 19,
+                  color: enabled
+                      ? AppTheme.deepen(tint, 0.22)
+                      : AppColors.ink3),
+              const SizedBox(height: 2),
+              Text(
+                cost == null ? label : '$label $cost',
+                style: TextStyle(
+                  fontSize: 10.5,
+                  color: enabled
+                      ? AppTheme.deepen(tint, 0.34)
+                      : AppColors.ink3,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -1668,22 +1725,26 @@ class _ResultDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isEndless = endlessLevel > 0;
+    // 失败时改用柔和葡萄紫而不是刺眼的警示色：这一局没成，不代表失败。
+    final headerColors = won
+        ? const [AppColors.coral, AppColors.coralDeep]
+        : <Color>[AppColors.grape, AppTheme.deepen(AppColors.grape, 0.14)];
     return Dialog(
       backgroundColor: AppColors.surfaceLight,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [AppColors.coral, AppColors.coralDeep],
+                  colors: headerColors,
                 ),
               ),
               child: Column(
@@ -1755,17 +1816,12 @@ class _ResultDialog extends StatelessWidget {
                   const SizedBox(height: 12),
                   // 胜利广告位：看广告金币×2（每局一次，翻倍后隐藏）。
                   if (onDoubleReward != null) ...[
-                    FilledButton.icon(
-                      onPressed: onDoubleReward,
-                      icon: const Icon(Icons.movie_creation_outlined, size: 18),
-                      label: Text('看广告 金币 ×2（+$reward 🪙）',
-                          style: const TextStyle(fontWeight: FontWeight.w800)),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.coinGold2,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 10),
-                      ),
+                    CandyButton(
+                      label: '看广告 金币 ×2（+$reward 🪙）',
+                      icon: Icons.movie_creation_outlined,
+                      colors: AppTheme.gradientOf(AppColors.lemon),
+                      expand: true,
+                      onTap: onDoubleReward,
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -1784,62 +1840,43 @@ class _ResultDialog extends StatelessWidget {
                   const SizedBox(height: 20),
                   // 失败广告位：看广告续命（每局一次），放在主操作上方最显眼处。
                   if (reviveLabel != null && onRevive != null) ...[
-                    FilledButton.icon(
-                      onPressed: onRevive,
-                      icon: const Icon(Icons.play_circle_fill, size: 20),
-                      label: Text(reviveLabel!,
-                          style: const TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w800)),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF66BB6A),
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(44),
-                      ),
+                    CandyButton(
+                      label: reviveLabel!,
+                      icon: Icons.play_circle_fill,
+                      colors: AppTheme.gradientOf(AppColors.mint),
+                      expand: true,
+                      onTap: onRevive,
                     ),
                     const SizedBox(height: 12),
                   ],
                   if (onShare != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: OutlinedButton.icon(
-                        onPressed: onShare,
-                        icon: const Icon(Icons.ios_share, size: 18),
-                        label: const Text('分享战绩',
-                            style: TextStyle(fontWeight: FontWeight.w800)),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.grape,
-                          side: BorderSide(
-                              color: AppColors.grape.withValues(alpha: 0.5)),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 10),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(999)),
-                        ),
+                      child: CandyButton(
+                        label: '分享战绩',
+                        icon: Icons.ios_share,
+                        colors: AppTheme.softGradient,
+                        expand: true,
+                        onTap: onShare,
                       ),
                     ),
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton(
-                          onPressed: onHome,
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.ink2,
-                            side: BorderSide(color: AppColors.ink3),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          child: const Text('返回'),
+                        child: CandyButton(
+                          label: '返回',
+                          colors: AppTheme.softGradient,
+                          size: CandyButtonSize.medium,
+                          onTap: onHome,
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Expanded(
-                        child: FilledButton(
-                          onPressed: onNext ?? onReplay,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.coral,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          child:
-                              Text(onNext != null ? '下一关 ▶' : '再来一局'),
+                        child: CandyButton(
+                          label: onNext != null ? '下一关 ▶' : '再来一局',
+                          colors: AppTheme.gradientOf(AppColors.coral),
+                          size: CandyButtonSize.medium,
+                          onTap: onNext ?? onReplay,
                         ),
                       ),
                     ],
