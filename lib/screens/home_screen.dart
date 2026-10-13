@@ -46,9 +46,6 @@ class _HomeScreenState extends State<HomeScreen>
   late final AnimationController _ambient;
 
   // ===== 板块锚点（原首启引导已移除，键保留供布局复用） =====
-  final GlobalKey _levelListKey = GlobalKey();
-  final GlobalKey _parkingEntryKey = GlobalKey();
-  final GlobalKey _shopRowKey = GlobalKey();
 
   @override
   void initState() {
@@ -433,87 +430,55 @@ class _HomeScreenState extends State<HomeScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        // ===== L1 主行动：唯一的 Hero 大卡（继续挑战）=====
                         _Reveal(
                             anim: _enterAnim,
                             start: 0.08,
                             child: _buildHero()),
                         const SizedBox(height: 12),
+                        // ===== L2 玩法入口：双列半宽，视觉重量减半 =====
                         _Reveal(
-                            anim: _enterAnim,
-                            start: 0.22,
-                            child: _buildDailyBanner()),
-                        const SizedBox(height: 12),
-                        _Reveal(
-                            anim: _enterAnim,
-                            start: 0.34,
-                            child: _buildEndlessBanner()),
-                        const SizedBox(height: 12),
-                        _Reveal(
-                            anim: _enterAnim,
-                            start: 0.46,
-                            child: _buildSignInBanner()),
+                          anim: _enterAnim,
+                          start: 0.22,
+                          child: IntrinsicHeight(
+                            child: Row(
+                              children: [
+                                Expanded(child: _buildDailyCard()),
+                                const SizedBox(width: 12),
+                                Expanded(child: _buildEndlessCard()),
+                              ],
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 12),
                         _Reveal(
                           anim: _enterAnim,
-                          start: 0.58,
+                          start: 0.34,
+                          child: IntrinsicHeight(
+                            child: Row(
+                              children: [
+                                Expanded(child: _buildParkingCard()),
+                                const SizedBox(width: 12),
+                                Expanded(child: _buildLevelListCard()),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        // ===== L3 系统/工具：一行 4 个小方块 =====
+                        _Reveal(
+                          anim: _enterAnim,
+                          start: 0.46,
                           child: Row(
-                            key: _shopRowKey,
                             children: [
-                              Expanded(
-                                child: _buildMiniEntry(
-                                  icon: Icons.emoji_events,
-                                  color: const Color(0xFFFFCA28),
-                                  title: '成就',
-                                  subtitle:
-                                      '已领 ${data.claimedAchievements.length}/${achievements.length}',
-                                  onTap: () => Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => AchievementsScreen(
-                                          data: data, repo: widget.repo),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildMiniEntry(
-                                  icon: Icons.storefront,
-                                  color: const Color(0xFF66BB6A),
-                                  title: '商店',
-                                  subtitle: '购买开局道具，巧用金币',
-                                  onTap: () => Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => ShopScreen(
-                                          data: data, repo: widget.repo),
-                                    ),
-                                  ),
-                                ),
-                              ),
+                              Expanded(child: _buildSignInSquare()),
+                              const SizedBox(width: 10),
+                              Expanded(child: _buildAchievementsSquare()),
+                              const SizedBox(width: 10),
+                              Expanded(child: _buildCollectionSquare()),
+                              const SizedBox(width: 10),
+                              Expanded(child: _buildShopSquare()),
                             ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        _Reveal(
-                          anim: _enterAnim,
-                          start: 0.64,
-                          child: _buildCollectionBanner(),
-                        ),
-                        const SizedBox(height: 12),
-                        _Reveal(
-                          anim: _enterAnim,
-                          start: 0.7,
-                          child: KeyedSubtree(
-                            key: _levelListKey,
-                            child: _buildLevelListEntry(),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        _Reveal(
-                          anim: _enterAnim,
-                          start: 0.82,
-                          child: KeyedSubtree(
-                            key: _parkingEntryKey,
-                            child: _buildParkingEntry(),
                           ),
                         ),
                       ],
@@ -528,177 +493,42 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  /// 停车模式入口
-  Widget _buildParkingEntry() {
-    return Material(
-      color: Colors.transparent,
-      child: Ink(
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppColors.surfaceLight, AppColors.surfaceSoft],
-          ),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.ink3.withValues(alpha: 0.18)),
-          boxShadow: const [
-            BoxShadow(
-                color: AppColors.shadow, blurRadius: 10, offset: Offset(0, 4)),
-          ],
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) =>
-                  ParkingLevelSelectScreen(data: data, repo: widget.repo),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                      color: AppColors.ink3.withValues(alpha: 0.12), shape: BoxShape.circle),
-                  child: const Icon(Icons.local_parking,
-                      color: AppColors.ink2, size: 24),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('停车模式',
-                          style: TextStyle(
-                              color: AppColors.ink1,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15)),
-                      Text('把车辆停到指定车位',
-                          style:
-                              TextStyle(color: AppColors.ink2, fontSize: 12)),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right, color: AppColors.ink3, size: 20),
-              ],
-            ),
-          ),
+  /// 停车模式入口（半宽玩法卡）。
+  Widget _buildParkingCard() {
+    return _buildModeCard(
+      icon: Icons.local_parking,
+      accent: AppColors.accent,
+      title: '停车模式',
+      subtitle: '把车停到指定车位',
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              ParkingLevelSelectScreen(data: data, repo: widget.repo),
         ),
       ),
     );
   }
 
-  /// 收藏召回（留存钩子）：图鉴收集进度 + 全图鉴大奖。
-  /// 已点亮 X/17 驱动"还差几个"的收集欲；集齐后一次性大奖 500🪙。
-  Widget _buildCollectionBanner() {
+  /// 收纳入口：小方块展示进度；全图鉴达成未领奖时红点提醒，点击直接领。
+  Widget _buildCollectionSquare() {
     final collected = data.collection.length;
     final total = VehicleType.values.length;
     final complete = collected >= total;
-    final claimed = data.collectionRewardClaimed;
-    return Material(
-      color: Colors.transparent,
-      child: Ink(
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppColors.surfaceLight, AppColors.surfaceSoft],
-          ),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.ink3.withValues(alpha: 0.18)),
-          boxShadow: const [
-            BoxShadow(
-                color: AppColors.shadow, blurRadius: 10, offset: Offset(0, 4)),
-          ],
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => CollectionScreen(data: data, repo: widget.repo),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: AppColors.grape.withValues(alpha: 0.14),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.emoji_transportation,
-                      color: AppColors.grape, size: 24),
+    final claimable = complete && !data.collectionRewardClaimed;
+    return _buildSquareEntry(
+      icon: Icons.auto_stories,
+      color: AppColors.grape,
+      title: '图鉴',
+      subtitle: claimable ? '领大奖!' : '$collected/$total',
+      dot: claimable,
+      onTap: claimable
+          ? _claimCollectionReward
+          : () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      CollectionScreen(data: data, repo: widget.repo),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Text('图鉴收集',
-                              style: TextStyle(
-                                  color: AppColors.ink1,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 15)),
-                          const Spacer(),
-                          Text('$collected/$total',
-                              style: const TextStyle(
-                                  color: AppColors.grape,
-                                  fontWeight: FontWeight.w900)),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: LinearProgressIndicator(
-                          value: total == 0 ? 0 : collected / total,
-                          minHeight: 8,
-                          backgroundColor:
-                              AppColors.ink3.withValues(alpha: 0.2),
-                          color: AppColors.grape,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      if (complete && !claimed)
-                        FilledButton(
-                          onPressed: _claimCollectionReward,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFFFFB23E),
-                            foregroundColor: const Color(0xFF7A4A12),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 4),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(999)),
-                            textStyle: const TextStyle(
-                                fontSize: 12, fontWeight: FontWeight.w900),
-                          ),
-                          child: const Text('🎉 领取全图鉴大奖 +500 🪙'),
-                        )
-                      else
-                        Text(
-                          complete
-                              ? '全图鉴达成！恭喜收藏家 🏆'
-                              : '还差 ${total - collected} 个点亮，去合成/停车解锁新车吧！',
-                          style: const TextStyle(
-                              color: AppColors.ink2, fontSize: 12),
-                        ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right,
-                    color: AppColors.ink3, size: 20),
-              ],
-            ),
-          ),
-        ),
-      ),
+              ),
     );
   }
 
@@ -716,160 +546,42 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  /// 收纳入口：首页只留一行「全部关卡」，点进去看完整网格。
-  Widget _buildLevelListEntry() {
+  /// 关卡选择入口（半宽玩法卡）。
+  Widget _buildLevelListCard() {
     final completed =
         levels.where((l) => (data.bestStars[l.id] ?? 0) > 0).length;
-    return Material(
-      color: Colors.transparent,
-      child: Ink(
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppColors.surfaceLight, AppColors.surfaceSoft],
-          ),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.ink3.withValues(alpha: 0.18)),
-          boxShadow: const [
-            BoxShadow(
-                color: AppColors.shadow, blurRadius: 10, offset: Offset(0, 4)),
-          ],
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) =>
-                  LevelSelectScreen(data: data, repo: widget.repo),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                      color: AppColors.ink3.withValues(alpha: 0.12), shape: BoxShape.circle),
-                  child: const Icon(Icons.grid_view_rounded,
-                      color: AppColors.ink2, size: 24),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('全部关卡',
-                          style: TextStyle(
-                              color: AppColors.ink1,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15)),
-                      const SizedBox(height: 2),
-                      Text('已完成 $completed/${levels.length} 关',
-                          style: const TextStyle(
-                              color: AppColors.ink2, fontSize: 12)),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right, color: AppColors.ink3, size: 28),
-              ],
-            ),
-          ),
+    return _buildModeCard(
+      icon: Icons.grid_view_rounded,
+      accent: const Color(0xFFFFB23E),
+      title: '全部关卡',
+      subtitle: '已完成 $completed/${levels.length} 关',
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => LevelSelectScreen(data: data, repo: widget.repo),
         ),
       ),
     );
   }
 
-  /// 今日挑战卡：每天一个按日期生成的固定关卡。
-  Widget _buildDailyBanner() {
+  /// 今日挑战卡（半宽玩法卡）：每天一个按日期生成的固定关卡。
+  Widget _buildDailyCard() {
     final level = DailyChallenge.levelFor(DateTime.now());
     final cleared = data.dailyClearedDate == _today();
     final accent = level.targetTier!.color;
-    return Material(
-      color: Colors.transparent,
-      child: Ink(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color.lerp(Colors.white, accent, 0.16)!,
-              Color.lerp(Colors.white, accent, 0.08)!,
-            ],
-          ),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: accent.withValues(alpha: 0.35)),
-          boxShadow: const [
-            BoxShadow(
-                color: AppColors.shadow, blurRadius: 10, offset: Offset(0, 4)),
-          ],
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: _openDaily,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.30),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.calendar_today,
-                      color: Color(0xFFB39DDB), size: 22),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('每日挑战',
-                          style: TextStyle(
-                              color: AppColors.ink1,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15)),
-                      const SizedBox(height: 2),
-                      Text(
-                        cleared
-                            ? '今日已完成 · 连续挑战 ${data.dailyStreak} 天'
-                            : data.dailyStreak >= 2
-                                ? '连续挑战 ${data.dailyStreak} 天 · 完成领 +${DailyChallenge.reward + 50} 🪙'
-                                : '完成今日挑战，领 +${DailyChallenge.reward} 🪙',
-                        style: TextStyle(
-                            color:
-                                cleared ? const Color(0xFF66BB6A) : AppColors.ink2,
-                            fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                if (cleared)
-                  const Icon(Icons.check_circle, color: Color(0xFF66BB6A), size: 26)
-                else
-                  FilledButton.icon(
-                    onPressed: _openDaily,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: accent,
-                      foregroundColor: const Color(0xFF101318),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                    icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                    label: const Text('开玩',
-                        style: TextStyle(fontWeight: FontWeight.w900)),
-                  ),
-              ],
-            ),
-          ),
-        ),
+    final streak = data.dailyStreak;
+    return _buildModeCard(
+      icon: Icons.calendar_today,
+      accent: accent,
+      title: '每日挑战',
+      subtitle: cleared
+          ? '已完成 · 连签 $streak 天'
+          : (streak >= 2 ? '连签 $streak 天 · +${DailyChallenge.reward + 50}🪙' : '完成领 +${DailyChallenge.reward} 🪙'),
+      subColor: cleared ? const Color(0xFF66BB6A) : null,
+      onTap: _openDaily,
+      trailing: Icon(
+        cleared ? Icons.check_circle : Icons.play_circle_fill,
+        size: 24,
+        color: cleared ? const Color(0xFF66BB6A) : accent,
       ),
     );
   }
@@ -891,25 +603,31 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  /// 成排的半宽入口卡（成就 / 商店等）。
-  Widget _buildMiniEntry({
+  /// L2 玩法卡（半宽、纵向紧凑）：图标 + 标题 + 一句副标题 + 状态角标。
+  /// 首页所有玩法入口共用，保证四张卡同构——同构才有"层级"，不抢戏。
+  Widget _buildModeCard({
     required IconData icon,
-    required Color color,
+    required Color accent,
     required String title,
     required String subtitle,
-    required VoidCallback onTap,
+    Color? subColor,
+    required VoidCallback? onTap,
+    Widget? trailing,
   }) {
     return Material(
       color: Colors.transparent,
       child: Ink(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [AppColors.surfaceLight, AppColors.surfaceSoft],
+            colors: [
+              Color.lerp(Colors.white, accent, 0.16)!,
+              Color.lerp(Colors.white, accent, 0.08)!,
+            ],
           ),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.ink3.withValues(alpha: 0.18)),
+          border: Border.all(color: accent.withValues(alpha: 0.35)),
           boxShadow: const [
             BoxShadow(
                 color: AppColors.shadow, blurRadius: 10, offset: Offset(0, 4)),
@@ -919,39 +637,116 @@ class _HomeScreenState extends State<HomeScreen>
           borderRadius: BorderRadius.circular(18),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            child: Row(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.18),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: color, size: 22),
+                Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.28),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, color: accent, size: 20),
+                    ),
+                    const Spacer(),
+                    ?trailing,
+                  ],
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title,
-                          style: const TextStyle(
-                              color: AppColors.ink1,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15)),
-                      const SizedBox(height: 2),
-                      Text(subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              color: AppColors.ink2, fontSize: 11)),
-                    ],
-                  ),
+                const SizedBox(height: 8),
+                Text(title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: AppColors.ink1,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14)),
+                const SizedBox(height: 2),
+                Text(subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: subColor ?? AppColors.ink2, fontSize: 11)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// L3 系统小方块（一行 4 个）：图标 + 短标题 + 一行小字，可带红点提醒。
+  Widget _buildSquareEntry({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    bool dot = false,
+    required VoidCallback? onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: Ink(
+        decoration: BoxDecoration(
+          color: AppColors.surfaceLight,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.ink3.withValues(alpha: 0.18)),
+          boxShadow: const [
+            BoxShadow(
+                color: AppColors.shadow, blurRadius: 8, offset: Offset(0, 3)),
+          ],
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.16),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, color: color, size: 20),
+                    ),
+                    if (dot)
+                      Positioned(
+                        right: -3,
+                        top: -3,
+                        child: Container(
+                          width: 11,
+                          height: 11,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE53935),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                const Icon(Icons.chevron_right,
-                    color: AppColors.ink3, size: 22),
+                const SizedBox(height: 6),
+                Text(title,
+                    maxLines: 1,
+                    style: const TextStyle(
+                        color: AppColors.ink1,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12)),
+                Text(subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: AppColors.ink3, fontSize: 9)),
               ],
             ),
           ),
@@ -1194,164 +989,70 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildSignInBanner() {
+  Widget _buildSignInSquare() {
     final signedToday = data.lastSignInDate == _today();
     final nextDay = (data.signInDay % 7) + 1;
     final nextReward = _signInRewards[nextDay - 1];
-    final progress = data.signInDay / 7;
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color.lerp(Colors.white, const Color(0xFFFFCA28), 0.16)!,
-            Color.lerp(Colors.white, const Color(0xFFFFCA28), 0.08)!,
-          ],
+    return _buildSquareEntry(
+      icon: Icons.calendar_month,
+      color: const Color(0xFFFFCA28),
+      title: '签到',
+      subtitle: signedToday ? '连签 ${data.signInStreak} 天' : '+$nextReward 🪙',
+      dot: !signedToday,
+      onTap: signedToday ? null : _onSignIn,
+    );
+  }
+
+  Widget _buildAchievementsSquare() {
+    return _buildSquareEntry(
+      icon: Icons.emoji_events,
+      color: const Color(0xFFFFB23E),
+      title: '成就',
+      subtitle: '${data.claimedAchievements.length}/${achievements.length}',
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              AchievementsScreen(data: data, repo: widget.repo),
         ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0x55FFCA28)),
-        boxShadow: const [
-          BoxShadow(color: AppColors.shadow, blurRadius: 10, offset: Offset(0, 4)),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: const BoxDecoration(
-              color: Color(0x33FFCA28),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.calendar_month, color: Color(0xFFFFCA28)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '连续签到 ${data.signInStreak} 天',
-                  style: const TextStyle(
-                      color: AppColors.ink1,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  signedToday ? '明天再来可领 +$nextReward 🪙' : '今日签到立得 +$nextReward 🪙',
-                  style: const TextStyle(color: AppColors.ink2, fontSize: 12),
-                ),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 5,
-                    backgroundColor: AppColors.ink3.withValues(alpha: 0.12),
-                    color: const Color(0xFFFFCA28),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          FilledButton(
-            onPressed: signedToday ? null : _onSignIn,
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFFFCA28),
-              disabledBackgroundColor: const Color(0x33333333),
-              disabledForegroundColor: AppColors.ink3,
-              foregroundColor: const Color(0xFF4E342E),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-            child: Text(signedToday ? '已签到' : '签到',
-                style: const TextStyle(fontWeight: FontWeight.w900)),
-          ),
-        ],
       ),
     );
   }
 
-  Widget _buildEndlessBanner() {
+  Widget _buildShopSquare() {
+    return _buildSquareEntry(
+      icon: Icons.storefront,
+      color: const Color(0xFF66BB6A),
+      title: '商店',
+      subtitle: '${data.coins} 🪙',
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ShopScreen(data: data, repo: widget.repo),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEndlessCard() {
     final best = data.endlessBest.isEmpty ? 0 : data.endlessBest.first;
-    return Material(
-      color: Colors.transparent,
-      child: Ink(
-        decoration: BoxDecoration(
-            gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color.lerp(Colors.white, const Color(0xFFB39DDB), 0.16)!,
-              Color.lerp(Colors.white, const Color(0xFFB39DDB), 0.08)!,
-            ],
+    return _buildModeCard(
+      icon: Icons.auto_awesome,
+      accent: const Color(0xFFB39DDB),
+      title: '无尽模式',
+      subtitle: best > 0 ? '最高 $best 分' : '合成不停歇，冲高分',
+      subColor: best > 0 ? const Color(0xFFFFCA28) : null,
+      onTap: () => _openLevel(endlessLevel),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onTap: _showEndlessRank,
+            child: const Icon(Icons.emoji_events,
+                color: Color(0xFFFFCA28), size: 20),
           ),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0x55B39DDB)),
-          boxShadow: const [
-            BoxShadow(
-                color: AppColors.shadow, blurRadius: 10, offset: Offset(0, 4)),
-          ],
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: () => _openLevel(endlessLevel),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: const BoxDecoration(
-                    color: Color(0x44B39DDB),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.auto_awesome,
-                      color: Color(0xFFB39DDB), size: 24),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('无尽模式',
-                          style: TextStyle(
-                              color: AppColors.ink1,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15)),
-                      const SizedBox(height: 2),
-                      Text(
-                        best > 0 ? '最佳纪录 $best 分' : '合成永不停歇，冲刺最高分',
-                        style: TextStyle(
-                            color: best > 0
-                                ? const Color(0xFFFFCA28)
-                                : AppColors.ink2,
-                            fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => _openLevel(endlessLevel),
-                  icon: const Icon(Icons.play_circle_fill,
-                      color: Color(0xFFB39DDB), size: 34),
-                ),
-                IconButton(
-                  onPressed: _showEndlessRank,
-                  tooltip: '排行榜',
-                  icon: const Icon(Icons.emoji_events,
-                      color: Color(0xFFFFCA28), size: 22),
-                ),
-              ],
-            ),
-          ),
-        ),
+          const SizedBox(width: 6),
+          const Icon(Icons.play_circle_fill,
+              color: Color(0xFFB39DDB), size: 26),
+        ],
       ),
     );
   }
