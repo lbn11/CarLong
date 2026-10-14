@@ -27,31 +27,41 @@ class ParkingChapter {
 }
 
 class ParkingChapters {
-  /// 停车章节（车型分段，1000 关覆盖全部 22 档车型 + 主题）。
+  /// 停车模式总关数（800）。
+  ///
+  /// 全量 800 关运行时生成实测 68s（85ms/关），选关页不能同步生成，
+  /// 因此选关页只持有 id 列表，进入具体关卡时才 [generateOne]。
+  static const int totalLevels = 800;
+
+  /// 停车章节（车型分段，800 关覆盖 22 个车型主题）。
+  ///
+  /// 1000 → 800 的取舍：原表后 200 关是难度早已平台化的重复内容
+  /// （实测 L501-1000 平均最短路恒定在 4.3-4.4，700 关同一难度），
+  /// 砍掉这段纯重复、把 22 个主题压紧到 36-37 关/章，反而让每章更紧凑。
   /// 注意单车章节 id 从 1 起，0 不使用。
   static const List<ParkingChapter> all = [
-    ParkingChapter(VehicleType.bicycle, 1, 45, title: '单车街区', subtitle: '新手上路，稳稳停好'),
-    ParkingChapter(VehicleType.scooter, 46, 90, title: '街头巷尾', subtitle: '小巷穿梭，见缝插针'),
-    ParkingChapter(VehicleType.sedan, 91, 136, title: '城市街区', subtitle: '车流渐密的市中心'),
-    ParkingChapter(VehicleType.taxi, 137, 181, title: '出租热点', subtitle: '随时待命的出租车'),
-    ParkingChapter(VehicleType.bus, 182, 227, title: '公交枢纽', subtitle: '大块头也要好停车'),
-    ParkingChapter(VehicleType.truck, 228, 272, title: '货运干线', subtitle: '重卡物流的考验'),
-    ParkingChapter(VehicleType.highspeed, 273, 318, title: '铁轨编组', subtitle: '列车进站的节奏'),
-    ParkingChapter(VehicleType.rocket, 319, 363, title: '发射台', subtitle: '倒计时前的最后停车'),
-    ParkingChapter(VehicleType.tanker, 364, 409, title: '油港码头', subtitle: '小心驾驶，稳中求进'),
-    ParkingChapter(VehicleType.subway, 410, 454, title: '地铁网络', subtitle: '地下世界的调度'),
-    ParkingChapter(VehicleType.airliner, 455, 500, title: '机场跑道', subtitle: '冲向云端之前'),
-    ParkingChapter(VehicleType.fighter, 501, 545, title: '空军基地', subtitle: '战机的精准停放'),
-    ParkingChapter(VehicleType.spaceShuttle, 546, 590, title: '航天中心', subtitle: '通往太空的走廊'),
-    ParkingChapter(VehicleType.warpShip, 591, 636, title: '星际港口', subtitle: '外星访客的泊位'),
-    ParkingChapter(VehicleType.maglev, 637, 681, title: '磁浮走廊', subtitle: '悬浮列车的停靠'),
-    ParkingChapter(VehicleType.spaceStation, 682, 727, title: '空间站', subtitle: '轨道上的会合'),
-    ParkingChapter(VehicleType.starship, 728, 772, title: '彗星轨道', subtitle: '追逐流星之尾'),
-    ParkingChapter(VehicleType.warpShip, 773, 818, title: '曲速航道', subtitle: '突破光速的弯道'),
-    ParkingChapter(VehicleType.starship, 819, 863, title: '悬浮城', subtitle: '浮空平台的停车'),
-    ParkingChapter(VehicleType.warship, 864, 909, title: '巡洋编队', subtitle: '星际舰队的列队'),
-    ParkingChapter(VehicleType.starship, 910, 954, title: '机甲工厂', subtitle: '钢铁巨人的归位'),
-    ParkingChapter(VehicleType.warpShip, 955, 1000, title: '反重力区', subtitle: '终极泊车大师'),
+    ParkingChapter(VehicleType.bicycle, 1, 36, title: '单车街区', subtitle: '新手上路，稳稳停好'),
+    ParkingChapter(VehicleType.scooter, 37, 72, title: '街头巷尾', subtitle: '小巷穿梭，见缝插针'),
+    ParkingChapter(VehicleType.sedan, 73, 108, title: '城市街区', subtitle: '车流渐密的市中心'),
+    ParkingChapter(VehicleType.taxi, 109, 144, title: '出租热点', subtitle: '随时待命的出租车'),
+    ParkingChapter(VehicleType.bus, 145, 180, title: '公交枢纽', subtitle: '大块头也要好停车'),
+    ParkingChapter(VehicleType.truck, 181, 216, title: '货运干线', subtitle: '重卡物流的考验'),
+    ParkingChapter(VehicleType.highspeed, 217, 252, title: '铁轨编组', subtitle: '列车进站的节奏'),
+    ParkingChapter(VehicleType.rocket, 253, 288, title: '发射台', subtitle: '倒计时前的最后停车'),
+    ParkingChapter(VehicleType.tanker, 289, 324, title: '油港码头', subtitle: '小心驾驶，稳中求进'),
+    ParkingChapter(VehicleType.subway, 325, 360, title: '地铁网络', subtitle: '地下世界的调度'),
+    ParkingChapter(VehicleType.airliner, 361, 396, title: '机场跑道', subtitle: '冲向云端之前'),
+    ParkingChapter(VehicleType.fighter, 397, 432, title: '空军基地', subtitle: '战机的精准停放'),
+    ParkingChapter(VehicleType.spaceShuttle, 433, 468, title: '航天中心', subtitle: '通往太空的走廊'),
+    ParkingChapter(VehicleType.warpShip, 469, 504, title: '星际港口', subtitle: '外星访客的泊位'),
+    ParkingChapter(VehicleType.maglev, 505, 541, title: '磁浮走廊', subtitle: '悬浮列车的停靠'),
+    ParkingChapter(VehicleType.spaceStation, 542, 578, title: '空间站', subtitle: '轨道上的会合'),
+    ParkingChapter(VehicleType.starship, 579, 615, title: '彗星轨道', subtitle: '追逐流星之尾'),
+    ParkingChapter(VehicleType.warpShip, 616, 652, title: '曲速航道', subtitle: '突破光速的弯道'),
+    ParkingChapter(VehicleType.starship, 653, 689, title: '悬浮城', subtitle: '浮空平台的停车'),
+    ParkingChapter(VehicleType.warship, 690, 726, title: '巡洋编队', subtitle: '星际舰队的列队'),
+    ParkingChapter(VehicleType.starship, 727, 763, title: '机甲工厂', subtitle: '钢铁巨人的归位'),
+    ParkingChapter(VehicleType.warpShip, 764, 800, title: '反重力区', subtitle: '终极泊车大师'),
   ];
 
   /// 停车关卡 id → 车型（与生成器分段一致；超出预定义范围按最高档）。

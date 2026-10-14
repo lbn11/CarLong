@@ -58,6 +58,24 @@ final achievements = <Achievement>[
     icon: Icons.route,
     achieved: (d) => _completed(d) >= 30,
   ),
+  // 主线扩到 700 关后，"通关全部"变成几乎不可能的终极端，
+  // 中间必须补里程碑，否则玩家在 30 关之后就没有通关类正反馈了。
+  Achievement(
+    id: 'clear_100',
+    title: '城市通途',
+    desc: '累计通关 100 关',
+    reward: 120,
+    icon: Icons.map_rounded,
+    achieved: (d) => _completed(d) >= 100,
+  ),
+  Achievement(
+    id: 'clear_300',
+    title: '环城大师',
+    desc: '累计通关 300 关',
+    reward: 160,
+    icon: Icons.location_city_rounded,
+    achieved: (d) => _completed(d) >= 300,
+  ),
   Achievement(
     id: 'clear_all',
     title: '都市传奇',

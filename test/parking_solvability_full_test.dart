@@ -3,9 +3,10 @@ import 'package:merge_fleet/game/parking_game.dart';
 import 'package:merge_fleet/game/parking_daily_challenge.dart';
 import 'package:merge_fleet/logic/parking_solver.dart';
 import 'package:merge_fleet/models/parking_level.dart';
+import 'package:merge_fleet/services/parking_chapters.dart';
 import 'package:merge_fleet/services/parking_generator.dart';
 
-/// 全量可解性验证：停车 1..1000 关逐关求解，并抽样用 ParkingGame
+/// 全量可解性验证：停车 1..800 关逐关求解，并抽样用 ParkingGame
 /// 真实回放求解序列，证明"每一关都真的能解、能通关"。
 ///
 /// 背景约定：
@@ -13,14 +14,14 @@ import 'package:merge_fleet/services/parking_generator.dart';
 /// - ParkingSolver 与 ParkingGame.canMoveTo 的滑动规则（直线滑行、只有目标车
 ///   可入位、障碍不可穿）一致，解序列在真实对局里逐步 moveVehicle 必须全部合法。
 void main() {
-  test('停车 1..1000 关全部可解（solver 逐关验证）', () {
+  test('停车 1..800 关全部可解（solver 逐关验证）', () {
     final unsolvable = <int>[];
     final noTarget = <int>[];
     final multiParking = <int>[];
     final tooEasy = <int>[];
     final minMovesHist = <int, int>{};
 
-    for (var id = 1; id <= 1000; id++) {
+    for (var id = 1; id <= ParkingChapters.totalLevels; id++) {
       final lvl = ParkingLevelGenerator.generateOne(id);
 
       // 结构不变量：目标车存在、停车位唯一。
@@ -55,9 +56,9 @@ void main() {
     final failures = <String>[];
     // 每 25 关抽 1 关 + 首尾边界，覆盖全部章节与棋盘尺寸。
     final ids = [
-      for (var id = 1; id <= 1000; id += 25) id,
-      999,
-      1000,
+      for (var id = 1; id <= ParkingChapters.totalLevels; id += 25) id,
+      ParkingChapters.totalLevels - 1,
+      ParkingChapters.totalLevels,
     ];
 
     for (final id in ids) {

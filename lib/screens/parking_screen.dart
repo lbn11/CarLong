@@ -713,8 +713,10 @@ class _ParkingScreenState extends State<ParkingScreen>
   Widget _buildResultOverlay() {
     final won = _game.hasWon;
     final nextId = widget.level.id + 1;
-    // 下一关仅在「胜利」且「下一关所属章节已解锁」时可用。
+    // 下一关仅在「胜利」且「未超出总关数」且「下一关所属章节已解锁」时可用。
+    // 边界保护：L800 通关后不能再生成 L801（章节表只到 800）。
     final canNext = won &&
+        nextId <= ParkingChapters.totalLevels &&
         ParkingChapters.isAccessible(
           ParkingChapters.chapterForId(nextId),
           widget.data.collection,

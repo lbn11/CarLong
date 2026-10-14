@@ -10,8 +10,8 @@ class LevelChapter {
   const LevelChapter(this.title, this.subtitle, this.startId);
 }
 
-/// 合成模式章节表（L1-200 分 14 章：手写 7 章 + 生成 7 章，按 id 区间）。
-const List<LevelChapter> levelChapters = [
+/// 手写段章节表（L1-70，7 章）。
+const List<LevelChapter> _handChapters = [
   LevelChapter('第一章 · 街区起步', '从一辆自行车开始你的车队', 1),
   LevelChapter('第二章 · 城市干线', '车流渐密，货运繁忙', 11),
   LevelChapter('第三章 · 轨道时代', '高铁地铁，四通八达', 21),
@@ -19,13 +19,12 @@ const List<LevelChapter> levelChapters = [
   LevelChapter('第五章 · 星际探索', '穿梭星辰大海', 41),
   LevelChapter('第六章 · 星港试炼', '终极枢纽的考验', 51),
   LevelChapter('第七章 · 机关极限', '限步传送，大师关卡', 61),
-  LevelChapter('第八章 · 地铁线', '城市地下，疾驰如风', 71),
-  LevelChapter('第九章 · 航空港', '跑道尽头是天空', 90),
-  LevelChapter('第十章 · 星际前哨', '第一座深空驿站', 110),
-  LevelChapter('第十一章 · 深空巡航', '远离太阳系', 130),
-  LevelChapter('第十二章 · 时空裂隙', '扭曲的宇宙结构', 150),
-  LevelChapter('第十三章 · 宇宙尽头', '边缘之外的黑暗', 170),
-  LevelChapter('第十四章 · 彗星计划', '终极的一跃', 190),
+];
+
+/// 合成模式章节表（L1-700 分 21 章：手写 7 章 + 生成 14 章，按 id 区间）。
+const List<LevelChapter> levelChapters = [
+  ..._handChapters,
+  ...LevelDataGenerator.generatedChapters,
 ];
 
 /// 关卡 id 所属章节（按 startId 取最后一个 <= id 的章）。
@@ -326,7 +325,9 @@ const _handLevels = <LevelDefinition>[
     name: '午夜冲刺',
     cols: 4,
     rows: 4,
-    stockSize: 20,
+    // 数值校准：原 stock=20 时预算占用率 0.70（全表最紧，第 7 关就要榨干牌堆，
+    // 与「放松无挫折」定位冲突）。放宽到 26 → 占用率 0.54，落回心流通道。
+    stockSize: 26,
     targetTier: VehicleType.taxi,
     highTierBias: 1,
     targetCount: 3,
@@ -988,7 +989,8 @@ const _handLevels = <LevelDefinition>[
     name: '终极星港',
     cols: 6,
     rows: 6,
-    stockSize: 66,
+    // 数值校准：原 stock=66 时预算占用率 0.62（偏紧）。放宽到 78 → 0.53。
+    stockSize: 78,
     targetTier: VehicleType.spaceShuttle,
     highTierBias: 7,
     targetCount: 4,
@@ -1336,10 +1338,10 @@ const _handLevels = <LevelDefinition>[
   ),
 ];
 
-/// 完整主线关卡表：手写 L1-70 + 生成 L71-200（共 200 关）。
-/// 生成器纯函数、确定性，接入后 [levels] 数量从 70 → 200，
+/// 完整主线关卡表：手写 L1-70 + 生成 L71-700（共 700 关）。
+/// 生成器纯函数、确定性，接入后 [levels] 数量从 70 → 700，
 /// 图鉴/成就/选关/解锁等按 levels.length 自适应的逻辑自动跟随。
 final List<LevelDefinition> levels = <LevelDefinition>[
   ..._handLevels,
-  ...LevelDataGenerator.levels71To200(),
+  ...LevelDataGenerator.levels71To700(),
 ];

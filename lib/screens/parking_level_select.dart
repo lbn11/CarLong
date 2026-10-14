@@ -31,20 +31,27 @@ class ParkingLevelSelectScreen extends StatefulWidget {
 }
 
 class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
-  /// 已生成的全部停车关卡（id 1..N）。
-  late final List<ParkingLevel> _levels;
+  /// 全部停车关卡 id（1..800）。
+  ///
+  /// **性能关键**：这里只持有 id，不持有 [ParkingLevel]。
+  /// 全量生成 800 关实测 68 秒（85ms/关，求解器主导），在 initState 里同步跑
+  /// 会让选关页卡死一分钟。选关页实际只需要 id（查星级）与章节车型，
+  /// 真正的关卡在进入某一关时才由 [ParkingLevelGenerator.generateOne] 生成。
+  late final List<int> _levelIds;
 
-  /// 章节 → 该章节内的关卡列表。
-  late final Map<ParkingChapter, List<ParkingLevel>> _byChapter;
+  /// 章节 → 该章节内的关卡 id 列表。
+  late final Map<ParkingChapter, List<int>> _byChapter;
 
   @override
   void initState() {
     super.initState();
-    _levels = ParkingLevelGenerator.generate(count: 100);
+    _levelIds = [
+      for (var i = 1; i <= ParkingChapters.totalLevels; i++) i,
+    ];
     _byChapter = {};
     for (final c in ParkingChapters.all) {
-      _byChapter[c] = _levels
-          .where((l) => ParkingChapters.chapterForId(l.id) == c)
+      _byChapter[c] = _levelIds
+          .where((id) => ParkingChapters.chapterForId(id) == c)
           .toList();
     }
   }
@@ -55,9 +62,9 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final total = _levels.length;
+    final total = _levelIds.length;
     final cleared =
-        _levels.where((l) => (widget.data.parkingBestStars[l.id] ?? 0) > 0).length;
+        _levelIds.where((id) => (widget.data.parkingBestStars[id] ?? 0) > 0).length;
     return Scaffold(
       backgroundColor: AppColors.bg1,
       body: GlowBackground(
@@ -100,7 +107,7 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
     final levels = _byChapter[chapter]!;
     final accessible = _chapterAccessible(chapter);
     final cleared =
-        levels.where((l) => (widget.data.parkingBestStars[l.id] ?? 0) > 0).length;
+        levels.where((id) => (widget.data.parkingBestStars[id] ?? 0) > 0).length;
     final tier = chapter.tier.color;
 
     return Container(
@@ -242,13 +249,17 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
     );
   }
 
-  Widget _levelTile(ParkingLevel level, Color chapterColor) {
-    final stars = widget.data.parkingBestStars[level.id] ?? 0;
+  Widget _levelTile(int levelId, Color chapterColor) {
+    final stars = widget.data.parkingBestStars[levelId] ?? 0;
     final cleared = stars > 0;
     final accent = cleared ? AppColors.sun : chapterColor;
     return Pressable(
       onTap: () async {
         AudioFeedback.uiTap();
+        // 进入时才生成这一关（单关 ~85ms，可接受）。
+        // 全量预生成 800 关要 68s，绝不能放在选关页。
+        final level = ParkingLevelGenerator.generateOne(levelId);
+        if (!mounted) return;
         // 等对局返回后强制重绘：ParkingScreen 直接改的是共享的 data，
         // 不 setState 的话本页仍显示旧星级，看起来像"通关没被记录"。
         await Navigator.of(context).push(MaterialPageRoute(
@@ -287,7 +298,7 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              '${level.id}',
+              '$levelId',
               style: TextStyle(
                 color: AppTheme.deepen(accent, 0.34),
                 fontWeight: FontWeight.w900,
@@ -298,7 +309,7 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
             StarRow(stars: stars, size: 11),
             const SizedBox(height: 1),
             Text(
-              level.targetTier.icon,
+              ParkingChapters.tierForId(levelId).icon,
               style: TextStyle(fontSize: 13, color: AppColors.ink2),
             ),
           ],

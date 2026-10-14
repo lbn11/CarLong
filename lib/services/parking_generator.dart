@@ -35,12 +35,13 @@ class ParkingLevelGenerator {
   static ParkingLevel _generateLevel(int id) {
     final rng = Random(id * 2654435761 % 2147483647);
     // 棋盘尺寸：4→5→6。7x7 因生成耗时爆炸（实测 avg 28.7s/关）被否决。
-    final size = id < 50 ? 4 : (id < 200 ? 5 : 6);
+    final size = id < 40 ? 4 : (id < 160 ? 5 : 6);
     final tier = _tierForLevel(id);
 
     // 障碍 / 挡路车数量随难度增长（6x6 密度封顶：障碍 6、挡路车 4）。
-    // 注意：障碍格在 ~50 关后即饱和封顶，真正的章节差异化靠下方能力车偏置。
-    final obstacleCount = ((id ~/ 6).clamp(1, size));
+    // 这两个值**不能再往上加**：密度扫描（见 _targetMinMoves 注释）证明
+    // 加密度会让可解率暴跌、存活关卡反而更简单。
+    final obstacleCount = ((id ~/ 7) + 1).clamp(1, size);
     final fillCount = (id < 25
             ? 1
             : (id < 100 ? 2 : (id < 300 ? 3 : 4)))
@@ -57,10 +58,8 @@ class ParkingLevelGenerator {
     // 难度目标随 id 缓慢增长：小棋盘易，大棋盘需多思考。达到目标即提前结束，控制耗时。
     final target = _targetMinMoves(id);
 
-    // 难度下限：避免"一步通关"的弱关。5x5+ 要求至少 3 步（有解谜感）。
-    // 注意不能设太高——6x6 随机布局高步数关稀有，floor 过苛会导致重试耗尽
-    // → fallback 爆炸（实测 floor=5 时 285/500 关退化成 2 步弱关）。
-    final floor = size >= 5 ? 3 : 2;
+    // 新手期（L1-10）：排除过难布局，保证"点两下就停好"的第一印象。
+    final easyOnly = id <= 10;
 
     ParkingLevel? bestCandidate;
     int bestMin = 0;
@@ -81,9 +80,22 @@ class ParkingLevelGenerator {
       );
       if (minMoves == null) continue; // 不可解，换种子重试。
 
-      if (minMoves < floor) continue; // 低于当期下限，换种子重试。
+      // 新手期只要 <=3 步的布局（配合下方 bestMin 取最大，落在 2-3 步）。
+      if (easyOnly && minMoves > 3) continue;
+
+      // 异常值过滤：小棋盘上出现超长解说明布局失控
+      // （历史上 4x4 冒出过 12 步，作为第 39 关极不合理）。
+      if (minMoves > size * 2 + 1) continue;
 
       // 在重试预算内保留"步数最多"的候选，让难度尽量贴近目标。
+      //
+      // 关键修复：旧版在此之上还有一道 `if (minMoves < floor) continue;`，
+      // 未达 floor 的候选**连记录都不记录**——于是 60 次重试全部落空时
+      // bestCandidate 保持 null，直接掉进 _fallbackLevel 的固定 2-3 步弱关
+      // （实测 floor=5 时 285/500 关退化）。floor 因此是"反效果"的：
+      // 它提高了平均难度的期望，却让达不标的关直接坍缩到最弱。
+      // 现在 floor 的职责并入 target：始终记录见到的最好候选，
+      // 达标才提前结束，未达标也返回重试中最难的那个。
       if (minMoves > bestMin) {
         bestMin = minMoves;
         bestCandidate = candidate;
@@ -96,11 +108,20 @@ class ParkingLevelGenerator {
       return _fallbackLevel(id, size, tier);
     }
 
-    // 标定难度：最优解可拿三星，给足余量。
-    // 6x6 步数天花板 ~8，后期"变难"靠收紧三星门槛与限时压力，而非追步数。
-    final movesLimit = max(bestMin + 4, (bestMin * 1.6).round()).toInt();
-    final timeLimit = id >= 100
-        ? (bestMin * 6 + 20).clamp(45, 600).toInt()
+    // 标定难度。
+    //
+    // movesLimit 是**硬判负线**（ParkingGame._checkLose：步数耗尽且未停车直接判负），
+    // 不是星级门槛。放松向定位下必须给足余量：最优解的 2 倍 + 5 步，新手期 +8。
+    // 想让"找最优解"有意义应该靠三星门槛，而不是收紧这条线把人卡死。
+    final movesLimit = max(
+      bestMin + (id <= 10 ? 8 : 5),
+      (bestMin * 2.0).round(),
+    ).toInt();
+
+    // 限时只出现在"冲刺关"（L120+ 每 17 关一次），作为节奏调剂而非常态压力。
+    // 每步给到 8 秒，远宽于实际操作速度。
+    final timeLimit = (id >= 120 && id % 17 == 0)
+        ? (bestMin * 8 + 25).clamp(50, 600).toInt()
         : null;
 
     return bestCandidate.copyWith(
@@ -405,14 +426,22 @@ class ParkingLevelGenerator {
     );
   }
 
-  /// 难度目标步数随 id 缓增。
-  /// 数据定稿：6x6 最短路天花板实测 ~8（avg 4），500+ 目标封顶 7 即可
-  /// （让生成尽量往高处够），后期难度主要由密度 + 三星门槛 + 限时承担。
+  /// 难度目标步数随 id 缓增（2 → 6）。
+  ///
+  /// 天花板说明（实测，非猜测）：本生成器是「随机布局 + 求解器事后筛选」，
+  /// 密度扫描显示 6x6 上填充车 4→12 时平均最短路反而从 1.90 掉到 1.00、
+  /// 不可解率从 13% 升到 65% —— 密集布局大概率是死局，能存活的反而是简单布局。
+  /// 所以**步数天花板是生成方法的瓶颈，不是参数没给够**；靠加密度追 8+ 步
+  /// 只会换来更多死局和更长的生成耗时。
+  /// 因此后期目标定在 6 步（约 20-40 秒一关），配合棋盘变大、障碍变多、
+  /// 车型主题轮转提供新鲜感，而不是把停车做成硬核解谜 —— 那与
+  /// 「放松时候点两下」的定位相悖。
   static int _targetMinMoves(int id) {
-    if (id < 50) return 3;
-    if (id < 200) return 3 + ((id - 50) ~/ 50); // 50-99:3, 100-149:4, 150-199:5
-    if (id < 500) return 5 + ((id - 200) ~/ 100); // 200-299:5, 300-399:6, 400-499:7
-    return 7; // 500+: 6x6 上探目标
+    if (id < 10) return 2; // 新手期：点两下就停好
+    if (id < 80) return 3;
+    if (id < 250) return 4;
+    if (id < 500) return 5;
+    return 6;
   }
 
 
