@@ -4,6 +4,8 @@ import '../game/audio_feedback.dart';
 import '../theme/app_theme.dart';
 import '../models/level.dart';
 import '../save/save_repository.dart';
+import '../services/level_data_generator.dart';
+import '../services/level_rhythm.dart';
 import '../widgets/candy_ui.dart';
 import '../widgets/pressable.dart';
 import '../widgets/vehicle_image.dart';
@@ -242,6 +244,48 @@ class TotalProgressCard extends StatelessWidget {
   }
 }
 
+/// 难度心跳小标：色点 + 档位名，让玩家一眼看出这一关在本轮 5 关里的位置。
+class _RhythmChip extends StatelessWidget {
+  const _RhythmChip({required this.phase, this.dim = false});
+
+  final int phase;
+  final bool dim;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = LevelRhythm.colorOf(RhythmMode.merge, phase);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+      decoration: BoxDecoration(
+        color: dim ? AppColors.ink3.withValues(alpha: 0.12) : c.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(
+              color: dim ? AppColors.ink3 : c,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 3),
+          Text(
+            LevelRhythm.nameOf(RhythmMode.merge, phase),
+            style: TextStyle(
+              color: dim ? AppColors.ink3 : AppTheme.deepen(c, 0.30),
+              fontSize: 9.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class LevelCard extends StatelessWidget {
   const LevelCard({
     super.key,
@@ -341,6 +385,15 @@ class LevelCard extends StatelessWidget {
                                 fontSize: 10.5),
                           ),
                         ),
+                        // 难度心跳标记：只标生成段（L71+）。手写关的参数是逐关
+                        // 手工调的，套用相位会与实际体感不符，不如不标。
+                        if (level.id >= LevelDataGenerator.firstId) ...[
+                          const SizedBox(width: 5),
+                          _RhythmChip(
+                            phase: LevelDataGenerator.rhythmPhase(level.id),
+                            dim: !unlocked,
+                          ),
+                        ],
                         const Spacer(),
                         if (!unlocked)
                           const Icon(Icons.lock_rounded,

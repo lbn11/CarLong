@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../game/audio_feedback.dart';
 import '../game/parking_daily_challenge.dart';
 import '../models/parking_level.dart';
 import '../save/save_repository.dart';
+import '../services/level_rhythm.dart';
 import '../services/parking_chapters.dart';
 import '../services/parking_generator.dart';
 import '../theme/app_theme.dart';
@@ -41,6 +43,10 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
 
   /// 章节 → 该章节内的关卡 id 列表。
   late final Map<ParkingChapter, List<int>> _byChapter;
+
+  /// 正在生成的关卡 id（生成是同步 CPU 活，尖峰关最坏 ~0.7s，
+  /// 不给反馈的话玩家会以为点愣住了）。null = 空闲。
+  int? _loadingId;
 
   @override
   void initState() {
@@ -256,10 +262,15 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
     return Pressable(
       onTap: () async {
         AudioFeedback.uiTap();
-        // 进入时才生成这一关（单关 ~85ms，可接受）。
-        // 全量预生成 800 关要 68s，绝不能放在选关页。
+        if (_loadingId != null) return; // 正在生成，防连点
+        setState(() => _loadingId = levelId);
+        // 先让加载态渲染一帧，再跑同步生成：
+        // 尖峰关（6 关一轮里最重的一拍）最坏 ~0.7s，不给反馈就是一次卡顿。
+        await SchedulerBinding.instance.endOfFrame;
+        if (!mounted) return;
         final level = ParkingLevelGenerator.generateOne(levelId);
         if (!mounted) return;
+        setState(() => _loadingId = null);
         // 等对局返回后强制重绘：ParkingScreen 直接改的是共享的 data，
         // 不 setState 的话本页仍显示旧星级，看起来像"通关没被记录"。
         await Navigator.of(context).push(MaterialPageRoute(
@@ -294,24 +305,68 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
             ),
           ],
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Stack(
           children: [
-            Text(
-              '$levelId',
-              style: TextStyle(
-                color: AppTheme.deepen(accent, 0.34),
-                fontWeight: FontWeight.w900,
-                fontSize: 15,
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '$levelId',
+                  style: TextStyle(
+                    color: AppTheme.deepen(accent, 0.34),
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                StarRow(stars: stars, size: 11),
+                const SizedBox(height: 1),
+                Text(
+                  ParkingChapters.tierForId(levelId).icon,
+                  style: TextStyle(fontSize: 13, color: AppColors.ink2),
+                ),
+              ],
+            ),
+            // 难度心跳角标：一个色点表明这一关在本轮 6 关中的位置，
+            // 让玩家能预知「下一关是该发力还是该喘口气」。
+            Positioned(
+              top: 5,
+              right: 5,
+              child: Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  color: LevelRhythm.colorOf(
+                    RhythmMode.parking,
+                    ParkingLevelGenerator.rhythmPhase(levelId),
+                  ),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.2),
+                ),
               ),
             ),
-            const SizedBox(height: 2),
-            StarRow(stars: stars, size: 11),
-            const SizedBox(height: 1),
-            Text(
-              ParkingChapters.tierForId(levelId).icon,
-              style: TextStyle(fontSize: 13, color: AppColors.ink2),
-            ),
+            // 生成中的加载态：盖住卡片内容 + 中央转圈，避免同步生成
+            // （尖峰关最坏 ~0.7s）期间玩家以为点愣住了。
+            if (_loadingId == levelId)
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.82),
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: const Center(
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.4,
+                        valueColor:
+                            AlwaysStoppedAnimation(AppColors.coralDeep),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

@@ -4,298 +4,335 @@ import '../logic/parking_solver.dart';
 import '../models/vehicle.dart';
 import '../models/parking_level.dart';
 import 'parking_chapters.dart';
+import 'parking_reverse_builder.dart';
 
-/// 停车关卡生成器 (Car Master 3D 风格)
+/// 停车关卡生成器（反向生成 + 6 关难度心跳）
 ///
-/// 设计要点：
-/// - 每关都经 [ParkingSolver] 校验可解；不可解则换种子重试（有上限），保证永不产出死局。
-/// - 求解出的真实最短步数写入 [ParkingLevel.minMoves]，并据此标定 movesLimit / timeLimit，
-///   使"按最优解通关"可拿三星，难度随 id 平滑递增。
-/// - 全程基于 id 的确定性随机，generateOne(id) 与 generate() 结果一致、可复现。
+/// # 生成方法：反向生成（不再是「随机撒车 + 事后筛选」）
+///
+/// 旧方法是随机布局后用求解器筛，实测 6x6 上填充车 4→12 时平均最短路
+/// **反而从 1.90 掉到 1.00**、不可解率 13%→65% —— 密集布局大概率是死局，
+/// 能存活的反而是简单布局（幸存者偏差）。天花板是方法本身，加参数没用。
+///
+/// 现在改为 [ParkingReverseBuilder]：从「已停好」的解状态出发，在滑动图上
+/// 沿 BFS 距离严格 +1 的边倒走 K 步 —— 因为滑动可逆（图无向），
+/// 得到的局面最短解**精确等于 K**，难度可点名指定，且 100% 可解。
+///
+/// # 难度心跳：每 6 关一个轮回（双波峰）
+///
+/// 轻松 → 顺手 → 动脑 → 缓冲 → 硬仗 → 尖峰，不停轮回。
+/// 心流的本质不是「越来越难」，而是**张弛交替**：连续爬坡会疲劳，
+/// 一直平又会无聊。两个波峰之间夹一个「缓冲」波谷，玩家不会连吃两关高压。
+///
+/// 相位以「章内偏移」取模（不是全局 id），因此每章第 1 关恒为相位 0 ——
+/// 新车型永远在轻松关登场（先亮相、再加压），且章节边界不打断心跳。
+///
+/// **周期与合成模式故意不同**（合成 5 关一轮）：两个模式的局部难度曲线
+/// 关卡数不能相同，否则交替游玩时紧张点/松弛点互相叠加，节奏感抵消。
 class ParkingLevelGenerator {
-  /// 单关求解器状态上限：有解关卡通常 <1ms，无解关会在该上限内放弃并重试。
-  /// 实测：6x6 在 300k 预算下最短路 max 仅 ~8，但 7x7 需要 300k 预算时
-  /// 单关生成平均 28.7s（最差 62s）——实时生成不可接受。故定稿：
-  /// 棋盘封顶 6x6，预算 60000（6x6 足够且生成快），难度靠"后期下限 + 目标"
-  /// 稳定在 5~8 步，而非无意义地追高目标。
-  static const int _maxSolverStates = 60000;
+  /// 真实求解器校验的状态预算（反向生成已保证有解，这里只是复核最短步数）。
+  static const int _maxSolverStates = 200000;
 
-  /// 每关最多重生成次数（防极端情况下耗时过长）。
-  static const int _maxRetries = 60;
+  /// 换布局重试次数（地形太挤 / 图太浅时）。
+  static const int _layoutTries = 6;
 
-  static List<ParkingLevel> generate({int count = 1000}) {
+  /// 高压相位（硬仗/尖峰）的换布局重试次数。
+  static const int _climaxLayoutTries = 12;
+
+  /// 单次倒走 DFS 的节点预算。
+  static const int _maxNodes = 4000;
+
+  /// 高压相位的 DFS 节点预算（更深的目标需要更大的搜索空间）。
+  static const int _climaxMaxNodes = 20000;
+
+  /// 步数上限（硬仗关封顶）。
+  ///
+  /// 实测 6x6 上 9 辆挡路车的倒走天花板约 7 步 —— 再往上要 12+ 辆车，
+  /// 单次生成会从几十毫秒飙到秒级（选关是进一关生成一关，卡顿必须封顶）。
+  /// 而且这也够用了：原来全程只有 3-5 步，现在轻松 2 → 硬仗 7，跨度足够。
+  static const int _maxMinMoves = 7;
+
+  static List<ParkingLevel> generate({int? count}) {
+    final n = count ?? ParkingChapters.totalLevels;
     return [
-      for (var i = 1; i <= count; i++) generateOne(i),
+      for (var i = 1; i <= n; i++) generateOne(i),
     ];
   }
 
   /// 按 id 取单个关卡（下一关、重试时复用，保持确定性）。
   static ParkingLevel generateOne(int id) => _generateLevel(id);
 
+  // ─────────────────────────────────────────────────────────────
+  //  难度心跳（6 关一轮，双波峰）
+  // ─────────────────────────────────────────────────────────────
+
+  /// 心跳周期（关）。与合成模式（5）**故意不同**，见类注释。
+  static const int rhythmPeriod = 6;
+
+  /// 相位名（0..5），供 UI 显示难度标记。
+  static const List<String> phaseNames = [
+    '轻松',
+    '顺手',
+    '动脑',
+    '缓冲',
+    '硬仗',
+    '尖峰',
+  ];
+
+  /// 各相位相对基线的步数倍率。
+  ///
+  /// 形状是「双波峰」：谷(0.50) → 升(0.80) → 第一峰(1.00) → 波谷(0.70)
+  /// → 第二峰(1.15) → 尖峰(1.28)。与合成模式的单波峰（5 关一轮）错开，
+  /// 两个模式的紧张点不会同时到达。
+  static const List<double> _phaseMultiplier = [
+    0.50, // 轻松：新车型登场
+    0.80, // 顺手
+    1.00, // 动脑：第一波峰
+    0.70, // 缓冲：波谷，喘口气
+    1.15, // 硬仗：第二波峰
+    1.28, // 尖峰：全压力
+  ];
+
+  /// 各相位对挡路车数量的增减（轻松/缓冲更空，硬仗/尖峰更拥挤）。
+  static const List<int> _phaseCrowd = [-1, 0, 0, -1, 1, 1];
+
+  /// 高压力相位（硬仗/尖峰）的额外能力车偏置。
+  ///
+  /// 6x6 上整数步数是粗粒度（动脑与硬仗常落在同一档），
+  /// 波峰之间的差异主要靠**机制密度**：能力车（传送/飞越/变向）越多，
+  /// 局面越「活」，读盘成本越高 —— 这比硬拔步数更符合放松定位。
+  static const double _climaxAbilityBonus = 0.12;
+
+  /// 难度心跳相位（0..5）。
+  ///
+  /// 以**章内偏移**取模：每章第 1 关恒为相位 0（轻松），新车型在此登场。
+  static int rhythmPhase(int id) {
+    final c = ParkingChapters.chapterForId(id);
+    return (id - c.startId) % rhythmPeriod;
+  }
+
+  /// 难度基线：随 id 线性爬升 2 → 6 步（这是"技能曲线"）。
+  ///
+  /// 末端取 6 而非更高，是为了让「硬仗」相位（×1.15 → 6.9）与
+  /// 「尖峰」相位（×1.28 → 7.7）分别落在天花板 7 的两侧附近。
+  /// 基线定太高会让波峰关频繁够不着目标、退化成中等关 —— 实测目标 8 时
+  /// 波峰关均值反而被拖到 4.6，比「动脑」关还低，心跳的峰就平了。
+  static double _baseCurve(int id) {
+    final n = ParkingChapters.totalLevels;
+    return 2.0 + (id - 1).clamp(0, n - 1) / (n - 1) * 4.0;
+  }
+
+  /// 目标最短步数 = 基线 × 相位倍率（这是"挑战曲线"= 技能曲线 × 心跳）。
+  static int targetMinMoves(int id, int phase) {
+    if (id <= 10) return 2; // 新手期恒定：点两下就停好
+    return (_baseCurve(id) * _phaseMultiplier[phase])
+        .round()
+        .clamp(2, _maxMinMoves);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  生成
+  // ─────────────────────────────────────────────────────────────
+
   static ParkingLevel _generateLevel(int id) {
     final rng = Random(id * 2654435761 % 2147483647);
     // 棋盘尺寸：4→5→6。7x7 因生成耗时爆炸（实测 avg 28.7s/关）被否决。
     final size = id < 40 ? 4 : (id < 160 ? 5 : 6);
-    final tier = _tierForLevel(id);
+    final tier = ParkingChapters.tierForId(id);
+    final phase = rhythmPhase(id);
+    final target = targetMinMoves(id, phase);
 
-    // 障碍 / 挡路车数量随难度增长（6x6 密度封顶：障碍 6、挡路车 4）。
-    // 这两个值**不能再往上加**：密度扫描（见 _targetMinMoves 注释）证明
-    // 加密度会让可解率暴跌、存活关卡反而更简单。
-    final obstacleCount = ((id ~/ 7) + 1).clamp(1, size);
-    final fillCount = (id < 25
-            ? 1
-            : (id < 100 ? 2 : (id < 300 ? 3 : 4)))
-        .clamp(1, size - 2);
+    // 高压相位（硬仗/尖峰）给更多搜索预算：实测这两个相位目标最高、
+    // 单次 DFS 命中率也最低（约 65-75%），不加重试会让波峰被压平 ——
+    // 尖峰关实际步数反而低于硬仗关，心跳的"尖"就没了。
+    // 代价是尖峰关生成最坏约 0.5-1s（选关页进一关生成一关，可接受）。
+    final climax = phase >= 4;
+    final tries = climax ? _climaxLayoutTries : _layoutTries;
+    final nodeBudget = climax ? _climaxMaxNodes : _maxNodes;
 
-    // 特殊元素随章节加浓：填充车按章节概率偏向"带特殊能力"的档位
-    // （turn/teleport/flyOver 等），让能力成为后期真实解法而非随机彩蛋。
-    final chapterIdx =
-        ParkingChapters.all.indexOf(ParkingChapters.chapterForId(id));
-    final abilityBias = chapterIdx <= 0
-        ? 0.0
-        : (0.10 + (chapterIdx - 1) * 0.05).clamp(0.0, 0.45);
+    ParkingLevel? best;
+    var bestMin = 0;
 
-    // 难度目标随 id 缓慢增长：小棋盘易，大棋盘需多思考。达到目标即提前结束，控制耗时。
-    final target = _targetMinMoves(id);
-
-    // 新手期（L1-10）：排除过难布局，保证"点两下就停好"的第一印象。
-    final easyOnly = id <= 10;
-
-    ParkingLevel? bestCandidate;
-    int bestMin = 0;
-
-    for (var attempt = 0; attempt < _maxRetries; attempt++) {
-      final candidate = _tryBuild(
+    for (var attempt = 0; attempt < tries; attempt++) {
+      final r = _tryReverse(
         rng,
         id: id,
         size: size,
         tier: tier,
-        obstacleCount: obstacleCount,
-        fillCount: fillCount,
-        abilityBias: abilityBias,
+        target: target,
+        phase: phase,
+        maxNodes: nodeBudget,
       );
-      final minMoves = ParkingSolver.minMoves(
-        candidate,
-        maxStates: _maxSolverStates,
-      );
-      if (minMoves == null) continue; // 不可解，换种子重试。
-
-      // 新手期只要 <=3 步的布局（配合下方 bestMin 取最大，落在 2-3 步）。
-      if (easyOnly && minMoves > 3) continue;
-
-      // 异常值过滤：小棋盘上出现超长解说明布局失控
-      // （历史上 4x4 冒出过 12 步，作为第 39 关极不合理）。
-      if (minMoves > size * 2 + 1) continue;
-
-      // 在重试预算内保留"步数最多"的候选，让难度尽量贴近目标。
-      //
-      // 关键修复：旧版在此之上还有一道 `if (minMoves < floor) continue;`，
-      // 未达 floor 的候选**连记录都不记录**——于是 60 次重试全部落空时
-      // bestCandidate 保持 null，直接掉进 _fallbackLevel 的固定 2-3 步弱关
-      // （实测 floor=5 时 285/500 关退化）。floor 因此是"反效果"的：
-      // 它提高了平均难度的期望，却让达不标的关直接坍缩到最弱。
-      // 现在 floor 的职责并入 target：始终记录见到的最好候选，
-      // 达标才提前结束，未达标也返回重试中最难的那个。
-      if (minMoves > bestMin) {
-        bestMin = minMoves;
-        bestCandidate = candidate;
+      if (r == null) continue;
+      if (r.minMoves > bestMin) {
+        bestMin = r.minMoves;
+        best = r.level;
       }
-      if (bestMin >= target) break; // 已达目标难度，提前结束
+      if (bestMin >= target) break; // 点名到位，提前结束
     }
 
-    // 兜底：极端情况下退化为"目标车在停车位同行、一步可解"的简单关，永不死局。
-    if (bestCandidate == null) {
-      return _fallbackLevel(id, size, tier);
+    // 兜底：极端情况下退回 Rush Hour 式固定关，永不死局。
+    if (best == null) {
+      return _finalize(_fallbackLevel(id, size, tier), id, phase);
     }
-
-    // 标定难度。
-    //
-    // movesLimit 是**硬判负线**（ParkingGame._checkLose：步数耗尽且未停车直接判负），
-    // 不是星级门槛。放松向定位下必须给足余量：最优解的 2 倍 + 5 步，新手期 +8。
-    // 想让"找最优解"有意义应该靠三星门槛，而不是收紧这条线把人卡死。
-    final movesLimit = max(
-      bestMin + (id <= 10 ? 8 : 5),
-      (bestMin * 2.0).round(),
-    ).toInt();
-
-    // 限时只出现在"冲刺关"（L120+ 每 17 关一次），作为节奏调剂而非常态压力。
-    // 每步给到 8 秒，远宽于实际操作速度。
-    final timeLimit = (id >= 120 && id % 17 == 0)
-        ? (bestMin * 8 + 25).clamp(50, 600).toInt()
-        : null;
-
-    return bestCandidate.copyWith(
-      minMoves: bestMin,
-      movesLimit: movesLimit,
-      timeLimit: timeLimit,
-    );
+    return _finalize(best, id, phase, minMoves: bestMin);
   }
 
-  static ParkingLevel _tryBuild(
+  static ({ParkingLevel level, int minMoves})? _tryReverse(
     Random rng, {
     required int id,
     required int size,
     required VehicleType tier,
-    required int obstacleCount,
-    required int fillCount,
-    required double abilityBias,
+    required int target,
+    required int phase,
+    int maxNodes = _maxNodes,
   }) {
-    final pr = size - 1; // 停车位所在行（底部）
-    final pc = (size - 2).clamp(0, size - 1); // 停车位所在列
+    final chapterIdx =
+        ParkingChapters.all.indexOf(ParkingChapters.chapterForId(id));
+    // 能力车偏置：越往后越依赖特殊能力（turn/teleport/flyOver）作为真实解法。
+    // 波峰相位额外加成 —— 见 [_climaxAbilityBonus]。
+    var abilityBias = chapterIdx <= 0
+        ? 0.0
+        : (0.10 + (chapterIdx - 1) * 0.05).clamp(0.0, 0.45);
+    if (phase >= 4) {
+      abilityBias = (abilityBias + _climaxAbilityBonus).clamp(0.0, 0.45);
+    }
 
-    final grid = List.generate(
-      size,
-      (_) => List.filled(size, ParkingCellType.road),
+    // 挡路车数量：基线按棋盘尺寸，再叠相位增减。
+    //
+    // 这里比旧生成器**显著更密**是有意为之：旧方法是「随机撒车 + 事后筛选」，
+    // 加密度会让不可解率飙到 65%（密集布局多死局，存活的反而更简单）。
+    // 反向生成不受此约束 —— 从解状态倒走出来的局面 100% 可解，
+    // 所以密度不再是敌人，而是**连锁的燃料**：车越多，越容易形成
+    // 「挪开 A 才动得了 B、挪开 B 才动得了目标车」的多层阻挡。
+    final baseFill = size == 4 ? 4 : (size == 5 ? 6 : 9);
+    // 封顶 10：6x6 尖峰关靠第 10 辆车把连锁撑到 6-7 步
+    // （实测 9 辆车时尖峰命中率仅 ~70%，波峰会被压平）。
+    final fillCount = (baseFill + _phaseCrowd[phase]).clamp(2, 10);
+
+    // 障碍：反向生成靠滑动图连通性，障碍过多会压低步数上限，故封顶 4。
+    final obstacleCount = ((id ~/ 14) + 1 + _phaseCrowd[phase]).clamp(0, 4);
+
+    // 目标车：5x5+ 用 2 格横车（经典 Rush Hour 红车），4x4 用单格车。
+    final pieces = <ParkingPiece>[ParkingPiece(size >= 5 ? 2 : 1, true)];
+    // 填充车**偏向竖车**（约 65%）：只有竖车能上下滑进停车位行去挡路，
+    // 横车只能左右滑，对「目标车 → 停车位」这条通道毫无阻挡能力。
+    final longChance = size >= 6 ? 0.65 : 0.45;
+    for (var i = 0; i < fillCount; i++) {
+      final len = rng.nextDouble() < longChance ? 2 : 1;
+      pieces.add(ParkingPiece(len, rng.nextDouble() < 0.35));
+    }
+
+    final built = ParkingReverseBuilder.buildSolved(
+      rng: rng,
+      size: size,
+      pieces: pieces,
+      obstacleCount: obstacleCount,
     );
-    grid[0][0] = ParkingCellType.entrance; // 装饰性入口
-    grid[pr][pc] = ParkingCellType.parking;
+    if (built == null) return null;
 
-    final taken = <(int, int)>{};
-    taken.add((pr, pc));
-    taken.add((0, 0));
+    // 目标导向倒走：每一步都要求真实最短解严格 +1，
+    // 因此终点的真实解精确等于走到的深度（详见 reverseWalk 注释）。
+    final (coords, depth) =
+        built.board.reverseWalk(built.solved, target, rng, maxNodes: maxNodes);
+    if (depth < 1) return null;
 
-    final vehicles = <VehicleSpawn>[];
-
-    // 填充车使用"除目标档之外的所有档位"，逐个取不同档位，使每辆车颜色/图标都不同，
-    // 还原"不同车不同颜色"的观感；同时保证没有任何填充车能冒充目标车开进停车位。
-    final otherTiers = [
-      for (var i = 0; i < VehicleType.values.length; i++)
-        if (i != tier.id) VehicleType.values[i]
+    // 注意用**实际放下**的车（放不下的会被 buildSolved 省略），
+    // 不能用请求的 pieces —— 两者长度不一致会越界。
+    final actual = built.board.pieces;
+    // 车型分配：index 0 = 目标车；填充车排除目标档（防止冒充目标车停进车位）。
+    final tiers = _tierList(rng, tier, actual.length, abilityBias);
+    final anchors = built.board.anchorsOf(coords);
+    final vehicles = <VehicleSpawn>[
+      for (var j = 0; j < actual.length; j++)
+        VehicleSpawn(
+          col: anchors[j].$2,
+          row: anchors[j].$1,
+          tier: tiers[j],
+          length: actual[j].length,
+          orientation: actual[j].horizontal
+              ? ParkingOrientation.horizontal
+              : ParkingOrientation.vertical,
+        ),
     ];
-    otherTiers.shuffle(rng); // 确定性：同 id 同一关配色稳定可复现
-    // 能力车档位池：排除目标档（防止冒充目标车停车）。
-    final abilityTiers = [
-      for (final t in otherTiers)
-        if (t.stats.ability != SpecialAbility.none) t,
-    ];
-    var fillerCursor = 0;
-    VehicleType nextFillerTier() {
-      // 章节偏置：概率性优先给填充车配特殊能力档位。
-      if (abilityBias > 0 && abilityTiers.isNotEmpty && rng.nextDouble() < abilityBias) {
-        return abilityTiers[rng.nextInt(abilityTiers.length)];
-      }
-      return otherTiers[fillerCursor++ % otherTiers.length];
-    }
 
-    // 目标车：size>=5 时放 2 格横车在停车行（经典 Rush Hour 红车），起点不压停车位；
-    // 小棋盘(size<=4)用单格车，且强制不在底部停车行，保证至少"下移+横移"两步。
-    if (size >= 5) {
-      var placed = false;
-      for (var attempt = 0; attempt < 30 && !placed; attempt++) {
-        final c = rng.nextInt(size - 2); // 0..size-3，保证 2 格不越界且不压停车位
-        final cells = [(pr, c), (pr, c + 1)];
-        if (cells.any((p) => p == (pr, pc))) continue; // 避开停车位
-        if (cells.any(taken.contains)) continue;
-        for (final p in cells) {
-          taken.add(p);
-        }
-        vehicles.add(VehicleSpawn(
-          col: c,
-          row: pr,
-          tier: tier,
-          length: 2,
-          orientation: ParkingOrientation.horizontal,
-        ));
-        placed = true;
-      }
-      if (!placed) {
-        final tc = (pc - 1).clamp(0, size - 1);
-        vehicles.add(VehicleSpawn(col: tc, row: pr, tier: tier));
-        taken.add((pr, tc));
-      }
-    } else {
-      int tr = rng.nextInt(size - 1); // 0..size-2，永不在底部停车行
-      int tc = rng.nextInt(size);
-      var guard = 0;
-      // 同时避开停车列，强制至少"下移 + 横移"两步，避免一步通关。
-      while (((tr == pr && tc == pc) ||
-                  (tr == 0 && tc == 0) ||
-                  tc == pc) &&
-              guard++ < 50) {
-        tr = rng.nextInt(size - 1);
-        tc = rng.nextInt(size);
-      }
-      vehicles.add(VehicleSpawn(col: tc, row: tr, tier: tier));
-      taken.add((tr, tc));
-    }
-
-    // 底部行挡块：竖向 2 格车压在停车行上，是经典 Rush Hour 的"必须让位"机制
-    // （竖车可上下滑离底部行，横车则永远清不掉该行，故只用竖车）。
-    // 中度难度：4×4 也加入该机制（放 1 个），5×5+ 放 2 个。
-    if (size >= 4) {
-      final rowBlockers = size >= 5 ? 2 : 1;
-      var rb = 0;
-      var guard = 0;
-      while (rb < rowBlockers && guard++ < 60) {
-        final c = rng.nextInt(size);
-        if (taken.contains((pr, c)) || taken.contains((pr - 1, c))) continue;
-        if (grid[pr][c] != ParkingCellType.road ||
-            grid[pr - 1][c] != ParkingCellType.road) {
-          continue;
-        }
-        taken.add((pr, c));
-        taken.add((pr - 1, c));
-        vehicles.add(VehicleSpawn(
-          col: c,
-          row: pr - 1,
-          tier: nextFillerTier(),
-          length: 2,
-          orientation: ParkingOrientation.vertical,
-        ));
-        rb++;
-      }
-    }
-
-    // 其余挡路车：随棋盘大小大量混入长度 2 的横/竖车（不在底部行放横车，避免永久堵死）。
-    final longChance = size >= 6 ? 0.7 : 0.5;
-    var fillers = 0;
-    var guard = 0;
-    while (fillers < fillCount && guard++ < 400) {
-      final makeLong = rng.nextDouble() < longChance;
-      final len = makeLong ? 2 : 1;
-      final horiz = rng.nextBool();
-      final spot = _findFreeSegment(rng, size, len, horiz, grid, taken);
-      if (spot == null) continue;
-      // 横车若落在底部停车行会永久堵死该行 => 跳过（横车只允许非底部行）。
-      if (horiz && spot.$1 == pr) continue;
-      for (final p in _segmentCells(spot.$1, spot.$2, len, horiz)) {
-        taken.add(p);
-      }
-      vehicles.add(VehicleSpawn(
-        col: spot.$2,
-        row: spot.$1,
-        tier: nextFillerTier(),
-        length: len,
-        orientation: horiz
-            ? ParkingOrientation.horizontal
-            : ParkingOrientation.vertical,
-      ));
-      fillers++;
-    }
-
-    // 障碍：只放在空闲 road 格。
-    var placed = 0;
-    guard = 0;
-    while (placed < obstacleCount && guard++ < 200) {
-      final r = rng.nextInt(size);
-      final c = rng.nextInt(size);
-      if (!taken.contains((r, c)) && grid[r][c] == ParkingCellType.road) {
-        grid[r][c] = ParkingCellType.obstacle;
-        placed++;
-        taken.add((r, c));
-      }
-    }
-
-    return ParkingLevel(
+    final lvl = ParkingLevel(
       id: id,
       name: '停车 #$id',
       rows: size,
       cols: size,
-      grid: grid,
+      grid: built.board.grid,
       vehicles: vehicles,
       targetTier: tier,
       rowHints: id >= 150 ? _generateRowHints(size, vehicles) : null,
       colHints: id >= 150 ? _generateColHints(size, vehicles) : null,
+    );
+
+    // 与游戏规则对齐的最终复核（builder 的内部 BFS 与 ParkingSolver 应是同一套
+    // 滑动规则，这里兜底任何细微差异，成本只有一次）。
+    final real = ParkingSolver.minMoves(lvl, maxStates: _maxSolverStates);
+    // 1 步通关 = 弱关（点一下就赢），一律弃用换布局 —— 实测全量 800 关时
+    // 出现过 L380 六次重试全部只倒走出 1 步深度的情况，没有这道闸门就会漏出去。
+    if (real == null || real < 2) return null;
+    return (level: lvl, minMoves: real);
+  }
+
+  /// 填充车档位序列：排除目标档，并按概率偏向带特殊能力的档位。
+  static List<VehicleType> _tierList(
+    Random rng,
+    VehicleType tier,
+    int n,
+    double abilityBias,
+  ) {
+    final others = [
+      for (var i = 0; i < VehicleType.values.length; i++)
+        if (i != tier.id) VehicleType.values[i]
+    ];
+    others.shuffle(rng); // 确定性：同 id 同一关配色稳定可复现
+    final abilityTiers = [
+      for (final t in others) if (t.stats.ability != SpecialAbility.none) t,
+    ];
+
+    final out = <VehicleType>[tier];
+    var cursor = 0;
+    for (var i = 1; i < n; i++) {
+      if (abilityBias > 0 &&
+          abilityTiers.isNotEmpty &&
+          rng.nextDouble() < abilityBias) {
+        out.add(abilityTiers[rng.nextInt(abilityTiers.length)]);
+      } else {
+        out.add(others[cursor++ % others.length]);
+      }
+    }
+    return out;
+  }
+
+  /// 标定判负线与限时。
+  static ParkingLevel _finalize(
+    ParkingLevel lvl,
+    int id,
+    int phase, {
+    int? minMoves,
+  }) {
+    final m = minMoves ?? lvl.minMoves ?? 2;
+
+    // movesLimit 是**硬判负线**（ParkingGame._checkLose：步数耗尽且未停车直接判负），
+    // 不是星级门槛。放松向定位下必须给足余量：最优解的 2 倍 + 5 步，新手期 +8。
+    // 想让"找最优解"有意义应该靠三星门槛，而不是收紧这条线把人卡死。
+    final movesLimit =
+        max(m + (id <= 10 ? 8 : 5), (m * 2.0).round()).toInt();
+
+    // 限时只出现在「尖峰」相位（id>=120 起，每 6 关一次），
+    // 让全轮最重的一拍有个可辨识的身份，而不是机械地周期性插。
+    // 每步 8 秒，远宽于实际操作速度 —— 是仪式感，不是闸门。
+    final timeLimit = (id >= 120 && phase == 5)
+        ? (m * 8 + 25).clamp(50, 600).toInt()
+        : null;
+
+    return lvl.copyWith(
+      minMoves: m,
+      movesLimit: movesLimit,
+      timeLimit: timeLimit,
     );
   }
 
@@ -323,48 +360,6 @@ class ParkingLevelGenerator {
       }
       return count > 0 ? count : null;
     });
-  }
-
-  /// 在棋盘上找一段连续 [len] 格、全为 road 且未被占用的空闲段。
-  static (int, int)? _findFreeSegment(
-    Random rng,
-    int size,
-    int len,
-    bool horiz,
-    List<List<ParkingCellType>> grid,
-    Set<(int, int)> taken,
-  ) {
-    for (var attempt = 0; attempt < 60; attempt++) {
-      int r;
-      int c;
-      if (horiz) {
-        r = rng.nextInt(size);
-        c = rng.nextInt(size - len + 1);
-      } else {
-        r = rng.nextInt(size - len + 1);
-        c = rng.nextInt(size);
-      }
-      var free = true;
-      for (final p in _segmentCells(r, c, len, horiz)) {
-        if (taken.contains(p) ||
-            grid[p.$1][p.$2] != ParkingCellType.road) {
-          free = false;
-          break;
-        }
-      }
-      if (free) return (r, c);
-    }
-    return null;
-  }
-
-  /// 给定 anchor 与朝向，返回占用格序列。
-  static List<(int, int)> _segmentCells(
-      int r, int c, int len, bool horiz) {
-    final out = <(int, int)>[];
-    for (var i = 0; i < len; i++) {
-      out.add(horiz ? (r, c + i) : (r + i, c));
-    }
-    return out;
   }
 
   /// 兜底关：长条目标车 + 底部行竖挡块的 Rush Hour 式可解关。
@@ -422,29 +417,6 @@ class ParkingLevelGenerator {
       targetTier: tier,
       minMoves: big ? 3 : 2,
       movesLimit: 8,
-      timeLimit: id >= 100 ? 120 : null,
     );
   }
-
-  /// 难度目标步数随 id 缓增（2 → 6）。
-  ///
-  /// 天花板说明（实测，非猜测）：本生成器是「随机布局 + 求解器事后筛选」，
-  /// 密度扫描显示 6x6 上填充车 4→12 时平均最短路反而从 1.90 掉到 1.00、
-  /// 不可解率从 13% 升到 65% —— 密集布局大概率是死局，能存活的反而是简单布局。
-  /// 所以**步数天花板是生成方法的瓶颈，不是参数没给够**；靠加密度追 8+ 步
-  /// 只会换来更多死局和更长的生成耗时。
-  /// 因此后期目标定在 6 步（约 20-40 秒一关），配合棋盘变大、障碍变多、
-  /// 车型主题轮转提供新鲜感，而不是把停车做成硬核解谜 —— 那与
-  /// 「放松时候点两下」的定位相悖。
-  static int _targetMinMoves(int id) {
-    if (id < 10) return 2; // 新手期：点两下就停好
-    if (id < 80) return 3;
-    if (id < 250) return 4;
-    if (id < 500) return 5;
-    return 6;
-  }
-
-
-  /// 车型分段与 [ParkingChapters] 保持一致，便于停车章节与合成图鉴联动。
-  static VehicleType _tierForLevel(int id) => ParkingChapters.tierForId(id);
 }

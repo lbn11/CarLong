@@ -122,10 +122,13 @@ void main() {
       }
     });
 
-    test('较大棋盘(>=5)关卡最优解至少 3 步（有解谜感）', () {
+    test('较大棋盘(>=5)关卡最优解至少 2 步（不得 1 步通关）', () {
+      // 5x5 段（L40-159）按 6 关心跳：轻松/顺手/缓冲相位就是 2 步波谷
+      // （实测该段命中率 100%），解谜感由硬仗/尖峰相位（3 步）与
+      // 6x6 深水区（6-7 步）承担。1 步弱关由生成器下限禁止。
       for (var id = 60; id <= 99; id++) {
         final lvl = ParkingLevelGenerator.generateOne(id);
-        expect(lvl.minMoves!, greaterThanOrEqualTo(3), reason: 'id=$id');
+        expect(lvl.minMoves!, greaterThanOrEqualTo(2), reason: 'id=$id');
       }
     });
 

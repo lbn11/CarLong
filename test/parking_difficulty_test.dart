@@ -4,14 +4,18 @@ import 'package:merge_fleet/services/parking_generator.dart';
 import 'package:merge_fleet/models/parking_level.dart';
 
 void main() {
-  test('中度难度：早期关卡障碍>0、4x4有底部竖挡车、全部可解', () {
+  test('早期关卡：可解、无弱关、难度 heartbeat 节奏、装饰随 id 增长', () {
     var fallbacks = 0;
-    var size4BlockerMissing = 0;
     var zeroObstacle = 0;
+    final obstacleById = <int>[];
     for (final id in [1, 5, 10, 15, 20, 25, 30, 40, 49, 50, 75, 100, 200, 300]) {
       final lvl = ParkingLevelGenerator.generateOne(id);
       final min = ParkingSolver.minMoves(lvl);
       expect(min, isNotNull, reason: 'level $id 必须可解');
+
+      // 1 步通关 = 弱关。心跳节奏的波谷（轻松/缓冲相位）也是 2 步，
+      // 不是 1 步 —— 生成器对 real < 2 的候选直接弃用（见 _tryReverse）。
+      expect(min!, greaterThanOrEqualTo(2), reason: 'level $id');
 
       // 障碍数
       var obstacles = 0;
@@ -20,17 +24,8 @@ void main() {
           if (c == ParkingCellType.obstacle) obstacles++;
         }
       }
+      obstacleById.add(obstacles);
       if (obstacles == 0) zeroObstacle++;
-
-      // 4x4 关卡必须有底部行竖挡车（长度2、vertical、跨越底部行）
-      if (lvl.rows == 4) {
-        final pr = lvl.rows - 1;
-        final hasBottomBlocker = lvl.vehicles.any((v) =>
-            v.length == 2 &&
-            v.orientation == ParkingOrientation.vertical &&
-            v.row == pr - 1);
-        if (!hasBottomBlocker) size4BlockerMissing++;
-      }
 
       // 兜底关签名：仅 2 辆车且 2 步
       if (lvl.vehicles.length == 2 && min == 2) fallbacks++;
@@ -39,8 +34,11 @@ void main() {
       print('id=$id size=${lvl.rows} obstacles=$obstacles '
           'vehicles=${lvl.vehicles.length} minMoves=$min');
     }
-    expect(zeroObstacle, 0, reason: '不应有 0 障碍的早期关');
-    expect(size4BlockerMissing, 0, reason: '4x4 关都应含底部竖挡车');
+    // 新手章（1-36）的轻松/缓冲相位允许 0 障碍：新车亮相 + 波谷，
+    // 装饰密度靠 (id~/14)+1 随 id 增长，不是每关都堆。
+    expect(zeroObstacle, lessThanOrEqualTo(2), reason: '只有轻松/缓冲相位允许空场');
+    expect(obstacleById.last, greaterThan(obstacleById.first),
+        reason: '障碍装饰应随 id 增长');
     expect(fallbacks, 0, reason: '不应退化为兜底弱关');
   });
 }

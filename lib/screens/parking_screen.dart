@@ -13,6 +13,7 @@ import '../game/parking_game.dart';
 import '../models/parking_level.dart';
 import '../models/vehicle.dart';
 import '../save/save_repository.dart';
+import '../services/level_rhythm.dart';
 import '../services/parking_chapters.dart';
 import '../services/parking_generator.dart';
 import '../theme/app_theme.dart';
@@ -62,6 +63,9 @@ class _ParkingScreenState extends State<ParkingScreen>
 
   /// 连胜计数
   int _winStreak = 0;
+
+  /// 本关在 5 关难度心跳中的相位（0 轻松 … 4 硬仗）。
+  int get _phase => ParkingLevelGenerator.rhythmPhase(widget.level.id);
 
   /// 死局弹窗已弹出标记（同一死局只弹一次，棋盘恢复可动后重置）。
   bool _deadlockDialogShown = false;
@@ -1049,6 +1053,15 @@ class _ParkingScreenState extends State<ParkingScreen>
                   _buildInfoChip(
                     '🎯 ${widget.level.targetTier.icon} → 🅿',
                     widget.level.targetTier.color,
+                  ),
+                  const SizedBox(width: 6),
+                  // 难度心跳标记：告诉玩家这一关在本轮 6 关里的位置。
+                  // 看到「尖峰」会下意识认真一点，看到「轻松」则放松点两下 ——
+                  // 节奏被说破了才真正起作用。
+                  _buildInfoChip(
+                    '${LevelRhythm.nameOf(RhythmMode.parking, _phase)} '
+                    '${widget.level.minMoves ?? 0} 步起',
+                    LevelRhythm.colorOf(RhythmMode.parking, _phase),
                   ),
                   const SizedBox(width: 6),
                   _buildInfoChip('👣 ${_game.moves}', AppColors.surfaceSoft),
