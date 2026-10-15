@@ -291,6 +291,51 @@ class _AdGateChip extends StatelessWidget {
   }
 }
 
+/// Boss 关小标：👑 + 「BOSS」，标出两个完整心跳后的超级难关。
+///
+/// 与 🎬 挑战关的区别说给玩家：🎬 是「难一档，硬实力能过」；
+/// 👑 是「这一关就是冲着你来的」—— 全表最紧的节点，档位更高、
+/// 障碍更多、牌堆更紧，失败看广告有支援，但不是墙。
+/// Boss 关**不显示**心跳相位标（它的强度与相位无关，标「轻松/顺手」
+/// 会误导）—— 👑 徽标本身就是最强的难度预告。
+class _BossChip extends StatelessWidget {
+  const _BossChip({this.dim = false});
+
+  final bool dim;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.grape;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+      decoration: BoxDecoration(
+        color: dim
+            ? AppColors.ink3.withValues(alpha: 0.12)
+            : c.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '👑',
+            style: TextStyle(fontSize: 9, color: dim ? AppColors.ink3 : null),
+          ),
+          const SizedBox(width: 3),
+          Text(
+            'BOSS',
+            style: TextStyle(
+              color: dim ? AppColors.ink3 : AppTheme.deepen(c, 0.30),
+              fontSize: 9.5,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// 难度心跳小标：色点 + 档位名，让玩家一眼看出这一关在本轮 5 关里的位置。
 class _RhythmChip extends StatelessWidget {
   const _RhythmChip({required this.phase, this.dim = false});
@@ -436,15 +481,21 @@ class LevelCard extends StatelessWidget {
                         // 手工调的，套用相位会与实际体感不符，不如不标。
                         if (level.id >= LevelDataGenerator.firstId) ...[
                           const SizedBox(width: 5),
-                          _RhythmChip(
-                            phase: LevelDataGenerator.rhythmPhase(level.id),
-                            dim: !unlocked,
-                          ),
-                          // 广告挑战关：与心跳标记并列（都是「这一关什么强度」的
-                          // 预告信息），🎬 徽标让玩家提前知道难关在哪。
-                          if (LevelProgression.isMergeAdGate(level.id)) ...[
-                            const SizedBox(width: 4),
-                            _AdGateChip(dim: !unlocked),
+                          // Boss 关：只显示 👑 BOSS 徽标。它的强度与心跳
+                          // 相位无关（刻意错开），显示相位标会说反强度。
+                          if (LevelProgression.isMergeBossLevel(level.id))
+                            _BossChip(dim: !unlocked)
+                          else ...[
+                            _RhythmChip(
+                              phase: LevelDataGenerator.rhythmPhase(level.id),
+                              dim: !unlocked,
+                            ),
+                            // 广告挑战关：与心跳标记并列（都是「这一关什么强度」的
+                            // 预告信息），🎬 徽标让玩家提前知道难关在哪。
+                            if (LevelProgression.isMergeAdGate(level.id)) ...[
+                              const SizedBox(width: 4),
+                              _AdGateChip(dim: !unlocked),
+                            ],
                           ],
                         ],
                         const Spacer(),

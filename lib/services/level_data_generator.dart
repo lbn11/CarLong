@@ -12,7 +12,7 @@ import 'level_progression.dart';
 /// 实测结果是**难度递减**：预算占用率从 0.39 一路滑到 0.11，
 /// 后期 145 张牌只需用 30 张，玩家点完 1/5 牌堆就赢了 —— 掉进无聊区。
 ///
-/// 新版改为六条硬规则：
+/// 新版改为七条硬规则：
 ///
 /// 1. **牌堆由目标反推**：先用 [expectedDraws] 解析算出「达成目标的期望出牌数」，
 ///    再乘一个随章节收紧的 budgetFactor（3.4 → 2.0）。这样预算占用率被钉在
@@ -33,6 +33,12 @@ import 'level_progression.dart';
 ///    还有章（36-45 关）与大阶段（3 章，阶段末章 = 魔王章），让玩家有宏观梯度感；
 ///    每 5 关 1 个广告挑战关（牌堆 ×0.92）—— 难一档但远非无解，
 ///    看广告只提供降难支援，不是通行证。
+/// 7. **Boss 关**（详见 [LevelProgression.isMergeBossLevel]）：两个完整心跳后
+///    插入一个，占用下一组的心跳槽位（每章第一个落在轻松槽——打断预期；
+///    因 11 mod 5 = 1，后续在相位 1-3 轮转，永不叠加硬仗峰值）。
+///    配方 = 目标档位 +2 + 障碍 +2 + 牌堆按硬仗档位再收紧（×0.92）。
+///    全表最紧节点，刻意超出心流通道——Boss 就是用来超出日常节奏的；
+///    仍远低于无解线，失败有广告支援兜底。**停车模式没有 Boss 关**（无敌人概念）。
 ///
 /// 全部纯函数、确定性：同一 id 永远生成同一关。
 class LevelDataGenerator {
@@ -100,17 +106,25 @@ class LevelDataGenerator {
 
   /// 目标车型档位：章基线 20 + c×2.077，章内按**心跳组**递增（9 组 ×0.25 = +2）。
   ///
-  /// 关键：**同一心跳组（5 关）内档位恒定**。组的第 1 关是相位 0（轻松），
-  /// 于是新车型永远在轻松关首次登场，随后 4 关用同一车型逐步加压 ——
-  /// 先亮相再考验，比连续跳档更利于形成认知。
+  /// 关键：**同一心跳组（5 关）内档位恒定**（Boss 关除外，见下）。
+  /// 组的第 1 关是相位 0（轻松），于是新车型永远在轻松关首次登场，
+  /// 随后 4 关用同一车型逐步加压 —— 先亮相再考验，比连续跳档更利于形成认知。
   ///
   /// 系数经过标定：末章基数为 47（月球车），章内走到 49，刚好覆盖
   /// lunar(47) / starship(48) / warpShip(49) 三个终极车型，
   /// 避免旧版「最后 7 关档位全部 clamp 到同一档、内容完全撞车」。
+  ///
+  /// **Boss 关 +2 档**：它抢占的是下一组的轻松亮相位，若不提档，
+  /// 「Boss 关开着一辆刚见过的车」毫无事件感；+2 档让 Boss 提前开出
+  /// 高阶车，组内后续关卡再回到本组车型——先惊艳后考验。
   static int _tierIndexFor(int id) {
     final (c, _) = _pos(id);
     final group = (id - firstId) % chapterSize ~/ rhythmPeriod; // 0..8
-    return (20 + c * 2.077 + group * 0.25).round().clamp(0, 49);
+    final base = (20 + c * 2.077 + group * 0.25).round().clamp(0, 49);
+    if (LevelProgression.isMergeBossLevel(id)) {
+      return (base + 2).clamp(0, 49);
+    }
+    return base;
   }
 
   /// 目标数量：随章节从 ×1 缓升到 ×5（终章硬仗关）。
@@ -141,16 +155,33 @@ class LevelDataGenerator {
   /// 魔王章的难度由整章累积体现，单关不再加码。
   static const double _demonTighten = 0.95;
 
+  /// Boss 关的牌堆收紧系数（在硬仗档位基数上再 ×0.92）。
+  ///
+  /// Boss = +2 档 + 障碍 +2 + 本系数，是全表最紧节点：终章 Boss 的
+  /// 预算占用率约 0.60，刻意超出心流通道上限 0.55（Boss 就是用来
+  /// 超出日常节奏的），但仍远低于「必须全中」的 1.0——硬实力玩家
+  /// 不看出能过，失败有广告支援，不是墙。
+  ///
+  /// 注意基数取**硬仗档位**（effPhase = 4）而非 Boss 实际落在的相位：
+  /// Boss 在相位 0-3 上轮转，若踩着相位 0 的宽松基数，最紧的节点
+  /// 反而会比普通轻松关还松，「Boss 关凑数」。
+  static const double _bossTighten = 0.92;
+
   /// 牌堆倍数：3.4 → 2.0，再叠相位调制。倒数即预算占用率 0.29 → 0.50（心流通道）。
   ///
   /// 前期给足余量建立信心，后期收紧到「需要有效率但不至于卡死」。
   ///
-  /// 宏观层（魔王章 / 广告挑战关）在此收紧扣，两者**不叠加**（取较强）：
+  /// 宏观层（魔王章 / 广告挑战关 / Boss 关）在此收紧扣，三者**不叠加**（取较强）：
   /// 阶段末连吃两个收紧会把玩家劝退，违背心流原则。
   static double _budgetFactor(int id, int c, double p, int phase) {
     final t = (c + p) / chapterCount; // 0..1
-    var f = 3.4 - 1.4 * t + _phaseBudget[phase];
-    if (LevelProgression.isMergeAdGate(id)) {
+    // Boss 关在相位 0-3 上轮转，但一律按硬仗档位起算——否则踩着
+    // 相位 0/1 的宽松基数，最紧的节点反而比普通轻松关还松。
+    final effPhase = LevelProgression.isMergeBossLevel(id) ? 4 : phase;
+    var f = 3.4 - 1.4 * t + _phaseBudget[effPhase];
+    if (LevelProgression.isMergeBossLevel(id)) {
+      f *= _bossTighten;
+    } else if (LevelProgression.isMergeAdGate(id)) {
       f *= _adGateTighten;
     } else if (LevelProgression.isMergeDemon(id)) {
       f *= _demonTighten;
@@ -230,6 +261,7 @@ class LevelDataGenerator {
     final group = _groupOf(id);
     final hard = phase == 4; // 硬仗
     final easy = phase == 0; // 轻松：新车型登场关
+    final boss = LevelProgression.isMergeBossLevel(id);
     final clearBoard = _isClearBoard(c, group, hard);
 
     final tierIdx = _tierIndexFor(id);
@@ -238,9 +270,15 @@ class LevelDataGenerator {
     final bias = _autoBias(tierIdx, count);
 
     // 障碍：轻松关减 1（给新车型一个干净的亮相），硬仗关加 1。
+    // Boss 关再 +2 —— 「捣乱」的主要手段就是往棋盘上堆干扰物，
+    // 让合成路径不得不绕路。Boss 关无万能/炸弹补给（它占的是
+    // 不发补给的相位 0），应急工具只能靠看广告支援。
     final pool = _poolFor(c);
-    final obsCount =
-        (_obstacleCount(c, p) + (hard ? 1 : 0) - (easy ? 1 : 0)).clamp(1, 6);
+    final obsCount = (_obstacleCount(c, p) +
+            (hard ? 1 : 0) -
+            (easy ? 1 : 0) +
+            (boss ? 2 : 0))
+        .clamp(1, 6);
     final obstacles = _generateObstacles(obsCount, pool, id);
 
     // 棋盘：前两章 5×5，之后 6×6（更大的棋盘承载更高的牌堆压力）。
@@ -310,7 +348,7 @@ class LevelDataGenerator {
 
     return LevelDefinition(
       id: id,
-      name: _chapterName(id),
+      name: boss ? '👑 Boss · ${_chapterName(id)}' : _chapterName(id),
       cols: size,
       rows: size,
       stockSize: stock,

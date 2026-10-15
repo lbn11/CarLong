@@ -1,4 +1,5 @@
 import '../models/level.dart';
+import 'level_data_generator.dart';
 import 'parking_chapters.dart';
 
 /// 总关卡进度：三层难度结构 + 贯穿全表的「广告挑战关」。
@@ -15,6 +16,26 @@ import 'parking_chapters.dart';
 /// - **章**（36-45 关）：新车型 / 新机制章节，章内基线爬升
 /// - **大阶段**（3 章）：整体上台阶，阶段末章 = 魔王章（+1 档），
 ///   让玩家在阶段结尾明确感到「这一阶段比开头强」
+///
+/// # 合成 Boss 关（两个完整心跳后一个）
+///
+/// 心流循环之上再嵌一层「小高潮」：**两个完整心跳（10 关）+ 1 个 Boss
+/// = 11 关一个超级周期**。Boss 关**占用下一组的心跳槽位**（章内偏移
+/// % 11 == 10）——每章的第一个 Boss 恰好落在 phase 0（轻松槽）：
+/// 玩家点进去之前以为是个喘息关 + 新车型亮相，结果撞上全表最紧的
+/// 节点。这种「打断预期」比「把硬仗相位加强」更有事件感。
+///
+/// 因 11 mod 5 = 1，每章的 4 个 Boss 在相位 0-3 上依次轮转
+/// （offset 10/21/32/43 → phase 0/1/2/3），**永远不撞 phase 4
+/// 硬仗峰值**——不会出现「Boss 叠最难相位」的双重高压。
+///
+/// 为什么不是每 10 关一个：10 与停车周期 6 错位（落点漂移），且与
+/// 章长 45 不整除（落点在不同相位间摇摆）。11 = 2×5+1 对合成是
+/// **确定性的**：每章恒为 4 个、位置恒为 offset 10/21/32/43。
+///
+/// **停车模式没有 Boss 关**：滑块解谜没有「敌人」概念，难度就是谜题
+/// 结构本身（Parking Jam / Unblock Me 品类零 Boss 先例）；停车的高峰位
+/// 由尖峰相位（每 6 关一个）承担，硬造 Boss 只会和尖峰撞车。
 ///
 /// # 广告挑战关（占比 20-25%）
 ///
@@ -53,6 +74,17 @@ class LevelProgression {
   /// 与心跳周期 5 互质，保证 5 个相位全覆盖。
   static const int mergeAdEvery = 4;
 
+  /// 合成 Boss 关超级周期：两个完整心跳（10 关）+ 1 个 Boss = 11 关。
+  static const int mergeBossEvery = 11;
+
+  /// Boss 关在超级周期内的位置（章内偏移 % 11 == 10，即第 11 格）。
+  ///
+  /// 每章第一个 Boss（offset 10）落在心跳相位 0（轻松槽）——Boss 正是要
+  /// 占领玩家预期的喘息位，制造「该松弛的时候挨一棒」的打断感。
+  /// 因 11 mod 5 = 1，同章后续 Boss 依次落在相位 1/2/3，永不相撞
+  /// phase 4 硬仗峰值（不会双重高压）。
+  static const int mergeBossOffset = 10;
+
   /// 新手保护期：停车前 15 关不放广告关（玩家还没学会玩法）。
   static const int parkingGrace = 15;
 
@@ -81,9 +113,22 @@ class LevelProgression {
     return (id - c.startId) % parkingAdEvery == 0;
   }
 
+  /// 合成 Boss 关判定（章内偏移 % 11 == 10，仅生成段 L71+）。
+  ///
+  /// 停车模式无 Boss 关（滑块解谜没有「敌人」概念，见类注释）。
+  static bool isMergeBossLevel(int id) {
+    if (id < LevelDataGenerator.firstId) return false;
+    final c = chapterForId(id);
+    return (id - c.startId) % mergeBossEvery == mergeBossOffset;
+  }
+
   /// 合成广告挑战关判定（章内偏移 % 4，前 74 关豁免）。
+  ///
+  /// 与 Boss 关**不叠加**（取较强）：Boss 关本身已是全表最紧节点，
+  /// 再叠广告收紧会把玩家劝退，违背「难一档但不是墙」的红线。
   static bool isMergeAdGate(int id) {
     if (id <= mergeGrace) return false;
+    if (isMergeBossLevel(id)) return false;
     final c = chapterForId(id);
     return (id - c.startId) % mergeAdEvery == 0;
   }

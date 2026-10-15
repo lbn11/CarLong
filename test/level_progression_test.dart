@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:merge_fleet/logic/parking_solver.dart';
 import 'package:merge_fleet/models/level.dart';
@@ -32,9 +34,10 @@ void main() {
       for (var id = 1; id <= levels.length; id++) {
         if (LevelProgression.isMergeAdGate(id)) count++;
       }
-      // 生成段 75..700，章内偏移 %4==0：每章 45/4 ≈ 11 个 × 14 章 ≈ 157
-      expect(count, greaterThan(140));
-      expect(count, lessThan(175));
+      // 生成段章内偏移 %4==0：每章 12 个，扣除与 Boss 关重叠的 offset 32
+      // 后每章 11 个；章 1 再扣新手期豁免的 offset 0（id 71 ≤ 74）。
+      // 10 + 13×11 = 153（Boss 关不叠加规则生效的直接证据）。
+      expect(count, 153);
       expect(count / levels.length, closeTo(0.22, 0.04));
     });
 
@@ -185,7 +188,7 @@ void main() {
       expect(n, greaterThan(60));
     });
 
-    test('非广告关预算占用率维持原通道（魔王章单独放行）', () {
+    test('非广告关预算占用率维持原通道（魔王章 / Boss 关单独放行）', () {
       for (var id = 75; id <= levels.length; id++) {
         if (LevelProgression.isMergeAdGate(id)) continue;
         final lvl = levels[id - 1];
@@ -193,7 +196,10 @@ void main() {
         final expected = LevelDataGenerator.expectedDraws(lvl);
         if (expected <= 0) continue;
         final slack = expected / lvl.stockSize;
-        if (LevelProgression.isMergeDemon(id)) {
+        if (LevelProgression.isMergeBossLevel(id)) {
+          // Boss 关：全表最紧节点，上限放到 0.62（仍远低于无解线 1.0）
+          expect(slack, lessThanOrEqualTo(0.62), reason: 'id=$id Boss 关');
+        } else if (LevelProgression.isMergeDemon(id)) {
           // 魔王章 ×0.95：上限放到 0.58
           expect(slack, lessThanOrEqualTo(0.58), reason: 'id=$id 魔王章');
         } else {
@@ -208,6 +214,146 @@ void main() {
         var n = 0;
         for (var id = 75; id <= levels.length; id++) {
           if (LevelProgression.isMergeAdGate(id) != adGate) continue;
+          final lvl = levels[id - 1];
+          if (lvl.goalType != GoalType.produce) continue;
+          final expected = LevelDataGenerator.expectedDraws(lvl);
+          if (expected <= 0) continue;
+          sum += expected / lvl.stockSize;
+          n++;
+        }
+        return sum / n;
+      }
+
+      expect(meanOf(true), greaterThan(meanOf(false)));
+    });
+  });
+
+  group('合成 Boss 关：两个完整心跳后一个', () {
+    test('每章 4 个（offset 10/21/32/43），全表 56 个', () {
+      final ids = <int>[];
+      for (var id = 71; id <= levels.length; id++) {
+        if (LevelProgression.isMergeBossLevel(id)) ids.add(id);
+      }
+      expect(ids.length, 56);
+      expect(ids.first, 81); // 第一个 Boss：两个心跳（10 关）之后
+      expect(ids.last, 699); // 末章收官位
+      for (var c = 0; c < LevelDataGenerator.chapterCount; c++) {
+        final start =
+            LevelDataGenerator.firstId + c * LevelDataGenerator.chapterSize;
+        expect(
+          ids.where((i) => i >= start && i < start + 45).map((i) => i - start),
+          [10, 21, 32, 43],
+          reason: '第 $c 章',
+        );
+      }
+    });
+
+    test('两个 Boss 之间隔 10-11 个普通关（章边界多 1）', () {
+      // 章内：offset 10→21→32→43，间隔 11；
+      // 跨章：offset 43 → 下章 offset 10 = 45-43+10 = 12（间隔 11 个普通关）。
+      var last = 0;
+      for (var id = 71; id <= levels.length; id++) {
+        if (!LevelProgression.isMergeBossLevel(id)) continue;
+        if (last > 0) {
+          final gap = id - last;
+          expect(gap, anyOf(11, 12), reason: 'id=$id gap=$gap');
+        }
+        last = id;
+      }
+    });
+
+    test('Boss 在相位 0-3 轮转，永不叠加硬仗峰值', () {
+      // 11 mod 5 = 1 → 每章 4 个 Boss 依次落在 phase 0/1/2/3。
+      // 关键不变量：永不在 phase 4（硬仗）——不会双重高压。
+      final phases = <int>{};
+      for (var id = 71; id <= levels.length; id++) {
+        if (!LevelProgression.isMergeBossLevel(id)) continue;
+        phases.add(LevelDataGenerator.rhythmPhase(id));
+      }
+      expect(phases, {0, 1, 2, 3});
+      expect(phases.contains(4), isFalse);
+    });
+
+    test('每章第一个 Boss 落在轻松槽（打断预期）', () {
+      // 章 1：offset 10 → id 81，phase 0（本该是新车型亮相关）
+      expect(LevelProgression.isMergeBossLevel(81), isTrue);
+      expect(LevelDataGenerator.rhythmPhase(81), 0);
+    });
+
+    test('手写段（L1-70）无 Boss 关；停车模式无 Boss 概念', () {
+      for (var id = 1; id <= 70; id++) {
+        expect(LevelProgression.isMergeBossLevel(id), isFalse, reason: 'id=$id');
+      }
+      // 停车模式没有 Boss 关：滑块解谜无「敌人」概念，难度即谜题结构，
+      // 高峰位由尖峰相位（每 6 关一个）承担。这一层是「没有代码路径」
+      // 而非「关掉开关」——停车生成器没有任何 Boss 分支，
+      // 因此这里只锁死停车心流相位集合不被 Boss 语义污染。
+      for (var id = 1; id <= ParkingChapters.totalLevels; id += 7) {
+        final phase = ParkingLevelGenerator.rhythmPhase(id);
+        expect(phase, greaterThanOrEqualTo(0));
+        expect(phase, lessThanOrEqualTo(5));
+      }
+    });
+
+    test('与广告关不叠加（Boss 更强，取 Boss）', () {
+      for (var id = 71; id <= levels.length; id++) {
+        if (LevelProgression.isMergeBossLevel(id)) {
+          expect(LevelProgression.isMergeAdGate(id), isFalse, reason: 'id=$id');
+        }
+      }
+    });
+
+    test('Boss 配方：+2 档 / 障碍更多 / 无补给 / 专属命名', () {
+      // L81：章 0 组 2，普通档位 21 → Boss 23；普通轻松关 L71 档位 20。
+      final boss = levels[80];
+      expect(LevelProgression.isMergeBossLevel(81), isTrue);
+      expect(boss.targetTier!.index, 23);
+      expect(boss.targetCount, 1);
+      expect(boss.wildcards, 0); // 无万能卡补给
+      expect(boss.bombs, 0); // 无炸弹补给
+      expect(boss.name.startsWith('👑'), isTrue);
+
+      final normal = levels[70]; // L71：同章普通轻松关
+      expect(LevelProgression.isMergeBossLevel(71), isFalse);
+      expect(normal.targetTier!.index, 20);
+      // 障碍：轻松关 -1，Boss 再 +2（净 +1，且不低于普通关）
+      expect(boss.obstacles.length, greaterThan(normal.obstacles.length));
+      expect(boss.obstacles.length, greaterThanOrEqualTo(2));
+
+      // 深水区 Boss 顶到障碍上限 6（L666：末章 offset 10）
+      final lateBoss = levels[665];
+      expect(LevelProgression.isMergeBossLevel(666), isTrue);
+      expect(lateBoss.obstacles.length, 6);
+    });
+
+    test('Boss 关是全表最紧节点但远不是墙', () {
+      var n = 0;
+      var maxSlack = 0.0;
+      for (var id = 71; id <= levels.length; id++) {
+        if (!LevelProgression.isMergeBossLevel(id)) continue;
+        final lvl = levels[id - 1];
+        if (lvl.goalType != GoalType.produce) continue;
+        final expected = LevelDataGenerator.expectedDraws(lvl);
+        expect(expected, greaterThan(0), reason: 'id=$id');
+        // 构造上可达成：牌堆 ≥ 期望出牌数
+        expect(lvl.stockSize, greaterThanOrEqualTo(expected),
+            reason: 'id=$id 牌堆低于期望');
+        maxSlack = math.max(maxSlack, expected / lvl.stockSize);
+        n++;
+      }
+      expect(n, 56);
+      // 刻意超出心流通道上限 0.55（Boss 就是用来超出日常节奏的），
+      // 但必须低于焦虑线：远不是「必须全中」的墙，失败有广告支援。
+      expect(maxSlack, greaterThan(0.55));
+      expect(maxSlack, lessThanOrEqualTo(0.62));
+    });
+
+    test('Boss 关整体比普通关更紧（均值比较）', () {
+      double meanOf(bool boss) {
+        var sum = 0.0;
+        var n = 0;
+        for (var id = 75; id <= levels.length; id++) {
+          if (LevelProgression.isMergeBossLevel(id) != boss) continue;
           final lvl = levels[id - 1];
           if (lvl.goalType != GoalType.produce) continue;
           final expected = LevelDataGenerator.expectedDraws(lvl);
