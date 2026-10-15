@@ -127,6 +127,20 @@ class BoardLogic {
     _invalidate();
   }
 
+  /// 运行时添加障碍物（Boss 攻击往空格扔冰用）。
+  ///
+  /// 快照会序列化当前全部障碍（含运行时添加的），因此**撤销自动兼容**：
+  /// 撤销回到攻击前的快照时，Boss 扔的冰会随之消失——公平且无需特判。
+  void addObstacle(ObstacleType type, int col, int row, {int layers = 1}) {
+    if (col < 0 || col >= cols || row < 0 || row >= rows) return;
+    if (obstacleAt(col, row) != null) return;
+    if (at(col, row) != null) return; // 只扔空格
+    _obstacles.add(Obstacle.fromSpec(
+      ObstacleSpec(type, col, row, layers: layers),
+    ));
+    _invalidate();
+  }
+
   /// 是否已无可用空格（空格、或已清除的空卡位都不算；障碍格视为占满）。
   bool get isFull {
     for (var i = 0; i < _grid.length; i++) {

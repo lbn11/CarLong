@@ -36,8 +36,11 @@ import 'level_progression.dart';
 /// 7. **Boss 关**（详见 [LevelProgression.isMergeBossLevel]）：两个完整心跳后
 ///    插入一个，占用下一组的心跳槽位（每章第一个落在轻松槽——打断预期；
 ///    因 11 mod 5 = 1，后续在相位 1-3 轮转，永不叠加硬仗峰值）。
+///    Boss 关是**真有 Boss 的**：棋盘上方悬浮一辆会动的捣乱车（暗红车身 +
+///    王冠 + 血条），每隔 9 秒盯上一个格子——红圈预警后往空格扔冰块、
+///    或把场上最低档的车拖走。合成目标车 = 攻击 Boss，HP = 目标数 +2，
+///    打空血条即胜（详见 [MergeGame] 的 Boss 战与 `BossSprite`）。
 ///    配方 = 目标档位 +2 + 障碍 +2 + 牌堆按硬仗档位再收紧（×0.92）。
-///    全表最紧节点，刻意超出心流通道——Boss 就是用来超出日常节奏的；
 ///    仍远低于无解线，失败有广告支援兜底。**停车模式没有 Boss 关**（无敌人概念）。
 ///
 /// 全部纯函数、确定性：同一 id 永远生成同一关。
@@ -262,7 +265,10 @@ class LevelDataGenerator {
     final hard = phase == 4; // 硬仗
     final easy = phase == 0; // 轻松：新车型登场关
     final boss = LevelProgression.isMergeBossLevel(id);
-    final clearBoard = _isClearBoard(c, group, hard);
+    // Boss 关强制 produce 目标：胜负改成「打空 Boss 血条」，
+    // 清盘/限时/限步都与 Boss 战互斥（Boss 相位恒为 0-3，本就不会触发，
+    // 这里显式关掉是为了即使相位公式调整也不破不变量）。
+    final clearBoard = !boss && _isClearBoard(c, group, hard);
 
     final tierIdx = _tierIndexFor(id);
     final tier = VehicleType.values[tierIdx];
@@ -358,6 +364,9 @@ class LevelDataGenerator {
       clearLimit: clearLimit,
       timeLimitSeconds: timeLimit,
       movesLimit: movesLimit,
+      // Boss 战配置：HP = 目标车数 +2（多打两下，事件感够但不劝退）。
+      // 攻击周期 9s、首次 6s 后出手——给玩家读条时间。
+      boss: boss ? BossSpec(hp: (clearBoard ? 1 : count) + 2) : null,
       highTierBias: bias,
       fogCells: fog,
       wildcards: wildcards,

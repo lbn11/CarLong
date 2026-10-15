@@ -89,6 +89,14 @@ class _GameScreenState extends State<GameScreen> {
           '🎯 把牌堆用完，场上剩 ≤${widget.level.clearLimit ?? 0} 组就赢！'
           '同级车拖一起合成，最高档三合一会升空消失';
     }
+    // Boss 关开局：一句话教打法（合成什么车、打谁、防什么）。
+    final bossSpec = widget.level.boss;
+    if (bossSpec != null && widget.level.targetTier != null) {
+      final t = widget.level.targetTier!;
+      _game.hint.value =
+          '👑 Boss 战！合成 ${t.icon} ${t.name} 攻击 Boss（${bossSpec.hp} 血）——'
+          '红圈是它的目标，小心冰块和被拖车！';
+    }
 
     // 合成场景 BGM（跟随音效开关；返回首页由 home 的 didPopNext 恢复）。
     if (widget.data.soundOn) {
@@ -149,6 +157,8 @@ class _GameScreenState extends State<GameScreen> {
     _game.combo.dispose();
     _game.timeLeft.dispose();
     _game.movesLeft.dispose();
+    _game.bossHp.dispose();
+    _game.bossMaxHp.dispose();
     super.dispose();
   }
 
@@ -206,16 +216,23 @@ class _GameScreenState extends State<GameScreen> {
     );
     widget.repo.save(widget.data);
 
-    final message = won ? '达成目标：${widget.level.goalText}' : _goalRemainText();
     // Boss 关的标题说破身份：这是设计好的超级难关（档位更高、障碍更多、
-    // 牌堆更紧），攻克它是件值得说的事；失败时看广告续命是官方后路，
-    // 不是玩家不行。优先级高于广告挑战关（两者互斥，Boss 更强）。
-    final boss = LevelProgression.isMergeBossLevel(widget.level.id);
+    // 牌堆更紧，且棋盘上真有一个会动的 Boss），攻克它是件值得说的事；
+    // 失败时看广告续命是官方后路，不是玩家不行。
+    // 判定用 level.boss != null（实际配置）而非 id 公式：手写关/测试关
+    // 只要挂了 BossSpec 就应享受同一套文案。
+    // 优先级高于广告挑战关（两者互斥，Boss 更强）。
+    final boss = widget.level.boss != null;
+    final message = won
+        ? (boss
+            ? '👑 Boss 被击败！你的车队又精进了一档'
+            : '达成目标：${widget.level.goalText}')
+        : _goalRemainText();
     final title = isEndless
         ? (won ? '🌌 无尽纪录！' : '💥 棋盘满啦')
         : won
             ? (boss
-                ? '👑 Boss 攻克！'
+                ? '👑 Boss 击败！'
                 : (widget.level.goalType == GoalType.clearBoard
                     ? '🎉 清空成功！'
                     : '🚀 通关成功！'))
@@ -494,6 +511,10 @@ class _GameScreenState extends State<GameScreen> {
     if (level.endless) {
       return '合成到第 ${_game.endlessLevel} 档目标，下次冲更高！';
     }
+    if (level.boss != null) {
+      final hp = _game.bossHp.value;
+      return hp > 0 ? '👑 Boss 还剩 $hp 血，再合成目标车打它！' : '👑 Boss 倒下了！';
+    }
     if (level.timeLimitSeconds != null && _game.timeLeft.value <= 0) {
       return '时间到，差一点就成功了';
     }
@@ -693,6 +714,32 @@ class _GameScreenState extends State<GameScreen> {
       builder: (_, v, _) {
         final endless = widget.level.endless;
         final isClear = widget.level.goalType == GoalType.clearBoard;
+        // Boss 关：chip 变成 Boss 血条（产出进度由血条承载）。
+        if (widget.level.boss != null) {
+          return ValueListenableBuilder<int>(
+            valueListenable: _game.bossHp,
+            builder: (_, hp, _) {
+              final max = widget.level.boss!.hp;
+              return _chip(
+                gradient: const [Color(0xFFB71C1C), Color(0xFF4A0E16)],
+                shadow: true,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('👑',
+                        style: TextStyle(fontSize: 13, color: Colors.white)),
+                    const SizedBox(width: 4),
+                    Text('$hp / $max',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 12)),
+                  ],
+                ),
+              );
+            },
+          );
+        }
         final accent = endless
             ? _game.endlessTarget.color
             : widget.level.targetTier?.color ?? AppColors.accent;
@@ -1047,6 +1094,34 @@ class _GameScreenState extends State<GameScreen> {
             builder: (_, v, _) {
               final isClear = widget.level.goalType == GoalType.clearBoard;
               final endless = widget.level.endless;
+              // Boss 关：进度 chip 换成 Boss 血条（红底 👑），产出进度
+              // 由血条承载——「还要打几下」比「合成了几辆」更直接。
+              if (widget.level.boss != null) {
+                final bossChip = ValueListenableBuilder<int>(
+                  valueListenable: _game.bossHp,
+                  builder: (_, hp, _) => _chip(
+                    gradient: const [Color(0xFFB71C1C), Color(0xFF4A0E16)],
+                    shadow: true,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('👑',
+                            style:
+                                TextStyle(color: Colors.white, fontSize: 15, height: 1)),
+                        const SizedBox(width: 5),
+                        Text(
+                          '$hp / ${widget.level.boss!.hp}',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 15),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+                return Row(children: [bossChip]);
+              }
               final goalChip = _chip(
                 gradient: [
                   Color.lerp(
@@ -1189,6 +1264,11 @@ class _GameScreenState extends State<GameScreen> {
     if (level.endless) {
       title = '🌌 无尽冲档：不断合成更高级车辆';
       howTo = '棋盘放满即结束';
+    } else if (level.boss != null) {
+      // Boss 关：目标栏直接教打法——合成什么车、打谁、防什么。
+      title = '👑 Boss 战：合成 ${level.targetTier!.icon} ${level.targetTier!.name}'
+          ' 攻击 Boss，打空 ${level.boss!.hp} 血条就赢';
+      howTo = 'Boss 每 9 秒动手一次：红圈是它的目标，小心冰块和被拖车！';
     } else {
       // 清道夫关不用 goalText（"残留≤N 堆"太术语化，玩家看不懂），
       // 改成大白话：牌堆用完 + 场上剩的车不超过 N 组就赢。

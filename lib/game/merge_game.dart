@@ -123,6 +123,10 @@ class MergeGame extends FlameGame {
   /// 状态提示（棋盘满了 / 自动清理等）。
   final ValueNotifier<String?> hint = ValueNotifier<String?>(null);
 
+  /// Boss 关血条（非 Boss 关恒 0）。UI 读它画 HUD。
+  late final ValueNotifier<int> bossHp;
+  late final ValueNotifier<int> bossMaxHp;
+
   /// 游戏结束回调 (是否获胜)。
   void Function(bool won)? onGameOver;
 
@@ -185,6 +189,12 @@ class MergeGame extends FlameGame {
 
   BoardBackdrop? _backdrop;
 
+  /// Boss 实体（null = 非 Boss 关）。
+  BossSprite? _boss;
+
+  /// Boss 死亡演出倒计时（>0 = 正在播死亡动画，结束后才判定胜利）。
+  double _bossDeathT = 0;
+
   /// 屏震:衰减计时。
   double _shakeT = 0;
   double _shakeDur = 0.0001;
@@ -204,7 +214,11 @@ class MergeGame extends FlameGame {
   double _comboTimer = 0;
   static const double _comboWindow = 1.6;
 
-  MergeGame(this.level) : board = BoardLogic(level);
+  MergeGame(this.level) : board = BoardLogic(level) {
+    // 构造时即带上关卡配置的血条：避免首帧渲染出「0 / N」再跳正。
+    bossHp = ValueNotifier<int>(level.boss?.hp ?? 0);
+    bossMaxHp = ValueNotifier<int>(level.boss?.hp ?? 0);
+  }
 
   /// 牌堆接下来的几张（用于 UI 预览）。无尽模式按当前目标动态生成。
   List<VehicleType> get upcomingStock {
@@ -218,6 +232,11 @@ class MergeGame extends FlameGame {
   /// 当前目标是否达成。
   bool get _isWin {
     if (level.endless) return false;
+    // Boss 关：胜负 = 打空 Boss 血条（产出目标车就是攻击手段）。
+    // 死亡演出期间不算赢——让爆炸/彩带先播完。
+    if (level.boss != null) {
+      return _boss != null && _boss!.hp <= 0 && _bossDeathT <= 0;
+    }
     if (level.goalType == GoalType.clearBoard) {
       // 残留 ≤ clearLimit 即胜利（合并-3 下绝对清空需三进制全局守恒，
       // 概率≈0；顶部窗口出牌时残堆 90% ≤4、99% ≤6，按上限闭环）。
@@ -328,6 +347,22 @@ class MergeGame extends FlameGame {
     timeLeft.value = _timeLeftSec.ceil();
     movesLeft.value = level.movesLimit ?? 0;
     _refreshGoal();
+    // Boss 关：在棋盘上方放出 Boss 实体（会动、会攻击的那种）。
+    final spec = level.boss;
+    if (spec != null && level.targetTier != null) {
+      bossMaxHp.value = spec.hp;
+      bossHp.value = spec.hp;
+      final boss = BossSprite(
+        game: this,
+        tier: level.targetTier!.next?.next ?? level.targetTier!,
+        hp: spec.hp,
+        attackInterval: spec.attackInterval,
+        firstDelay: spec.firstDelay,
+      )..priority = 2;
+      boss.layout(_boardOrigin, _cellSize);
+      _boss = boss;
+      add(boss);
+    }
   }
 
   @override
@@ -365,6 +400,8 @@ class MergeGame extends FlameGame {
       s.position = _cellPos(s.col, s.row);
       _stackSprites.add(s);
     }
+    // Boss 跟随棋盘重新布局（悬浮位置由格子尺寸算出）。
+    _boss?.layout(_boardOrigin, _cellSize);
     // 帧末再通知 UI（onGameResize 处于 build 阶段，同步通知会抛错）。
     if ((cellPx.value - _cellSize).abs() > 0.5) {
       final v = _cellSize;
@@ -410,6 +447,15 @@ class MergeGame extends FlameGame {
 
     if (_ended) return;
     elapsedTime += dt;
+    // Boss 死亡演出：血条打空后先播 1.15s 爆炸/彩带再结算，
+    // 否则「砰」下一秒就弹窗，事件感被掐掉。
+    if (_bossDeathT > 0) {
+      _bossDeathT -= dt;
+      if (_bossDeathT <= 0) {
+        _end(true);
+        return;
+      }
+    }
     if (_isWin) {
       _end(true);
       return;
@@ -534,6 +580,74 @@ class MergeGame extends FlameGame {
       feedback.fail();
     }
     onGameOver?.call(won);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Boss 战
+  // ─────────────────────────────────────────────────────────────
+
+  /// 玩家产出一辆目标车 = 打 Boss 一下。血条打空 → 死亡演出 → 胜利。
+  void _damageBoss(int col, int row) {
+    final boss = _boss;
+    if (boss == null || boss.dead) return;
+    boss.hit();
+    bossHp.value = boss.hp;
+    _spawnFloat(col, row, '👑 -1',
+        color: const Color(0xFFEF5350), fontSize: 24);
+    add(Shockwave(_cellCenter(col, row),
+        color: const Color(0xFFEF5350), maxRadius: _cellSize * 0.9));
+    feedback.play(Sfx.merge);
+    if (boss.hp <= 0) {
+      _bossDeathT = 1.15;
+      hint.value = '👑 Boss 倒下了！';
+      add(BurstParticles(boss.position.clone(), const Color(0xFFFF7043),
+          count: 30, speed: 200));
+      add(BurstParticles(boss.position.clone(), const Color(0xFFFFD54F),
+          count: 20, speed: 140));
+      add(Confetti(boss.position.clone(), count: 60));
+      shake(9, 0.4);
+      feedback.play(Sfx.bonus);
+    }
+  }
+
+  /// Boss 攻击①：往空格扔一块冰（占格、挡路，邻格合成可融化）。
+  void _bossDropIce(int col, int row) {
+    if (board.at(col, row) != null || board.obstacleAt(col, row) != null) return;
+    board.addObstacle(ObstacleType.ice, col, row, layers: 1);
+    add(BurstParticles(
+      _cellCenter(col, row),
+      const Color(0xFF81D4FA),
+      count: 16,
+      speed: 110,
+    ));
+    add(Shockwave(
+      _cellCenter(col, row),
+      color: const Color(0xFF4FC3F7),
+      maxRadius: _cellSize * 0.7,
+    ));
+    shake(4, 0.2);
+    hint.value = '🧊 Boss 扔出冰块，占了一个格子！';
+    feedback.play(Sfx.place);
+  }
+
+  /// Boss 攻击②：把场上一辆车拖走（优先最低档，不碰万能卡/炸弹）。
+  void _bossStealCar(int col, int row) {
+    final data = board.removeAt(col, row);
+    if (data == null) return;
+    final sprite = _findStack(col, row);
+    if (sprite != null) {
+      _stackSprites.remove(sprite);
+      sprite.removePuff();
+    }
+    add(BurstParticles(
+      _cellCenter(col, row),
+      const Color(0xFFAB47BC),
+      count: 14,
+      speed: 90,
+    ));
+    hint.value = '😈 Boss 拖走了你的 ${data.tier.icon} ${data.tier.name}！';
+    feedback.play(Sfx.error);
+    _refreshGoal();
   }
 
   /// 是否还有可撤销的步骤。
@@ -960,16 +1074,22 @@ class MergeGame extends FlameGame {
             ? (result.upgraded && (board.at(tc, tr)?.isEmpty ?? false))
             : result.producedTarget;
     if (goalHit) {
-      _bonusScore += 300;
-      _spawnBurst(tc, tr, const Color(0xFFFFD54F), count: 18, speed: 90);
-      add(Shockwave(_cellCenter(tc, tr),
-          color: const Color(0xFFFFD54F), maxRadius: _cellSize * 0.95));
-      _spawnFloat(tc, tr,
-          level.goalType == GoalType.clearBoard ? '+300 清掉一格!' : '+300 目标达成!',
-          color: const Color(0xFFFFD54F), fontSize: 24);
-      feedback.play(Sfx.bonus);
-      feedback.success();
-      if (level.endless) _onEndlessGoalHit();
+      if (level.boss != null) {
+        // Boss 关：产出目标车 = 攻击 Boss（每次 -1 HP），打空即胜。
+        // 不再走普通关的 +300 目标奖励——Boss 有自己的受击反馈。
+        _damageBoss(tc, tr);
+      } else {
+        _bonusScore += 300;
+        _spawnBurst(tc, tr, const Color(0xFFFFD54F), count: 18, speed: 90);
+        add(Shockwave(_cellCenter(tc, tr),
+            color: const Color(0xFFFFD54F), maxRadius: _cellSize * 0.95));
+        _spawnFloat(tc, tr,
+            level.goalType == GoalType.clearBoard ? '+300 清掉一格!' : '+300 目标达成!',
+            color: const Color(0xFFFFD54F), fontSize: 24);
+        feedback.play(Sfx.bonus);
+        feedback.success();
+        if (level.endless) _onEndlessGoalHit();
+      }
     }
     score.value = board.totalMerges * 5 + _bonusScore;
     _refreshGoal();
@@ -2325,4 +2445,523 @@ class _ConfettiPiece {
     required this.rotation,
     required this.rotSpeed,
   });
+}
+
+/// Boss 攻击类型。
+enum BossAttackKind { ice, steal }
+
+/// Boss 行为状态。
+enum BossState { intro, idle, stalk, windup, strike, recover, hurt, dead }
+
+/// Boss 实体：一辆悬浮在棋盘上方、**会自己动**的捣乱车。
+///
+/// 行为循环（每一步都有预警，没有暗箱）：
+/// - `intro`  出生弹出（0.6s），期间不攻击
+/// - `idle`   上下浮动待机，血条可见，倒计时下一次攻击
+/// - `stalk`  盯上某个格子，飞过去
+/// - `windup` 举牌预警：目标格红圈收缩闪烁 + Boss 原地抖
+/// - `strike` 出手：往空格扔一块冰 / 把场上一辆车拖走
+/// - `recover` 飞回悬浮位
+/// - `hurt`   被玩家的目标车命中：闪白 + 击退，**正在进行的攻击被打断**
+/// - `dead`   血条打空：旋转缩小消失
+///
+/// 两种攻击都只挑「空格」和「最低档的车」，不碰万能卡/炸弹——
+/// 反派要有压迫感，但不能无耻。
+class BossSprite extends PositionComponent {
+  BossSprite({
+    required this.game,
+    required this.tier,
+    required this.hp,
+    required this.attackInterval,
+    required this.firstDelay,
+  }) : maxHp = hp;
+
+  final MergeGame game;
+  final VehicleType tier;
+  int hp;
+  final int maxHp;
+  final double attackInterval;
+  final double firstDelay;
+
+  BossState state = BossState.intro;
+  double stateT = 0;
+  bool get dead => state == BossState.dead;
+
+  double _t = 0;
+  double _attackTimer = 0;
+  double _hurtFlash = 0;
+  double _introT = 0;
+  double _deadT = 0;
+  bool _struck = false;
+  bool _wantIce = true;
+  BossAttackKind _kind = BossAttackKind.ice;
+  ({int col, int row})? _target;
+  final Vector2 _knock = Vector2.zero();
+  final Random _rnd = Random();
+
+  Vector2 _home = Vector2.zero();
+  double _cell = 64;
+  double _bossSize = 108;
+  bool _laidOut = false;
+
+  static const double _introDur = 0.6;
+  static const double _stalkDur = 0.65;
+  static const double _windupDur = 0.95;
+  static const double _strikeDur = 0.34;
+  static const double _recoverDur = 0.5;
+  static const double _hurtDur = 0.42;
+  static const double _deadDur = 0.8;
+
+  /// 重新布局：Boss 悬浮在棋盘正上方中央，尺寸 = 1.7 格。
+  void layout(Vector2 boardOrigin, double cellSize) {
+    _cell = cellSize;
+    _bossSize = cellSize * 1.7;
+    size = Vector2.all(_bossSize);
+    final boardW = game.level.cols * (cellSize + game._gap) - game._gap;
+    _home = Vector2(
+      boardOrigin.x + boardW / 2,
+      max(boardOrigin.y - cellSize * 0.95, _bossSize / 2 + 4),
+    );
+    if (!_laidOut) {
+      position = _home.clone();
+      _laidOut = true;
+    } else if (state == BossState.idle || state == BossState.intro) {
+      position = _home.clone();
+    }
+  }
+
+  void _setState(BossState s) {
+    state = s;
+    stateT = 0;
+  }
+
+  Vector2 _lerp(Vector2 a, Vector2 b, double t) => a + (b - a) * t;
+
+  Vector2 _hoverPos() {
+    final t = _target;
+    if (t == null) return _home;
+    return game._cellCenter(t.col, t.row) - Vector2(0, _cell * 0.95);
+  }
+
+  Vector2 _targetCell() {
+    final t = _target;
+    if (t == null) return _home;
+    return game._cellCenter(t.col, t.row);
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    _t += dt;
+    _hurtFlash = max(0, _hurtFlash - dt / _hurtDur);
+    final decay = max(0, 1 - 6 * dt);
+    _knock.x *= decay;
+    _knock.y *= decay;
+
+    if (state == BossState.dead) {
+      _deadT += dt;
+      if (_deadT >= _deadDur) removeFromParent();
+      return;
+    }
+    // 对局已结束（非死亡演出）：冻结，不再攻击。
+    if (game._ended) return;
+
+    stateT += dt;
+    switch (state) {
+      case BossState.intro:
+        _introT = (stateT / _introDur).clamp(0.0, 1.0);
+        position = _home.clone();
+        if (stateT >= _introDur) {
+          _setState(BossState.idle);
+          _attackTimer = firstDelay;
+        }
+      case BossState.idle:
+        _attackTimer -= dt;
+        position = _home + Vector2(0, sin(_t * 2.2) * _cell * 0.07);
+        if (_attackTimer <= 0) _chooseAttack();
+      case BossState.stalk:
+        final k = (stateT / _stalkDur).clamp(0.0, 1.0);
+        position = _lerp(_home, _hoverPos(), Curves.easeInOut.transform(k));
+        if (stateT >= _stalkDur) _setState(BossState.windup);
+      case BossState.windup:
+        position =
+            _hoverPos() + Vector2(sin(stateT * 46) * _cell * 0.035, 0);
+        if (stateT >= _windupDur) {
+          _struck = false;
+          _setState(BossState.strike);
+        }
+      case BossState.strike:
+        final half = _strikeDur * 0.55;
+        if (stateT < half) {
+          final k = (stateT / half).clamp(0.0, 1.0);
+          position = _lerp(_hoverPos(), _targetCell(), Curves.easeIn.transform(k));
+        } else {
+          if (!_struck) {
+            _struck = true;
+            _performAttack();
+          }
+          final k = ((stateT - half) / (_strikeDur - half)).clamp(0.0, 1.0);
+          position =
+              _lerp(_targetCell(), _hoverPos(), Curves.easeOut.transform(k));
+        }
+        if (stateT >= _strikeDur) _setState(BossState.recover);
+      case BossState.recover:
+        final k = (stateT / _recoverDur).clamp(0.0, 1.0);
+        position = _lerp(position, _home, Curves.easeOut.transform(k));
+        if (stateT >= _recoverDur) {
+          _setState(BossState.idle);
+          _attackTimer = attackInterval;
+        }
+      case BossState.hurt:
+        position =
+            _home + Vector2(0, sin(_t * 2.2) * _cell * 0.07) + _knock;
+        if (stateT >= _hurtDur) {
+          _setState(BossState.idle);
+          _attackTimer = attackInterval;
+        }
+      case BossState.dead:
+        break;
+    }
+  }
+
+  /// 挑选下一次攻击：冰块（占空格）/ 拖车（拿走最低档），交替进行。
+  void _chooseAttack() {
+    final empties = <({int col, int row})>[];
+    ({int col, int row, VehicleType tier})? lowest;
+    for (var c = 0; c < game.level.cols; c++) {
+      for (var r = 0; r < game.level.rows; r++) {
+        final d = game.board.at(c, r);
+        if (d == null || d.isEmpty) {
+          if (game.board.obstacleAt(c, r) == null) {
+            empties.add((col: c, row: r));
+          }
+          continue;
+        }
+        if (d.isWildcard || d.isBomb) continue;
+        if (lowest == null || d.tier.id < lowest.tier.id) {
+          lowest = (col: c, row: r, tier: d.tier);
+        }
+      }
+    }
+    if (empties.isEmpty && lowest == null) {
+      _attackTimer = 2; // 棋盘空空：歇一会再看
+      return;
+    }
+    var wantIce = _wantIce;
+    if (wantIce && empties.isEmpty) wantIce = false;
+    if (!wantIce && lowest == null) wantIce = true;
+    _wantIce = !wantIce; // 两种攻击交替，节奏可预期
+    if (wantIce) {
+      empties.shuffle(_rnd);
+      _target = empties.first;
+      _kind = BossAttackKind.ice;
+    } else {
+      _target = (col: lowest!.col, row: lowest.row);
+      _kind = BossAttackKind.steal;
+    }
+    _setState(BossState.stalk);
+  }
+
+  /// 出手瞬间执行攻击（目标可能已被玩家操作改变，先校验）。
+  void _performAttack() {
+    final t = _target;
+    if (t == null) return;
+    if (_kind == BossAttackKind.ice) {
+      if (game.board.at(t.col, t.row) != null ||
+          game.board.obstacleAt(t.col, t.row) != null) {
+        return;
+      }
+      game._bossDropIce(t.col, t.row);
+    } else {
+      final d = game.board.at(t.col, t.row);
+      if (d == null || d.isEmpty) return;
+      game._bossStealCar(t.col, t.row);
+    }
+  }
+
+  /// 被玩家命中：扣 1 HP、闪白、击退；进行中的攻击被打断。
+  void hit() {
+    if (dead) return;
+    hp -= 1;
+    _hurtFlash = 1;
+    _knock.setValues(
+      (_rnd.nextDouble() - 0.5) * _cell * 0.3,
+      -_cell * 0.35,
+    );
+    _target = null;
+    if (hp <= 0) {
+      _setState(BossState.dead);
+      _deadT = 0;
+    } else {
+      _setState(BossState.hurt);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  渲染
+  // ─────────────────────────────────────────────────────────────
+
+  final Paint _auraPaint = Paint();
+  final Paint _hpFill = Paint();
+  ui.Picture? _face;
+  int _faceKey = -1;
+  int _faceTier = -2;
+  bool _auraReady = false;
+  int _hpKey = -1;
+
+  @override
+  void render(Canvas canvas) {
+    if (!_laidOut) return;
+    final s = _bossSize;
+
+    // 预警环：画在目标格上（世界坐标，先于 translate）。
+    final t = _target;
+    if (t != null &&
+        (state == BossState.stalk ||
+            state == BossState.windup ||
+            state == BossState.strike)) {
+      final cellCenter = game._cellCenter(t.col, t.row);
+      _drawWarning(
+        canvas,
+        Offset(cellCenter.x - position.x, cellCenter.y - position.y),
+      );
+    }
+
+    canvas.save();
+    canvas.translate(position.x + _knock.x, position.y + _knock.y);
+    if (state == BossState.dead) {
+      final k = (_deadT / _deadDur).clamp(0.0, 1.0);
+      canvas.rotate(k * 2.4);
+      canvas.scale(max(0.05, 1 - k * 0.85));
+    }
+    if (state == BossState.intro) {
+      canvas.scale(max(0.01, Curves.easeOutBack.transform(_introT)));
+    }
+
+    _drawAura(canvas, s);
+    _ensureFace();
+    canvas.drawPicture(_face!);
+    _drawHpBar(canvas, s);
+
+    if (_hurtFlash > 0) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(-s / 2, -s / 2, s, s),
+          Radius.circular(s * 0.16),
+        ),
+        Paint()
+          ..color =
+              const Color(0xFFFFFFFF).withValues(alpha: 0.55 * _hurtFlash),
+      );
+    }
+    canvas.restore();
+  }
+
+  /// 红色威压光晕：待机缓慢呼吸，锁定目标时急促闪烁。
+  void _drawAura(Canvas canvas, double s) {
+    if (!_auraReady) {
+      _auraReady = true;
+      _auraPaint.shader = RadialGradient(
+        colors: [
+          const Color(0xFFFF1744).withValues(alpha: 0.95),
+          const Color(0xFFFF1744).withValues(alpha: 0.0),
+        ],
+      ).createShader(Rect.fromCircle(center: Offset.zero, radius: s / 2));
+    }
+    final charging = state == BossState.stalk || state == BossState.windup;
+    final pulse = 0.5 + 0.5 * sin(_t * (charging ? 9 : 3));
+    _auraPaint.color = const Color(0xFFFF1744).withValues(
+      alpha: charging ? 0.30 + 0.25 * pulse : 0.15 + 0.08 * pulse,
+    );
+    canvas.drawCircle(Offset.zero, s * (charging ? 0.80 : 0.70), _auraPaint);
+  }
+
+  void _drawWarning(Canvas canvas, Offset center) {
+    final r = _cell * 0.44;
+    final pulse = 0.5 + 0.5 * sin(_t * 12);
+    canvas.drawCircle(
+      center,
+      r,
+      Paint()
+        ..color = const Color(0xFFFF1744).withValues(alpha: 0.25 + 0.3 * pulse)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3,
+    );
+    // 内圈随预警进程收缩：像瞄准落点，出手瞬间合拢。
+    final k = state == BossState.strike
+        ? 1.0
+        : state == BossState.windup
+            ? 0.55 + 0.45 * (stateT / _windupDur)
+            : 0.25;
+    canvas.drawCircle(
+      center,
+      r * (1 - 0.55 * k),
+      Paint()
+        ..color = const Color(0xFFFF5252).withValues(alpha: 0.5 + 0.4 * pulse)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+    final cross = Paint()
+      ..color = const Color(0xFFFFFFFF).withValues(alpha: 0.85)
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    final d = r * 0.5;
+    canvas.drawLine(center + Offset(-d, 0), center + Offset(d, 0), cross);
+    canvas.drawLine(center + Offset(0, -d), center + Offset(0, d), cross);
+  }
+
+  /// 血条：分段显示（≤8 段画分格线），已失去的血量留暗红残影。
+  void _drawHpBar(Canvas canvas, double s) {
+    final barW = s * 0.88;
+    final barH = s * 0.13;
+    final cy = -s / 2 - barH - s * 0.06 + barH / 2;
+    final rect = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(0, cy), width: barW, height: barH),
+      Radius.circular(barH / 2),
+    );
+    canvas.drawRRect(rect, Paint()..color = const Color(0xCC1A0A10));
+    final ratio = (hp / maxHp).clamp(0.0, 1.0);
+    if (ratio > 0) {
+      final key = (barW * 16).round();
+      if (_hpKey != key) {
+        _hpKey = key;
+        _hpFill.shader = LinearGradient(
+          colors: const [Color(0xFFFF8A65), Color(0xFFE53935)],
+        ).createShader(Rect.fromLTWH(0, 0, barW - 4, barH - 4));
+      }
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(rect.outerRect.left + 2, rect.outerRect.top + 2,
+              (barW - 4) * ratio, barH - 4),
+          Radius.circular((barH - 4) / 2),
+        ),
+        _hpFill,
+      );
+      if (maxHp > 1 && maxHp <= 8) {
+        final seg = Paint()
+          ..color = const Color(0x66000000)
+          ..strokeWidth = 1.2;
+        for (var i = 1; i < maxHp; i++) {
+          final x = rect.outerRect.left + 2 + (barW - 4) * (i / maxHp);
+          canvas.drawLine(
+            Offset(x, rect.outerRect.top + 2),
+            Offset(x, rect.outerRect.bottom - 2),
+            seg,
+          );
+        }
+      }
+    }
+    canvas.drawRRect(
+      rect,
+      Paint()
+        ..color = const Color(0xFFFF8A80).withValues(alpha: 0.9)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6,
+    );
+    _paintBossText(canvas, '$hp / $maxHp',
+        fontSize: s * 0.085,
+        color: const Color(0xFFFFFFFF),
+        center: Offset(0, cy));
+  }
+
+  /// 车身静态部分烘焙：暗色渐变 + 王冠 + 怒眉 + 车型 emoji。
+  void _ensureFace() {
+    final key = (size.x * 32).round();
+    if (_face != null && _faceKey == key && _faceTier == tier.id) return;
+    _faceKey = key;
+    _faceTier = tier.id;
+    final s = size.x;
+    final recorder = ui.PictureRecorder();
+    final c = Canvas(recorder);
+    final rr = RRect.fromRectAndRadius(
+      Rect.fromLTWH(-s / 2, -s / 2, s, s),
+      Radius.circular(s * 0.16),
+    );
+    // 同色系暗投影
+    c.drawRRect(
+      RRect.fromRectAndRadius(rr.outerRect.translate(0, s * 0.06), rr.tlRadius),
+      Paint()
+        ..color = const Color(0x66000000)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, s * 0.08),
+    );
+    // 反派车身：深红 → 炭黑
+    c.drawRRect(
+      rr,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: const [Color(0xFF6B1420), Color(0xFF1E1218)],
+        ).createShader(rr.outerRect),
+    );
+    // 顶部高光
+    c.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(-s / 2, -s / 2, s, s * 0.5),
+        Radius.circular(s * 0.16),
+      ),
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: const [Color(0x40FFFFFF), Color(0x00FFFFFF)],
+        ).createShader(Rect.fromLTWH(-s / 2, -s / 2, s, s * 0.5)),
+    );
+    c.drawRRect(
+      rr,
+      Paint()
+        ..color = const Color(0xFFEF5350).withValues(alpha: 0.75)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = s * 0.035,
+    );
+    _paintBossText(c, '👑',
+        fontSize: s * 0.24,
+        color: const Color(0xFFFFD54F),
+        center: Offset(0, -s * 0.34));
+    // 怒眉：两条内倾的粗线，把 emoji 衬出凶相
+    final brow = Paint()
+      ..color = const Color(0xFF0B0204)
+      ..strokeWidth = s * 0.055
+      ..strokeCap = StrokeCap.round;
+    final ey = -s * 0.16;
+    c.drawLine(
+        Offset(-s * 0.26, ey - s * 0.05), Offset(-s * 0.08, ey + s * 0.03), brow);
+    c.drawLine(
+        Offset(s * 0.26, ey - s * 0.05), Offset(s * 0.08, ey + s * 0.03), brow);
+    final tp = TextPainter(
+      text: TextSpan(
+        text: tier.icon,
+        style: TextStyle(fontSize: s * 0.42),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(c, Offset(-tp.width / 2, -tp.height / 2 + s * 0.14));
+    _face = recorder.endRecording();
+  }
+
+  void _paintBossText(
+    Canvas canvas,
+    String text, {
+    required double fontSize,
+    required Color color,
+    required Offset center,
+  }) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          fontSize: fontSize,
+          color: color,
+          fontWeight: FontWeight.w900,
+          fontFamily: 'Noto Sans SC',
+        ),
+      ),
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+    )..layout();
+    painter.paint(
+      canvas,
+      Offset(center.dx - painter.width / 2, center.dy - painter.height / 2),
+    );
+  }
 }

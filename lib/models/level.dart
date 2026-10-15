@@ -96,6 +96,32 @@ class Obstacle {
       !removed && (type != ObstacleType.ice || layers > 0);
 }
 
+/// Boss 战配置（仅合成模式，null = 普通关）。
+///
+/// Boss 关不只是「数值更难 + 徽标」——棋盘上方真的有一辆会动的 Boss 车：
+/// 待机浮动、盯上目标后靠近、举牌预警、然后**往棋盘扔冰块 / 把场上的车
+/// 拖走**。玩家合成目标车 = 攻击 Boss（每次 -1 HP），打空血条即胜。
+///
+/// 为什么胜利条件改成打 Boss：Boss 关的叙事就是「击败它」，如果赢了它
+/// 还要去凑原来的产出数，事件感会被稀释。且需要的命中数 = 原目标数 +2，
+/// 比普通关只多两车，不是墙。
+class BossSpec {
+  /// Boss 总 HP（= 需要产出的目标车总数，含 +2 的 Boss 加码）。
+  final int hp;
+
+  /// 攻击间隔（秒）：预警 + 出手都算在内的一次完整攻击周期。
+  final double attackInterval;
+
+  /// 首次攻击延迟（秒）：给玩家读条、看清 Boss 长什么样再挨打。
+  final double firstDelay;
+
+  const BossSpec({
+    required this.hp,
+    this.attackInterval = 9,
+    this.firstDelay = 6,
+  });
+}
+
 /// 一次关卡的定义。
 class LevelDefinition {
   final int id;
@@ -141,6 +167,10 @@ class LevelDefinition {
   /// 无尽模式：目标达成后自动升级，牌堆无限，死局即结束。
   final bool endless;
 
+  /// Boss 战配置（null = 非 Boss 关）：棋盘上有会动的 Boss，
+  /// 合成目标车攻击它，HP 打空即胜（详见 [BossSpec]）。
+  final BossSpec? boss;
+
   /// 每日挑战：参与每日玩法（不推进关卡解锁、不记录星级）。
   final bool daily;
 
@@ -165,6 +195,7 @@ class LevelDefinition {
     this.fogCells = 0,
     this.endless = false,
     this.daily = false,
+    this.boss,
     this.obstacles = const [],
   });
 
@@ -214,7 +245,8 @@ class LevelDefinition {
     final moves = movesLimit;
     final goal = switch (goalType) {
       GoalType.produce =>
-        '目标：合成 ${targetTier!.icon} ${targetTier!.name} ×$targetCount',
+        '目标：合成 ${targetTier!.icon} ${targetTier!.name} ×$targetCount'
+            '${boss != null ? '（攻击 👑 Boss）' : ''}',
       GoalType.clearBoard =>
         '目标：用光牌堆，场上剩 ≤${clearLimit ?? 0} 组车',
     };
