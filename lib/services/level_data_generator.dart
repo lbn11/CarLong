@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import '../models/level.dart';
 import '../models/vehicle.dart';
+import 'level_progression.dart';
 
 /// 主线关卡数值生成器（L71-700，630 关）。
 ///
@@ -11,7 +12,7 @@ import '../models/vehicle.dart';
 /// 实测结果是**难度递减**：预算占用率从 0.39 一路滑到 0.11，
 /// 后期 145 张牌只需用 30 张，玩家点完 1/5 牌堆就赢了 —— 掉进无聊区。
 ///
-/// 新版改为五条硬规则：
+/// 新版改为六条硬规则：
 ///
 /// 1. **牌堆由目标反推**：先用 [expectedDraws] 解析算出「达成目标的期望出牌数」，
 ///    再乘一个随章节收紧的 budgetFactor（3.4 → 2.0）。这样预算占用率被钉在
@@ -28,6 +29,10 @@ import '../models/vehicle.dart';
 ///    关卡数不能相同，否则交替游玩时紧张点叠加，节奏感互相抵消。
 /// 5. **新车型在组首登场**：一个心跳组（5 关）内目标车型恒定，且组的第 1 关
 ///    就是相位 0（轻松）—— 新车先给个轻松的亮相，再在同一组里逐步加压。
+/// 6. **三层难度结构 + 广告挑战关**（详见 [LevelProgression]）：心流循环之上
+///    还有章（36-45 关）与大阶段（3 章，阶段末章 = 魔王章），让玩家有宏观梯度感；
+///    每 5 关 1 个广告挑战关（牌堆 ×0.92）—— 难一档但远非无解，
+///    看广告只提供降难支援，不是通行证。
 ///
 /// 全部纯函数、确定性：同一 id 永远生成同一关。
 class LevelDataGenerator {
@@ -125,12 +130,32 @@ class LevelDataGenerator {
   /// 硬仗之后必有回落，玩家不会连吃两关高压。
   static const List<double> _phaseBudget = [0.50, 0.18, 0.0, 0.25, -0.18];
 
+  /// 广告挑战关的牌堆收紧系数（×0.93 ≈ 预算占用率上限 0.57）。
+  ///
+  /// 刻意温和：广告关是「难一档的挑战关」而不是墙。收紧后 p50 玩家
+  /// 刚好压线（多数局需要一次续命/高效操作），但远不到无解 ——
+  /// 硬实力玩家不看出能过，这是产品红线。
+  static const double _adGateTighten = 0.93;
+
+  /// 魔王章（大阶段末章）的牌堆收紧系数。比广告关温和：
+  /// 魔王章的难度由整章累积体现，单关不再加码。
+  static const double _demonTighten = 0.95;
+
   /// 牌堆倍数：3.4 → 2.0，再叠相位调制。倒数即预算占用率 0.29 → 0.50（心流通道）。
   ///
   /// 前期给足余量建立信心，后期收紧到「需要有效率但不至于卡死」。
-  static double _budgetFactor(int c, double p, int phase) {
+  ///
+  /// 宏观层（魔王章 / 广告挑战关）在此收紧扣，两者**不叠加**（取较强）：
+  /// 阶段末连吃两个收紧会把玩家劝退，违背心流原则。
+  static double _budgetFactor(int id, int c, double p, int phase) {
     final t = (c + p) / chapterCount; // 0..1
-    return 3.4 - 1.4 * t + _phaseBudget[phase];
+    var f = 3.4 - 1.4 * t + _phaseBudget[phase];
+    if (LevelProgression.isMergeAdGate(id)) {
+      f *= _adGateTighten;
+    } else if (LevelProgression.isMergeDemon(id)) {
+      f *= _demonTighten;
+    }
+    return f;
   }
 
   /// 高等级卡偏置：档位越深、目标数越多，偏置越大（保证深目标可达成）。
@@ -257,7 +282,7 @@ class LevelDataGenerator {
         highTierBias: bias,
       );
       final expected = expectedDraws(draft);
-      stock = math.max(14, (expected * _budgetFactor(c, p, phase)).round());
+      stock = math.max(14, (expected * _budgetFactor(id, c, p, phase)).round());
 
       // 限步：Ch6 起，每 4 个心跳组（20 关）在硬仗相位出现一次。
       // 判负线必须宽松（期望的 2.4 倍），它是「别乱点」的引导，不是闸门。
@@ -271,6 +296,16 @@ class LevelDataGenerator {
     if (hard && group % 2 == 1) {
       final expected = clearBoard ? stock * 0.75 : stock * 0.42;
       timeLimit = (expected * 4.2).round().clamp(70, 320);
+    }
+
+    // 广告挑战关 / 魔王章：清盘关的牌堆同样收紧（produce 关已在
+    // [_budgetFactor] 内收过，这里只补 clearBoard 公式分支）。
+    // 插在限时之后 —— 限时/限步是「别乱点」的引导线，不随挑战关缩放。
+    if (clearBoard) {
+      final tighten = LevelProgression.isMergeAdGate(id)
+          ? _adGateTighten
+          : (LevelProgression.isMergeDemon(id) ? _demonTighten : 1.0);
+      if (tighten < 1.0) stock = (stock * tighten).round();
     }
 
     return LevelDefinition(

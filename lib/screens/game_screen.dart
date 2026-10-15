@@ -14,6 +14,7 @@ import '../theme/app_theme.dart';
 import '../models/level.dart';
 import '../models/vehicle.dart';
 import '../save/save_repository.dart';
+import '../services/level_progression.dart';
 import '../widgets/candy_ui.dart';
 import '../widgets/pressable.dart';
 import '../widgets/vehicle_image.dart';
@@ -212,7 +213,11 @@ class _GameScreenState extends State<GameScreen> {
             ? (widget.level.goalType == GoalType.clearBoard
                 ? '🎉 清空成功！'
                 : '🚀 通关成功！')
-            : '⏰ 差一点';
+            // 广告挑战关的失败标题说破身份：这是设计好的难关，
+            // 看广告续命是官方后路，不是玩家不行。
+            : (LevelProgression.isMergeAdGate(widget.level.id)
+                ? '🎬 挑战关 · 差一点'
+                : '⏰ 差一点');
 
     if (!mounted) return;
     // 失败且有续命次数时，按失败原因给出对应"看广告续命"按钮。

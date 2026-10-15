@@ -5,6 +5,7 @@ import '../game/audio_feedback.dart';
 import '../game/parking_daily_challenge.dart';
 import '../models/parking_level.dart';
 import '../save/save_repository.dart';
+import '../services/level_progression.dart';
 import '../services/level_rhythm.dart';
 import '../services/parking_chapters.dart';
 import '../services/parking_generator.dart';
@@ -173,20 +174,50 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        chapter.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: accessible ? AppColors.ink1 : AppColors.ink2,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 16,
-                        ),
+                      // 魔王章徽标：大阶段（3 章）的末章，整章 +1 档。
+                      // 阶段结构只有被看见才存在——玩家看到「魔王章」
+                      // 才会意识到「我在打一个阶段的收官战」。
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              chapter.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color:
+                                    accessible ? AppColors.ink1 : AppColors.ink2,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                          if (LevelProgression.isParkingDemon(chapter.startId)) ...[
+                            const SizedBox(width: 5),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 5, vertical: 1.5),
+                              decoration: BoxDecoration(
+                                color: AppColors.coralDeep
+                                    .withValues(alpha: accessible ? 0.16 : 0.08),
+                                borderRadius: BorderRadius.circular(7),
+                              ),
+                              child: const Text(
+                                '👹 魔王章',
+                                style: TextStyle(
+                                  color: AppColors.coralDeep,
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: 2),
                       Text(
                         accessible
-                            ? '${chapter.subtitle} · 已通关 $cleared/${levels.length}'
+                            ? '${LevelProgression.stageName(LevelProgression.stageOf(LevelProgression.parkingChapterIndex(chapter.startId)))}阶段 · ${chapter.subtitle} · 已通关 $cleared/${levels.length}'
                             : ParkingChapters.lockReason(chapter),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -345,6 +376,24 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                 ),
               ),
             ),
+            // 广告挑战关角标：🎬 徽标。这一关比同位置难一档（步数 +1 /
+            // 挡路车 +1），但失败了可以看广告续命/撤销/提示——是难关，不是墙。
+            if (LevelProgression.isParkingAdGate(levelId))
+              Positioned(
+                top: 3,
+                left: 3,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: AppColors.coralDeep.withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    '🎬',
+                    style: TextStyle(fontSize: 7.5, height: 1.1),
+                  ),
+                ),
+              ),
             // 生成中的加载态：盖住卡片内容 + 中央转圈，避免同步生成
             // （尖峰关最坏 ~0.7s）期间玩家以为点愣住了。
             if (_loadingId == levelId)

@@ -13,6 +13,7 @@ import '../game/parking_game.dart';
 import '../models/parking_level.dart';
 import '../models/vehicle.dart';
 import '../save/save_repository.dart';
+import '../services/level_progression.dart';
 import '../services/level_rhythm.dart';
 import '../services/parking_chapters.dart';
 import '../services/parking_generator.dart';
@@ -874,9 +875,13 @@ class _ParkingScreenState extends State<ParkingScreen>
                   ],
                   const SizedBox(height: 16),
                   // 失败且有撤销空间：把"救回来"放在最上面，降低重开成本。
+                  // 广告挑战关换一套文案：说破「这关就是设计成难一档的，
+                  // 看广告是官方给的后路」，玩家就不会因为连败而弃游。
                   if (!won && _game.canUndo) ...[
                     CandyButton(
-                      label: '看广告回退 3 步',
+                      label: LevelProgression.isParkingAdGate(widget.level.id)
+                          ? '🎬 挑战支援 · 看广告回退 3 步'
+                          : '看广告回退 3 步',
                       icon: Icons.play_circle_fill,
                       colors: AppTheme.gradientOf(AppColors.mint),
                       expand: true,
@@ -1064,6 +1069,13 @@ class _ParkingScreenState extends State<ParkingScreen>
                     LevelRhythm.colorOf(RhythmMode.parking, _phase),
                   ),
                   const SizedBox(width: 6),
+                  // 广告挑战关标记：🎬 说明这一关比同位置难一档，
+                  // 同时暗示「失败了有后路」——失败弹窗的看广告续命/撤销/提示
+                  // 就是为它准备的降难支援。说破了，玩家才敢点进来。
+                  if (LevelProgression.isParkingAdGate(widget.level.id)) ...[
+                    _buildInfoChip('🎬 挑战关', AppColors.coralDeep),
+                    const SizedBox(width: 6),
+                  ],
                   _buildInfoChip('👣 ${_game.moves}', AppColors.surfaceSoft),
                   const SizedBox(width: 6),
                   // 撤销卡库存（替代原生命值展示）

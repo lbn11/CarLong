@@ -3,10 +3,11 @@ import 'dart:math';
 import '../logic/parking_solver.dart';
 import '../models/vehicle.dart';
 import '../models/parking_level.dart';
+import 'level_progression.dart';
 import 'parking_chapters.dart';
 import 'parking_reverse_builder.dart';
 
-/// 停车关卡生成器（反向生成 + 6 关难度心跳）
+/// 停车关卡生成器（反向生成 + 6 关难度心跳 + 3 层难度结构）
 ///
 /// # 生成方法：反向生成（不再是「随机撒车 + 事后筛选」）
 ///
@@ -18,16 +19,18 @@ import 'parking_reverse_builder.dart';
 /// 沿 BFS 距离严格 +1 的边倒走 K 步 —— 因为滑动可逆（图无向），
 /// 得到的局面最短解**精确等于 K**，难度可点名指定，且 100% 可解。
 ///
-/// # 难度心跳：每 6 关一个轮回（双波峰）
+/// # 三层难度结构（详见 [LevelProgression]）
 ///
-/// 轻松 → 顺手 → 动脑 → 缓冲 → 硬仗 → 尖峰，不停轮回。
-/// 心流的本质不是「越来越难」，而是**张弛交替**：连续爬坡会疲劳，
-/// 一直平又会无聊。两个波峰之间夹一个「缓冲」波谷，玩家不会连吃两关高压。
+/// 1. **心流循环**（6 关一轮）：轻松 → 顺手 → 动脑 → 缓冲 → 硬仗 → 尖峰。
+///    相位以「章内偏移」取模，每章第 1 关恒为相位 0（新车型登场）。
+/// 2. **章**（36-45 关）：车型章节，基线随 id 从 2 爬到 6 步。
+/// 3. **大阶段**（3 章）：整体上台阶，阶段末章 = 魔王章（target +1）。
 ///
-/// 相位以「章内偏移」取模（不是全局 id），因此每章第 1 关恒为相位 0 ——
-/// 新车型永远在轻松关登场（先亮相、再加压），且章节边界不打断心跳。
+/// 外加**广告挑战关**（每 5 关 1 个，占比 20%）：target +1 + 挡路车 +1。
+/// 它是「比同位置难一档的挑战关」而不是墙 —— 硬实力玩家不看出能过，
+/// 看广告只提供降难支援（续命/撤销/提示）。
 ///
-/// **周期与合成模式故意不同**（合成 5 关一轮）：两个模式的局部难度曲线
+/// **心跳周期与合成模式故意不同**（合成 5 关一轮）：两个模式的局部难度曲线
 /// 关卡数不能相同，否则交替游玩时紧张点/松弛点互相叠加，节奏感抵消。
 class ParkingLevelGenerator {
   /// 真实求解器校验的状态预算（反向生成已保证有解，这里只是复核最短步数）。
@@ -123,11 +126,19 @@ class ParkingLevelGenerator {
   }
 
   /// 目标最短步数 = 基线 × 相位倍率（这是"挑战曲线"= 技能曲线 × 心跳）。
+  ///
+  /// 宏观层（魔王章 / 广告挑战关）在此叠加 +1 档，两者**不叠加**
+  /// （取较强）：阶段末连吃两个 +1 会把玩家劝退，违背心流原则。
   static int targetMinMoves(int id, int phase) {
     if (id <= 10) return 2; // 新手期恒定：点两下就停好
-    return (_baseCurve(id) * _phaseMultiplier[phase])
+    var t = (_baseCurve(id) * _phaseMultiplier[phase])
         .round()
         .clamp(2, _maxMinMoves);
+    if (LevelProgression.isParkingAdGate(id) ||
+        LevelProgression.isParkingDemon(id)) {
+      t = (t + 1).clamp(2, _maxMinMoves);
+    }
+    return t;
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -206,9 +217,12 @@ class ParkingLevelGenerator {
     // 所以密度不再是敌人，而是**连锁的燃料**：车越多，越容易形成
     // 「挪开 A 才动得了 B、挪开 B 才动得了目标车」的多层阻挡。
     final baseFill = size == 4 ? 4 : (size == 5 ? 6 : 9);
+    // 广告挑战关再多一辆挡路车：连锁燃料 +1，与 target+1 同向叠加成
+    // 「难一档的挑战关」。封顶 10（6x6 尖峰+广告关同位置）。
+    final adCrowd = LevelProgression.isParkingAdGate(id) ? 1 : 0;
     // 封顶 10：6x6 尖峰关靠第 10 辆车把连锁撑到 6-7 步
     // （实测 9 辆车时尖峰命中率仅 ~70%，波峰会被压平）。
-    final fillCount = (baseFill + _phaseCrowd[phase]).clamp(2, 10);
+    final fillCount = (baseFill + _phaseCrowd[phase] + adCrowd).clamp(2, 10);
 
     // 障碍：反向生成靠滑动图连通性，障碍过多会压低步数上限，故封顶 4。
     final obstacleCount = ((id ~/ 14) + 1 + _phaseCrowd[phase]).clamp(0, 4);

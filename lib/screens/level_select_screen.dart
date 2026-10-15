@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../models/level.dart';
 import '../save/save_repository.dart';
 import '../services/level_data_generator.dart';
+import '../services/level_progression.dart';
 import '../services/level_rhythm.dart';
 import '../widgets/candy_ui.dart';
 import '../widgets/pressable.dart';
@@ -125,7 +126,11 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
           child: SectionTitle(
             title: chapter.title,
-            subtitle: chapter.subtitle,
+            // 魔王章：大阶段（3 章）末章的整章 +1 档。徽标说破身份，
+            // 玩家才会把「这一章特别难」理解为阶段收官而不是数值出错。
+            subtitle: LevelProgression.isMergeDemon(chapter.startId)
+                ? '👹 魔王章 · ${chapter.subtitle}'
+                : chapter.subtitle,
             accent: chapterColor,
             trailing: SoftChip(
               label: '$cleared/${cl.length}',
@@ -237,6 +242,48 @@ class TotalProgressCard extends StatelessWidget {
             ),
             child: const Icon(Icons.auto_awesome_rounded,
                 color: Colors.white, size: 28),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 广告挑战关小标：🎬 + 「挑战」，标出每 5 关一个的 +1 档难关。
+///
+/// 设计意图说给玩家：这一关比同位置难一档，但**不是墙** ——
+/// 失败了可以看广告续命/加步数（降难支援），硬实力也能直接过。
+class _AdGateChip extends StatelessWidget {
+  const _AdGateChip({this.dim = false});
+
+  final bool dim;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.coralDeep;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+      decoration: BoxDecoration(
+        color: dim
+            ? AppColors.ink3.withValues(alpha: 0.12)
+            : c.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '🎬',
+            style: TextStyle(fontSize: 9, color: dim ? AppColors.ink3 : null),
+          ),
+          const SizedBox(width: 3),
+          Text(
+            '挑战',
+            style: TextStyle(
+              color: dim ? AppColors.ink3 : AppTheme.deepen(c, 0.30),
+              fontSize: 9.5,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ],
       ),
@@ -393,6 +440,12 @@ class LevelCard extends StatelessWidget {
                             phase: LevelDataGenerator.rhythmPhase(level.id),
                             dim: !unlocked,
                           ),
+                          // 广告挑战关：与心跳标记并列（都是「这一关什么强度」的
+                          // 预告信息），🎬 徽标让玩家提前知道难关在哪。
+                          if (LevelProgression.isMergeAdGate(level.id)) ...[
+                            const SizedBox(width: 4),
+                            _AdGateChip(dim: !unlocked),
+                          ],
                         ],
                         const Spacer(),
                         if (!unlocked)
