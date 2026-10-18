@@ -232,6 +232,125 @@ class LevelDataGenerator {
   }
 
   // ─────────────────────────────────────────────────────────────
+  //  参考时间（par）
+  // ─────────────────────────────────────────────────────────────
+
+  /// 参考时间标定：一次「抽牌 → 合并」循环按 3 秒计。
+  ///
+  /// 与硬相位限时公式（`stock×0.42×4.2`，即 4.2 秒/次）同源但更紧：
+  /// 限时是「慢于这个节奏就输」的判负线，par 是「正常手感能达成」的
+  /// 参考线——超了不罚、不判负，比它快才有速通奖。两个口径差约 40%，
+  /// 落在「熟练玩家大概率达成、新手需要专心」的区间。
+  ///
+  /// 校准通道：埋点（[AnalyticsService.levelEnd] 的 `elapsed_s` / `beat_par`）
+  /// 每次通关都在记录真实用时，攒够对局后按同章均值回调本常数即可，
+  /// 不需要改任何结构。
+  static const double parSecPerDraw = 3.0;
+
+  /// 参考时间（秒）：这关「正常打」大概要多久。0 = 不适用（无尽模式）。
+  ///
+  /// 与牌堆反推同一套数学（[expectedDraws]），不引入新参数：
+  /// - produce：期望出牌数 × [parSecPerDraw]
+  /// - Boss 关：打空血条 = 产出 `boss.hp` 辆目标车（expectedDraws 对
+  ///   targetCount 线性，按 hp/count 折算——Boss 关天生比同关普通关慢）
+  /// - clearBoard：与硬相位限时同口径（约用掉 75% 牌堆）
+  ///
+  /// 软设计：par 只是 HUD 上的一条参考线和结算时的速通奖门槛，
+  /// 超时零惩罚（Boss 攻击每 9 秒一招不看玩家节奏，本身就是反磨蹭机制）。
+  static double parSeconds(LevelDefinition lvl) {
+    if (lvl.endless) return 0;
+    if (lvl.goalType == GoalType.clearBoard) {
+      return lvl.stockSize * 0.75 * parSecPerDraw;
+    }
+    if (lvl.targetTier == null || lvl.targetCount <= 0) return 0;
+    final base = expectedDraws(lvl);
+    if (base <= 0) return 0;
+    final need = lvl.boss?.hp ?? lvl.targetCount;
+    return base * need / lvl.targetCount * parSecPerDraw;
+  }
+
+  /// 收尾系数：抽空牌堆后还有「合并 → 出完目标车」的尾巴动作，
+  /// 预计总用时 = 已用 + 剩牌 × 每张秒数 × 本系数。仅清盘关用。
+  static const double paceTailFactor = 1.25;
+
+  /// 观测外推的接管进度门槛：进度占比过 25% 后完全信任历史速率，
+  /// 之前按占比线性融合。合成游戏前 1/4 是纯攒料期——深章 Boss 的
+  /// 第一辆目标车可能要 90 秒，此时 elapsed/progress 单点外推会直接
+  /// 崩一个数量级（把攒料期当成每辆平均耗时）。
+  static const double paceObsFloor = 0.25;
+
+  /// 实时 pace 倍率（HUD 徽章用）：**>1 = 照当前手感预计快于 par**
+  /// （能拿速通奖），**<1 = 预计慢于 par**（无奖励、不罚）。0 = 不显示。
+  ///
+  /// 外推模型按关卡类型分流（与 [parSeconds] 同一标定体系）：
+  /// - **清盘关**：剩余牌堆 = 剩余工作量，牌堆外推
+  ///   （已用 + 剩牌 × 每张秒数 × [paceTailFactor]）准确
+  /// - **produce / Boss 关**：牌堆是 2-10 倍冗余设计，剩牌 ≠ 剩余工作量，
+  ///   改用进度外推与先验融合：
+  ///   - 先验 prior = 已用 + 剩余目标 × (par/need)（剩余按参考均速完成）
+  ///   - 观测 obs = 已用 / 进度占比（历史平均速率）
+  ///   - 预计 = prior + w×(obs-prior)，w = (进度/[paceObsFloor]).clamp(0,1)
+  ///   pace = par / 预计
+  ///
+  /// 开局保护：elapsed ≤ 0 或无尽返回 0（不显示徽章）。攒料期
+  /// （零进度）只有先验兜底——「已用 + par」的温和值，不会一开场
+  /// 就 0.0× 吓人。Boss 关 need = hp（par 已按 hp/count 折算，
+  /// 每辆参考秒数与普通关同口径）。
+  static double paceRatio(
+    LevelDefinition lvl, {
+    required double elapsed,
+    required int stockLeft,
+    int produced = 0,
+    int bossHp = 0,
+  }) {
+    final par = parSeconds(lvl);
+    if (par <= 0 || elapsed <= 0) return 0;
+    if (lvl.goalType == GoalType.clearBoard) {
+      final drawn = lvl.stockSize - stockLeft;
+      final perDraw = drawn > 0 ? elapsed / drawn : parSecPerDraw;
+      final projected = elapsed + stockLeft * perDraw * paceTailFactor;
+      return projected <= 0 ? 0 : par / projected;
+    }
+    final need = lvl.boss?.hp ?? lvl.targetCount;
+    if (need <= 0) return 0;
+    final done = lvl.boss != null
+        ? (lvl.boss!.hp - bossHp).clamp(0, need)
+        : produced;
+    final progress = done / need;
+    // 先验：剩余目标按 par 均速完成。零进度（攒料期）时它是唯一估计。
+    final prior = elapsed + (need - done) * (par / need);
+    if (progress <= 0) return par / prior;
+    final obs = elapsed / progress;
+    final w = (progress / paceObsFloor).clamp(0.0, 1.0);
+    final projected = prior + w * (obs - prior);
+    return projected <= 0 ? 0 : par / projected;
+  }
+
+  /// 速通判定：获胜且用时 ≤ 参考时间。纯函数，UI 与测试共用。
+  static bool beatPar(
+    LevelDefinition lvl, {
+    required bool won,
+    required double elapsedSeconds,
+  }) {
+    if (!won) return false;
+    final par = parSeconds(lvl);
+    return par > 0 && elapsedSeconds <= par;
+  }
+
+  /// 速通奖金币：按分数缩放（score/20，钳 20-150），未达成 0。
+  ///
+  /// 数值待真实通关时长校准（与 [parSecPerDraw] 同一校准通道）。
+  static int parBonusCoins(
+    LevelDefinition lvl, {
+    required bool won,
+    required double elapsedSeconds,
+    required int score,
+  }) {
+    if (!beatPar(lvl, won: won, elapsedSeconds: elapsedSeconds)) return 0;
+    return (score ~/ 20).clamp(20, 150);
+  }
+
+  // ─────────────────────────────────────────────────────────────
   //  机制投放
   // ─────────────────────────────────────────────────────────────
 
@@ -365,8 +484,13 @@ class LevelDataGenerator {
       timeLimitSeconds: timeLimit,
       movesLimit: movesLimit,
       // Boss 战配置：HP = 目标车数 +2（多打两下，事件感够但不劝退）。
-      // 攻击周期 9s、首次 6s 后出手——给玩家读条时间。
-      boss: boss ? BossSpec(hp: (clearBoard ? 1 : count) + 2) : null,
+      // 卡组按章节深度解锁（主+辅技能，尖峰位是招牌 Boss），
+      // 详见 [BossSpec.forLevel]。
+      boss: boss
+          ? BossSpec.forLevel(
+              c, (id - firstId - c * chapterSize - 10) ~/ 11,
+              (clearBoard ? 1 : count) + 2)
+          : null,
       highTierBias: bias,
       fogCells: fog,
       wildcards: wildcards,

@@ -241,15 +241,31 @@ class StackData {
   bool isWildcard;
   bool isBomb;
 
+  /// Boss 冰封层数。>0 时该卡**不能移动、不能参与合成**；
+  /// 每在其邻格完成一次合并融化 1 层，归零解封。
+  ///
+  /// 设计意图：Boss 冰封直接冻结玩家合成链的顶端原料，
+  /// 玩家必须先在旁边合两次「救它」，节奏被打断才有痛感。
+  int frozen;
+
   StackData(
     this.tier, {
     this.count = 1,
     this.isWildcard = false,
     this.isBomb = false,
+    this.frozen = 0,
   });
 
   bool get isEmpty => count <= 0;
 
-  StackData copy() =>
-      StackData(tier, count: count, isWildcard: isWildcard, isBomb: isBomb);
+  /// 是否被 Boss 冰封（动不了）。
+  bool get isFrozen => frozen > 0;
+
+  StackData copy() => StackData(
+        tier,
+        count: count,
+        isWildcard: isWildcard,
+        isBomb: isBomb,
+        frozen: frozen,
+      );
 }

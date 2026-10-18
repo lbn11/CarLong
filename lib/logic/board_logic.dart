@@ -127,6 +127,52 @@ class BoardLogic {
     _invalidate();
   }
 
+  /// Boss 冰封：给 (col,row) 上的普通车加冰层（不碰空格/万能卡/炸弹）。
+  ///
+  /// 与 [addObstacle] 不同——冰封是**车的状态**不是格子障碍：
+  /// 车还在原地、看得见，但动不了也合不了，邻格每次合并融化 1 层。
+  /// 快照走 [StackData.copy]（含 frozen），撤销自动兼容。
+  void freezeAt(int col, int row, {int layers = 2}) {
+    if (col < 0 || col >= cols || row < 0 || row >= rows) return;
+    final s = _grid[_idx(col, row)];
+    if (s == null || s.isEmpty || s.isWildcard || s.isBomb) return;
+    s.frozen = layers;
+    _invalidate();
+  }
+
+  /// 场上是否还有被 Boss 冰封的车（融雪安全阀的触发条件之一）。
+  bool get hasFrozen {
+    for (final s in _grid) {
+      if (s != null && !s.isEmpty && s.frozen > 0) return true;
+    }
+    return false;
+  }
+
+  /// 全场冻车剩余冰层总数（融雪提示文案用）。
+  int get frozenLayers {
+    var total = 0;
+    for (final s in _grid) {
+      if (s != null && !s.isEmpty && s.frozen > 0) total += s.frozen;
+    }
+    return total;
+  }
+
+  /// 融雪安全阀：全场冻车统一融 1 层，返回本次融掉层的车数。
+  ///
+  /// 用途：玩家真卡死（牌堆空/棋盘满 且 无可合步）时由 MergeGame 定时调用，
+  /// 保证「被 Boss 冻住＝永远解冻不了」在设计上不可能发生——冰层总会
+  /// 持续减弱，玩家要么等到翻盘时刻，要么全场融化后走死局收尾。
+  int meltAllFrozenOneLayer() {
+    var melted = 0;
+    for (final s in _grid) {
+      if (s == null || s.isEmpty || s.frozen <= 0) continue;
+      s.frozen -= 1;
+      melted++;
+    }
+    if (melted > 0) _invalidate();
+    return melted;
+  }
+
   /// 运行时添加障碍物（Boss 攻击往空格扔冰用）。
   ///
   /// 快照会序列化当前全部障碍（含运行时添加的），因此**撤销自动兼容**：
@@ -392,6 +438,8 @@ class BoardLogic {
     if (from == null || (fc == tc && fr == tr)) {
       return const MoveResult();
     }
+    // Boss 冰封：冻住的车一步也动不了——先在旁边合两次「救它」。
+    if (from.frozen > 0) return const MoveResult();
 
     // 传送门改道：目标若是传送门，改为从配对出口出现。
     var teleported = false;
@@ -413,6 +461,8 @@ class BoardLogic {
     }
 
     final target = _grid[_idx(tc, tr)];
+    // Boss 冰封的目标格也不能进：冰冻车不参与合成/交换。
+    if (target != null && target.frozen > 0) return const MoveResult();
     if (target == null) {
       _grid[_idx(tc, tr)] = from;
       _grid[_idx(fc, fr)] = null;
@@ -502,6 +552,7 @@ class BoardLogic {
       produced = true;
     }
     final meltedIce = _meltAdjacentIce(tc, tr, mover: target.tier);
+    _meltAdjacentFrozen(tc, tr);
     return MoveResult(
       valid: true,
       upgraded: upgraded,
@@ -537,12 +588,21 @@ class BoardLogic {
     return cleared;
   }
 
+  /// 合并发生在 (c,r)：四邻被 Boss 冰封的车融化 1 层（救它要合两次）。
+  void _meltAdjacentFrozen(int c, int r) {
+    for (final (dc, dr) in const [(1, 0), (-1, 0), (0, 1), (0, -1)]) {
+      final nc = c + dc, nr = r + dr;
+      if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) continue;
+      final s = _grid[_idx(nc, nr)];
+      if (s != null && s.frozen > 0) s.frozen -= 1;
+    }
+  }
+
   /// 合并后消融 (c,r) 四邻的障碍，返回完全融化/移除的格子。
   /// 若 mover 具有 breakIce / breakChain / clearRock 能力，
   /// 则直接清除相邻格对应类型的障碍（不逐层递减）。
   List<({int col, int row})> _meltAdjacentIce(int c, int r,
-      {VehicleType? mover}) {
-    final melted = <({int col, int row})>[];
+      {VehicleType? mover}) {    final melted = <({int col, int row})>[];
     final ability = mover?.stats.ability;
     for (final (dc, dr) in [(1, 0), (-1, 0), (0, 1), (0, -1)]) {
       final nc = c + dc, nr = r + dr;
@@ -611,6 +671,10 @@ class BoardLogic {
     final normalByTier = <VehicleType, int>{};
     for (final s in _grid) {
       if (s == null || s.isEmpty) continue;
+      // Boss 冰封：冻住的车不可动、不可被合——不算可合资源。
+      // 不排除它会把「唯一同等级对是冻车」误判成有步可走，玩家零操作
+      // 而死局检测不触发，游戏永久卡死。
+      if (s.frozen > 0) continue;
       if (s.isWildcard) {
         wildcards += s.count;
       } else if (s.isBomb) {
@@ -661,6 +725,7 @@ class BoardLogic {
           queue.add(ni);
         } else if (!ns.isWildcard &&
             !ns.isBomb &&
+            ns.frozen == 0 &&
             ns.tier == tier) {
           return true;
         }
@@ -682,6 +747,7 @@ class BoardLogic {
           ns.isEmpty ||
           ns.isWildcard ||
           ns.isBomb ||
+          ns.frozen > 0 || // 冻车不能参与交换
           ns.tier == s.tier) {
         continue;
       }
@@ -697,6 +763,7 @@ class BoardLogic {
           final adj = at(ac, ar);
           if (adj != null &&
               !adj.isEmpty &&
+              adj.frozen == 0 && // 合成目标也不能是冻车
               !adj.isWildcard &&
               !adj.isBomb &&
               adj.tier == s.tier) {
@@ -738,7 +805,7 @@ class BoardLogic {
     var firstBomb = -1;
     for (var i = 0; i < _grid.length; i++) {
       final s = _grid[i];
-      if (s != null && s.isBomb) {
+      if (s != null && s.isBomb && s.frozen == 0) {
         if (firstBomb == -1) {
           firstBomb = i;
         } else {
@@ -756,7 +823,7 @@ class BoardLogic {
     var firstNormal = -1;
     for (var i = 0; i < _grid.length; i++) {
       final s = _grid[i];
-      if (s == null || s.isEmpty) continue;
+      if (s == null || s.isEmpty || s.frozen > 0) continue;
       if (s.isWildcard) {
         if (firstWild == -1) firstWild = i;
       } else if (!s.isBomb) {
@@ -775,9 +842,11 @@ class BoardLogic {
     for (var i = 0; i < _grid.length; i++) {
       final s = _grid[i];
       if (s == null || s.isEmpty || s.isWildcard || s.isBomb) continue;
+      if (s.frozen > 0) continue;
       for (var j = i + 1; j < _grid.length; j++) {
         final t = _grid[j];
         if (t == null || t.isEmpty || t.isWildcard || t.isBomb) continue;
+        if (t.frozen > 0) continue;
         if (t.tier == s.tier) {
           return (
             fc: i % cols,

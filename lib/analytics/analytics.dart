@@ -36,6 +36,10 @@ class AnalyticsService {
   }
 
   /// 关卡结束（胜负 + 关键结算指标）。
+  ///
+  /// [beatPar] = 用时 ≤ 参考时间（LevelDataGenerator.parSeconds）：
+  /// 与 elapsed_s 一起构成 par 常数的校准数据源——攒够对局后
+  /// 按同章 beat_par 比例回调 parSecPerDraw。
   void levelEnd({
     required LevelDefinition level,
     required bool won,
@@ -44,6 +48,7 @@ class AnalyticsService {
     required int maxCombo,
     required double elapsedSeconds,
     required int coins,
+    bool beatPar = false,
   }) {
     _log('level_end', {
       'level': level.id,
@@ -54,6 +59,7 @@ class AnalyticsService {
       'max_combo': maxCombo,
       'elapsed_s': elapsedSeconds.round(),
       'coins': coins,
+      'beat_par': beatPar,
     });
   }
 

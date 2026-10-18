@@ -14,6 +14,7 @@ import '../theme/app_theme.dart';
 import '../models/level.dart';
 import '../models/vehicle.dart';
 import '../save/save_repository.dart';
+import '../services/level_data_generator.dart';
 import '../services/level_progression.dart';
 import '../widgets/candy_ui.dart';
 import '../widgets/pressable.dart';
@@ -159,6 +160,12 @@ class _GameScreenState extends State<GameScreen> {
     _game.movesLeft.dispose();
     _game.bossHp.dispose();
     _game.bossMaxHp.dispose();
+    _game.bossEnraged.dispose();
+    _game.bossShielded.dispose();
+    _game.taintCards.dispose();
+    _game.pace.dispose();
+    _game.stockLocked.dispose();
+    _game.elapsedTick.dispose();
     super.dispose();
   }
 
@@ -172,6 +179,17 @@ class _GameScreenState extends State<GameScreen> {
     final consolation = GameConfig.mergeFailConsolation;
     var reward = won ? _starReward(score, stars) : consolation;
     if (_doubleCoin && won) reward *= 2;
+    // 参考时间（par）速通奖：用时 ≤ 生成期推算的「正常手感」→ 额外金币。
+    // par 由 [LevelDataGenerator.parSeconds] 从期望出牌数解析算出，
+    // 与牌堆反推同一套数学。纯奖励：超时零惩罚（Boss 攻击每 9 秒一招
+    // 不看玩家节奏，本身就是反磨蹭机制，不需要时钟补刀）。
+    // 数值同样待真实通关时长（埋点 elapsed_s）校准。
+    final par = LevelDataGenerator.parSeconds(widget.level);
+    final beatPar = LevelDataGenerator.beatPar(widget.level,
+        won: won, elapsedSeconds: _game.elapsedTime);
+    final parBonus = LevelDataGenerator.parBonusCoins(widget.level,
+        won: won, elapsedSeconds: _game.elapsedTime, score: score);
+    if (parBonus > 0) reward += parBonus;
     // 每日挑战：当天首次通关领固定大奖（不影响关卡解锁与星级）。
     var dailyBonus = 0;
     if (widget.level.daily && won) {
@@ -213,6 +231,7 @@ class _GameScreenState extends State<GameScreen> {
       maxCombo: _game.maxCombo,
       elapsedSeconds: _game.elapsedTime,
       coins: widget.data.coins,
+      beatPar: beatPar,
     );
     widget.repo.save(widget.data);
 
@@ -271,6 +290,8 @@ class _GameScreenState extends State<GameScreen> {
           stars: stars,
           maxCombo: _game.maxCombo,
           elapsedText: _elapsedText(),
+          parText: par > 0 ? _clockText(par.round()) : null,
+          beatPar: beatPar,
           endlessLevel: widget.level.endless ? _game.endlessLevel : 0,
           rank: endlessRank,
           reward: shownReward,
@@ -421,6 +442,33 @@ class _GameScreenState extends State<GameScreen> {
                       color: AppColors.ink2, fontSize: 12.5),
                 ),
               ),
+              // 参考时间对比（有 par 且无硬限时的关卡）：HUD 徽章只给
+              // 一个倍率数字，完整对比放这里——用时 / 参考 / 预计三块。
+              if (LevelDataGenerator.parSeconds(widget.level) > 0 &&
+                  widget.level.timeLimitSeconds == null &&
+                  !widget.level.endless) ...[
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    _pauseMetric(
+                        '用时', _clockText(_game.elapsedTime.round())),
+                    _pauseMetric(
+                        '参考',
+                        _clockText(
+                            LevelDataGenerator.parSeconds(widget.level).round())),
+                    _pauseMetric(
+                      '预计',
+                      _game.pace.value > 0
+                          ? '${_clockText((LevelDataGenerator.parSeconds(widget.level) / _game.pace.value).round())} ⚡${_game.pace.value.clamp(0.1, 9.9).toStringAsFixed(1)}×'
+                          : '—',
+                      valueColor: _game.pace.value >= 1
+                          ? AppColors.coinText
+                          : null,
+                      highlight: _game.pace.value >= 1,
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 16),
               CandyButton(
                 label: '继续游戏',
@@ -504,6 +552,52 @@ class _GameScreenState extends State<GameScreen> {
     final m = secs ~/ 60;
     final s = secs % 60;
     return m > 0 ? '${m}m${s.toString().padLeft(2, '0')}s' : '${s}s';
+  }
+
+  /// 紧凑时钟格式（参考时间 chip / 结算行用）：95 → "1:35"。
+  String _clockText(int secs) {
+    final m = secs ~/ 60;
+    final s = (secs % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  /// 暂停面板的参考时间数据块（用时 / 参考 / 预计）。highlight = 预计
+  /// 快于参考线，转金底提示「照这个手感能拿速通奖」。
+  Widget _pauseMetric(String label, String value,
+      {Color? valueColor, bool highlight = false}) {
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+        decoration: BoxDecoration(
+          color: highlight
+              ? AppColors.coinGold1.withValues(alpha: 0.16)
+              : AppColors.surfaceSoft,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: highlight
+                ? AppColors.coinGold1.withValues(alpha: 0.45)
+                : AppColors.ink3.withValues(alpha: 0.15),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label,
+                style: TextStyle(
+                    color: AppColors.ink2,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800)),
+            const SizedBox(height: 2),
+            Text(value,
+                style: TextStyle(
+                    color: valueColor ?? AppColors.ink1,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w900)),
+          ],
+        ),
+      ),
+    );
   }
 
   String _goalRemainText() {
@@ -720,21 +814,28 @@ class _GameScreenState extends State<GameScreen> {
             valueListenable: _game.bossHp,
             builder: (_, hp, _) {
               final max = widget.level.boss!.hp;
-              return _chip(
-                gradient: const [Color(0xFFB71C1C), Color(0xFF4A0E16)],
-                shadow: true,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('👑',
-                        style: TextStyle(fontSize: 13, color: Colors.white)),
-                    const SizedBox(width: 4),
-                    Text('$hp / $max',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 12)),
-                  ],
+              // 狂怒态：血条整体换亮红 + 🔥，与棋盘上变红的 Boss 呼应。
+              return ValueListenableBuilder<bool>(
+                valueListenable: _game.bossEnraged,
+                builder: (_, enraged, _) => _chip(
+                  gradient: enraged
+                      ? const [Color(0xFFFF5252), Color(0xFFB71C1C)]
+                      : const [Color(0xFFB71C1C), Color(0xFF4A0E16)],
+                  shadow: true,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(enraged ? '🔥' : '👑',
+                          style: const TextStyle(
+                              fontSize: 13, color: Colors.white)),
+                      const SizedBox(width: 4),
+                      Text('$hp / $max',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 12)),
+                    ],
+                  ),
                 ),
               );
             },
@@ -829,40 +930,54 @@ class _GameScreenState extends State<GameScreen> {
       valueListenable: _game.stockLeft,
       builder: (context, left, _) {
         final next = _game.upcomingStock;
-        return Column(
-          // 复用竖屏牌堆的 GlobalKey：教学高亮（stockPile）在横屏也能正确定位。
-          key: _stockBarKey,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            FittedBox(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (var i = 0; i < next.length; i++) ...[
-                    if (i > 0) const SizedBox(width: 6),
-                    _stockCard(
-                      next[i],
-                      index: i,
-                      size: 44,
-                      leading: i == 0,
-                      enabled: left > 0 && !_finished,
-                      onTap: () => _game.drawStock(i),
+        return ValueListenableBuilder<bool>(
+          valueListenable: _game.stockLocked,
+          builder: (context, locked, _) {
+            return Column(
+              // 复用竖屏牌堆的 GlobalKey：教学高亮（stockPile）在横屏也能正确定位。
+              key: _stockBarKey,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Opacity(
+                  opacity: locked ? 0.35 : 1.0,
+                  child: FittedBox(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (var i = 0; i < next.length; i++) ...[
+                          if (i > 0) const SizedBox(width: 6),
+                          _stockCard(
+                            next[i],
+                            index: i,
+                            size: 44,
+                            leading: i == 0,
+                            enabled: left > 0 && !_finished && !locked,
+                            onTap: () => _game.drawStock(i),
+                          ),
+                        ],
+                      ],
                     ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              widget.level.endless ? '无限牌堆' : '牌堆剩 $left 张',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: left > 0 ? AppColors.ink2 : AppColors.ink3,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  locked
+                      ? '🔒 被 Boss 锁住'
+                      : widget.level.endless
+                          ? '无限牌堆'
+                          : '牌堆剩 $left 张',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: locked
+                        ? const Color(0xFFFFB300)
+                        : (left > 0 ? AppColors.ink2 : AppColors.ink3),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -1094,33 +1209,152 @@ class _GameScreenState extends State<GameScreen> {
             builder: (_, v, _) {
               final isClear = widget.level.goalType == GoalType.clearBoard;
               final endless = widget.level.endless;
+              // pace 倍率徽章：>1 金色「⚡1.4×」= 照当前手感预计快于
+              // 参考线（能拿速通奖）；<1 浅底暗字 = 超线了，无奖励不罚。
+              // 替代旧版「⏱ 用时/参考」双数字——让玩家心算两个时间的
+              // 差值违反 HUD 原则，倍率一个数把比较说完。只在无硬限时
+              // 的关卡显示（限时关倒计时独占；无尽无 par）。
+              // Boss 关也走这条（血条那条路提前 return，这里先算好带过去）。
+              final par = LevelDataGenerator.parSeconds(widget.level);
+              final showPace = par > 0 &&
+                  widget.level.timeLimitSeconds == null &&
+                  !endless;
+              final paceChip = showPace
+                  ? ValueListenableBuilder<double>(
+                      valueListenable: _game.pace,
+                      builder: (_, p, _) {
+                        if (p <= 0) return const SizedBox.shrink();
+                        final ahead = p >= 1;
+                        return _chip(
+                          gradient: ahead
+                              ? const [
+                                  AppColors.coinGold1,
+                                  AppColors.coinGold2
+                                ]
+                              : const [
+                                  AppColors.surfaceLight,
+                                  AppColors.surfaceLight
+                                ],
+                          shadow: ahead,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (ahead) ...[
+                                const Text('⚡',
+                                    style: TextStyle(
+                                        color: AppColors.coinText,
+                                        fontSize: 13,
+                                        height: 1)),
+                                const SizedBox(width: 4),
+                              ],
+                              Text(
+                                '${p.clamp(0.1, 9.9).toStringAsFixed(1)}×',
+                                style: TextStyle(
+                                  color: ahead
+                                      ? AppColors.coinText
+                                      : AppColors.ink2,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    )
+                  : null;
               // Boss 关：进度 chip 换成 Boss 血条（红底 👑），产出进度
               // 由血条承载——「还要打几下」比「合成了几辆」更直接。
               if (widget.level.boss != null) {
                 final bossChip = ValueListenableBuilder<int>(
                   valueListenable: _game.bossHp,
-                  builder: (_, hp, _) => _chip(
-                    gradient: const [Color(0xFFB71C1C), Color(0xFF4A0E16)],
-                    shadow: true,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('👑',
-                            style:
-                                TextStyle(color: Colors.white, fontSize: 15, height: 1)),
-                        const SizedBox(width: 5),
-                        Text(
-                          '$hp / ${widget.level.boss!.hp}',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 15),
+                  builder: (_, hp, _) {
+                    // 护盾态优先于狂怒显示（盾期间打不动，玩家最需要知道）。
+                    return ValueListenableBuilder<bool>(
+                      valueListenable: _game.bossShielded,
+                      builder: (_, shielded, _) =>
+                          ValueListenableBuilder<bool>(
+                        valueListenable: _game.bossEnraged,
+                        builder: (_, enraged, _) => _chip(
+                          gradient: shielded
+                              ? const [Color(0xFFFFD54F), Color(0xFFF57F17)]
+                              : enraged
+                                  ? const [Color(0xFFFF5252), Color(0xFFB71C1C)]
+                                  : const [
+                                      Color(0xFFB71C1C),
+                                      Color(0xFF4A0E16)
+                                    ],
+                          shadow: true,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(shielded ? '🛡' : (enraged ? '🔥' : '👑'),
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 15,
+                                      height: 1)),
+                              const SizedBox(width: 5),
+                              Text(
+                                '$hp / ${widget.level.boss!.hp}',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 15),
+                              ),
+                            ],
+                          ),
                         ),
+                      ),
+                    );
+                  },
+                );
+                // 污染计数：☠️ N = 接下来 N 张出牌降一档。
+                final taintChip = ValueListenableBuilder<int>(
+                  valueListenable: _game.taintCards,
+                  builder: (_, n, _) => n > 0
+                      ? Padding(
+                          padding: const EdgeInsets.only(left: 6),
+                          child: _chip(
+                            gradient: const [
+                              Color(0xFF8BC34A),
+                              Color(0xFF33691E)
+                            ],
+                            shadow: true,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('☠️',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        height: 1)),
+                                const SizedBox(width: 4),
+                                Text('$n',
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 15)),
+                              ],
+                            ),
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                );
+                // 小屏（320px）chip 可能超宽：横向可滚，永不溢出。
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      bossChip,
+                      taintChip,
+                      if (paceChip != null) ...[
+                        const SizedBox(width: 8),
+                        paceChip,
                       ],
-                    ),
+                    ],
                   ),
                 );
-                return Row(children: [bossChip]);
               }
               final goalChip = _chip(
                 gradient: [
@@ -1241,11 +1475,18 @@ class _GameScreenState extends State<GameScreen> {
                   },
                 ));
               }
+              // pace 倍率徽章（paceChip 在 builder 开头统一算好，
+              // Boss 路与普通路共用）。
+              if (paceChip != null) {
+                chips.add(const SizedBox(width: 8));
+                chips.add(paceChip);
+              }
               return chips.length == 1
                   ? chips.first
-                  : Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: chips,
+                  // 小屏（320px）chip 可能超宽：横向可滚，永不溢出。
+                  : SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(mainAxisSize: MainAxisSize.min, children: chips),
                     );
             },
           ),
@@ -1266,9 +1507,17 @@ class _GameScreenState extends State<GameScreen> {
       howTo = '棋盘放满即结束';
     } else if (level.boss != null) {
       // Boss 关：目标栏直接教打法——合成什么车、打谁、防什么。
+      // 防什么按本章技能动态说（Boss 成长线，越深的章花招越多）。
+      final spec = level.boss!;
+      final threats = <String>[
+        '冰封你的原料车（在旁边合成来救）',
+        if (spec.stealTopTier) '抢走你最高档的车',
+        if (spec.lockStockSeconds > 0) '锁住牌堆几秒',
+        if (spec.enrageAtHalf) '残血时会狂怒提速',
+      ];
       title = '👑 Boss 战：合成 ${level.targetTier!.icon} ${level.targetTier!.name}'
-          ' 攻击 Boss，打空 ${level.boss!.hp} 血条就赢';
-      howTo = 'Boss 每 9 秒动手一次：红圈是它的目标，小心冰块和被拖车！';
+          ' 攻击 Boss，打空 ${spec.hp} 血条就赢';
+      howTo = 'Boss 每 9 秒动手一次，看到彩环就是要出手：${threats.join('、')}！';
     } else {
       // 清道夫关不用 goalText（"残留≤N 堆"太术语化，玩家看不懂），
       // 改成大白话：牌堆用完 + 场上剩的车不超过 N 组就赢。
@@ -1381,83 +1630,116 @@ class _GameScreenState extends State<GameScreen> {
         return ValueListenableBuilder<String?>(
           valueListenable: _game.hint,
           builder: (context, hint, _) {
-            return ValueListenableBuilder<double>(
-              valueListenable: _game.cellPx,
-              builder: (context, cellPx, _) {
-                return LayoutBuilder(builder: (context, bc) {
-                  final n = next.length;
-                  // 牌堆卡与棋盘格同尺寸：棋盘格子大（如 3x3 关）牌堆卡也大，
-                  // 格子小（如 6x6 关）也小，消除"两套尺寸"的割裂感。
-                  // 张数信息改为牌堆下方一行小字，让出横向空间给卡片本身。
-                  const slotPad = 6.0;
-                  const cardGap = 8.0;
-                  // 32 = 外层左右 padding，+2 = 牌槽描边，避免边界像素溢出。
-                  final byWidth =
-                      (bc.maxWidth - 34 - slotPad * 2 - cardGap * (n - 1)) / n;
-                  var size = cellPx * 0.96;
-                  if (size > byWidth) size = byWidth;
-                  size = size.clamp(36.0, 104.0);
-                  return Padding(
-                    key: _stockBarKey,
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (hint != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Text(
-                              hint,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                  color: AppColors.coralDeep, fontSize: 12),
-                            ),
-                          ),
-                        Center(
-                          child: Container(
-                            padding: const EdgeInsets.all(slotPad),
-                            decoration: AppTheme.frostedPanel(
-                              accent: AppColors.grape,
-                              radius: 22,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                for (var i = 0; i < n; i++) ...[
-                                  if (i > 0) const SizedBox(width: cardGap),
-                                  _stockCard(
-                                    next[i],
-                                    index: i,
-                                    size: size,
-                                    // 第一张是下一张要出的牌，用金边强调。
-                                    leading: i == 0,
-                                    enabled: left > 0 && !_finished,
-                                    onTap: () => _game.drawStock(i),
+            return ValueListenableBuilder<bool>(
+              valueListenable: _game.stockLocked,
+              builder: (context, locked, _) {
+                return ValueListenableBuilder<double>(
+                  valueListenable: _game.cellPx,
+                  builder: (context, cellPx, _) {
+                    return LayoutBuilder(builder: (context, bc) {
+                      final n = next.length;
+                      // 牌堆卡与棋盘格同尺寸：棋盘格子大（如 3x3 关）牌堆卡也大，
+                      // 格子小（如 6x6 关）也小，消除"两套尺寸"的割裂感。
+                      // 张数信息改为牌堆下方一行小字，让出横向空间给卡片本身。
+                      const slotPad = 6.0;
+                      const cardGap = 8.0;
+                      // 32 = 外层左右 padding，+2 = 牌槽描边，避免边界像素溢出。
+                      final byWidth = (bc.maxWidth - 34 - slotPad * 2 -
+                          cardGap * (n - 1)) / n;
+                      var size = cellPx * 0.96;
+                      if (size > byWidth) size = byWidth;
+                      size = size.clamp(36.0, 104.0);
+                      return Padding(
+                        key: _stockBarKey,
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (hint != null)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 6),
+                                child: Text(
+                                  hint,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                      color: AppColors.coralDeep,
+                                      fontSize: 12),
+                                ),
+                              ),
+                            Center(
+                              // 锁牌堆：整条牌堆压暗 + 中央大锁，点不动。
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Opacity(
+                                    opacity: locked ? 0.35 : 1.0,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(slotPad),
+                                      decoration: AppTheme.frostedPanel(
+                                        accent: AppColors.grape,
+                                        radius: 22,
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          for (var i = 0; i < n; i++) ...[
+                                            if (i > 0)
+                                              const SizedBox(width: cardGap),
+                                            _stockCard(
+                                              next[i],
+                                              index: i,
+                                              size: size,
+                                              // 第一张是下一张要出的牌，用金边强调。
+                                              leading: i == 0,
+                                              enabled: left > 0 &&
+                                                  !_finished &&
+                                                  !locked,
+                                              onTap: () => _game.drawStock(i),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
                                   ),
+                                  if (locked)
+                                    Text(
+                                      '🔒',
+                                      style: TextStyle(
+                                        fontSize: size * 0.7,
+                                        color: const Color(0xFFFFB300),
+                                        shadows: const [
+                                          Shadow(blurRadius: 6, color: Color(0x99000000))
+                                        ],
+                                      ),
+                                    ),
                                 ],
-                              ],
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 6),
+                            Text(
+                              locked
+                                  ? '🔒 Boss 锁住了牌堆，等一下…'
+                                  : widget.level.endless
+                                      ? '🂠 无限牌堆 · 点卡片出牌'
+                                      : (left > 0
+                                          ? '🂠 牌堆剩 $left 张 · 点卡片出牌'
+                                          : '🂠 牌已用完'),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: locked
+                                    ? const Color(0xFFFFB300)
+                                    : (left > 0 ? AppColors.ink2 : AppColors.ink3),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          widget.level.endless
-                              ? '🂠 无限牌堆 · 点卡片出牌'
-                              : (left > 0
-                                  ? '🂠 牌堆剩 $left 张 · 点卡片出牌'
-                                  : '🂠 牌已用完'),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: left > 0 ? AppColors.ink2 : AppColors.ink3,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                });
+                      );
+                    });
+                  },
+                );
               },
             );
           },
@@ -1770,6 +2052,12 @@ class _ResultDialog extends StatelessWidget {
   final int maxCombo;
   final String elapsedText;
 
+  /// 参考时间（par，null = 本关无参考线：限时关/无尽）。
+  final String? parText;
+
+  /// 是否达成速通（用时 ≤ par，已含在 [reward] 的加成里）。
+  final bool beatPar;
+
   /// 无尽模式等级与榜单名次（非无尽为 0 / null）。
   final int endlessLevel;
   final int? rank;
@@ -1802,6 +2090,8 @@ class _ResultDialog extends StatelessWidget {
     required this.stars,
     required this.maxCombo,
     required this.elapsedText,
+    this.parText,
+    this.beatPar = false,
     required this.endlessLevel,
     required this.rank,
     required this.reward,
@@ -1926,9 +2216,26 @@ class _ResultDialog extends StatelessWidget {
                       style: const TextStyle(color: AppColors.ink2, fontSize: 14),
                     )
                   else
-                    Text(
-                      '最大连消 x$maxCombo  ·  用时 $elapsedText',
-                      style: const TextStyle(color: AppColors.ink2, fontSize: 14),
+                    Column(
+                      children: [
+                        Text(
+                          '最大连消 x$maxCombo  ·  用时 $elapsedText'
+                          '${parText != null ? '  ·  参考 $parText' : ''}',
+                          style: const TextStyle(
+                              color: AppColors.ink2, fontSize: 14),
+                        ),
+                        // 速通徽章：奖励已并入总金币，这里只做事件感。
+                        if (beatPar) ...[
+                          const SizedBox(height: 4),
+                          const Text(
+                            '⚡ 速通达成！',
+                            style: TextStyle(
+                                color: AppColors.coinText,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900),
+                          ),
+                        ],
+                      ],
                     ),
                   const SizedBox(height: 20),
                   // 失败广告位：看广告续命（每局一次），放在主操作上方最显眼处。

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'vehicle.dart';
 import '../services/level_data_generator.dart';
 
@@ -96,15 +98,48 @@ class Obstacle {
       !removed && (type != ObstacleType.ice || layers > 0);
 }
 
+/// Boss 攻击技能（卡组制的原子单位）。
+///
+/// 按打击的维度分四组，全部只打「过程」不打「胜利」：
+/// - **原料链**：freeze 冰封（冻住最高档原料车）/ devolve 退化（最高档车
+///   打低 1-2 档）/ impound 扣押（拖进车库几秒后放回）
+/// - **空间**：steal 拖车（拖走一辆车）/ rubble 塌方（N 块碎石落随机
+///   空格占格）/ ice 冰块（单块占格，只作填充技）
+/// - **节奏**：lock 锁牌堆（抽牌读条点不动）/ taint 污染（接下来 K 张
+///   出牌强制 -1 档）
+/// - **博弈**：shield 护盾（周期开盾、产出不计 HP）——**被动光环，不进
+///   攻击轮盘**，由 spec.shieldCycle 参数驱动
+///
+/// 每个技能都必须满足三条红线（踩过的坑见 git 历史）：
+/// ① 净压力——不帮玩家腾格子/解冻；② 有反制窗口——预警期玩家能操作
+/// 规避或补救；③ 视觉可读——预警环颜色与技能一一对应。
+enum BossAttackKind {
+  freeze,
+  steal,
+  lock,
+  ice,
+  rubble,
+  impound,
+  devolve,
+  taint,
+  shield,
+}
+
 /// Boss 战配置（仅合成模式，null = 普通关）。
 ///
-/// Boss 关不只是「数值更难 + 徽标」——棋盘上方真的有一辆会动的 Boss 车：
-/// 待机浮动、盯上目标后靠近、举牌预警、然后**往棋盘扔冰块 / 把场上的车
-/// 拖走**。玩家合成目标车 = 攻击 Boss（每次 -1 HP），打空血条即胜。
+/// **卡组制**：每个 Boss = 1 主技 + 1 辅技（从章节解锁池抽取）+ 0-1 被动
+/// （狂怒 / 护盾）。早期版本是「if(章≥3) 加拖车」的开关式解锁，只增不
+/// 减，56 个 Boss 实际只有 4 种技能组、同章 4 个配置完全相同——空洞的
+/// 根源不是技能数量而是组装方式。卡组制下同章 4 个不重样，参数再按
+/// 关卡 id 派生，同卡组也不同强度。
 ///
-/// 为什么胜利条件改成打 Boss：Boss 关的叙事就是「击败它」，如果赢了它
-/// 还要去凑原来的产出数，事件感会被稀释。且需要的命中数 = 原目标数 +2，
-/// 比普通关只多两车，不是墙。
+/// 章内第 4 个 Boss（尖峰槽位）是**招牌 Boss**：固定强组合 + 绰号
+/// （碎石王 / 回收站 / 退化射线 / 银行家…），给玩家记忆点；普通 Boss
+/// 用卡组随机，保持新鲜感。
+///
+/// 玩家合成目标车 = 攻击 Boss（每次 -1 HP），打空血条即胜。胜利条件
+/// 改成打 Boss：Boss 关的叙事就是「击败它」，赢了它还要去凑原来的
+/// 产出数，事件感会被稀释。需要的命中数 = 原目标数 +2，不是墙。
 class BossSpec {
   /// Boss 总 HP（= 需要产出的目标车总数，含 +2 的 Boss 加码）。
   final int hp;
@@ -115,11 +150,174 @@ class BossSpec {
   /// 首次攻击延迟（秒）：给玩家读条、看清 Boss 长什么样再挨打。
   final double firstDelay;
 
+  /// 主技能：本 Boss 的招牌，一直可用。
+  final BossAttackKind primary;
+
+  /// 辅技能：与主技轮换上场（null = 单技能 Boss）。
+  final BossAttackKind? secondary;
+
+  /// 招牌绰号（尖峰 Boss 独有，如「碎石王」；普通卡组 Boss 为 null）。
+  final String? epithet;
+
+  /// 每次冰封攻击波及几张最高档原料车（狂怒时 +1）。
+  final int freezeCount;
+
+  /// 冰封层数：每在邻格完成一次合并融化 1 层。
+  final int freezeLayers;
+
+  /// 拖车抢最高档原料车。false = 只拖最低档（新手期轻骚扰，
+  /// 免得玩家刚建起的车队就被拆）。
+  final bool stealTopTier;
+
+  /// 锁牌堆秒数。0 = 不会锁（牌堆点不动，打断抽牌节奏）。
+  final double lockStockSeconds;
+
+  /// 残血（HP ≤ 一半）狂怒：攻击提速、冰封数 +1、整车变红。
+  final bool enrageAtHalf;
+
+  /// 塌方：一次落几块碎石（章 8+ 两块）。
+  final int rubbleCount;
+
+  /// 扣押：拖进车库几秒后放回场上。
+  final int impoundSeconds;
+
+  /// 污染：接下来几张出牌 -1 档。
+  final int taintCards;
+
+  /// 退化：打低几档（章 9+ 两档）。
+  final int devolveLevels;
+
+  /// 护盾周期（秒，0 = 不会盾；章 9+ 每 12 秒开盾一次）。
+  final double shieldCycle;
+
+  /// 护盾持续秒数（盾期间产出不计 HP）。
+  final double shieldDuration;
+
   const BossSpec({
     required this.hp,
     this.attackInterval = 9,
     this.firstDelay = 6,
+    this.primary = BossAttackKind.freeze,
+    this.secondary,
+    this.epithet,
+    this.freezeCount = 1,
+    this.freezeLayers = 2,
+    this.stealTopTier = false,
+    this.lockStockSeconds = 0,
+    this.enrageAtHalf = false,
+    this.rubbleCount = 1,
+    this.impoundSeconds = 3,
+    this.taintCards = 2,
+    this.devolveLevels = 1,
+    this.shieldCycle = 0,
+    this.shieldDuration = 3,
   });
+
+  /// 按章节深度推导卡组（Boss 成长线，见类文档）。
+  ///
+  /// [chapterIdx] 生成段章索引（0..13），[bossIndex] 章内 Boss 序号
+  /// （0..3；3 = 尖峰招牌位），[hp] 目标车数 +2。
+  ///
+  /// 攻击技能池按章解锁（同维度不堆同技能，保持组合差异）：
+  /// - 章 0-1：冰封 + 拖车（新手期轻骚扰）
+  /// - 章 2-3：+ 塌方 + 扣押
+  /// - 章 4-5：+ 退化
+  /// - 章 6-7：+ 污染 + 锁牌堆
+  /// - 章 8+：全池（7 个攻击技能）
+  ///
+  /// 普通 Boss 主技按序号轮转（保证同章不重样）、辅技按种子抽；
+  /// 尖峰 Boss 查招牌表。被动（狂怒章 11+ / 护盾章 9+）与攻击卡组
+  /// 正交叠加。种子带章号与序号——同一关每次生成结果一致（可测试、
+  /// 可复现），不同关不同。
+  factory BossSpec.forLevel(int chapterIdx, int bossIndex, int hp) {
+    final c = chapterIdx;
+    final pool = <BossAttackKind>[
+      BossAttackKind.freeze,
+      BossAttackKind.steal,
+    ];
+    if (c >= 2) pool.addAll([BossAttackKind.rubble, BossAttackKind.impound]);
+    if (c >= 4) pool.add(BossAttackKind.devolve);
+    if (c >= 6) pool.addAll([BossAttackKind.taint, BossAttackKind.lock]);
+    // 章 8+ 全池已齐；ice 是填充技不进卡组。
+
+    final rnd = Random(c * 31 + bossIndex * 7 + 101);
+    final sig = _signatureDeck(c);
+    BossAttackKind primary;
+    BossAttackKind? secondary;
+    String? epithet;
+    var shieldCycle = 0.0;
+
+    if (bossIndex == 3) {
+      // 尖峰招牌：固定强组合 + 绰号。
+      primary = sig.$1;
+      secondary = sig.$2;
+      epithet = sig.$3;
+      shieldCycle = sig.$4 ? 12 : 0;
+    } else {
+      primary = pool[bossIndex % pool.length];
+      var rest = pool.where((k) => k != primary).toList();
+      // 辅技避开招牌组合：尖峰位要独一份，不能被普通位抢先。
+      if (primary == sig.$1 && rest.length > 1) {
+        rest = rest.where((k) => k != sig.$2).toList();
+      }
+      secondary = rest[rnd.nextInt(rest.length)];
+      // 章 9+ 普通 Boss 也有半数概率带护盾光环（深水区压迫感）。
+      if (c >= 9 && rnd.nextDouble() < 0.5) shieldCycle = 12;
+    }
+
+    return BossSpec(
+      hp: hp,
+      primary: primary,
+      secondary: secondary,
+      epithet: epithet,
+      attackInterval: 9,
+      firstDelay: 6,
+      // 含冰封的卡组从章 3 起就冻两张（「双重冻气」提前登场）。
+      freezeCount: c >= 11 || (c >= 3 && _hasFreeze(primary, secondary))
+          ? 2
+          : 1,
+      freezeLayers: 2,
+      stealTopTier: c >= 3,
+      lockStockSeconds: c >= 7 ? 3.0 : 0,
+      enrageAtHalf: c >= 11,
+      rubbleCount: c >= 8 ? 2 : 1,
+      impoundSeconds: (3 + c ~/ 3).clamp(3, 6),
+      taintCards: c >= 6 ? 3 : 2,
+      devolveLevels: c >= 9 ? 2 : 1,
+      shieldCycle: shieldCycle,
+      shieldDuration: 3,
+    );
+  }
+
+  static bool _hasFreeze(BossAttackKind a, BossAttackKind? b) =>
+      a == BossAttackKind.freeze || b == BossAttackKind.freeze;
+
+  /// 招牌 Boss 表（章 0..13 的尖峰位）：
+  /// (主技, 辅技, 绰号, 是否带护盾)。
+  ///
+  /// 排布逻辑：前 10 章每章亮出一个新技能的「纯正形态」（碎石王 /
+  /// 回收站 / 退化射线 / 毒池…），后 4 章上双强组合 + 护盾，终章
+  /// 「终局车王」冰封 + 扣押 + 盾全齐。
+  static (BossAttackKind, BossAttackKind?, String, bool) _signatureDeck(
+      int c) {
+    const decks = <(BossAttackKind, BossAttackKind?, String, bool)>[
+      (BossAttackKind.rubble, BossAttackKind.freeze, '碎石王', false),
+      (BossAttackKind.impound, BossAttackKind.steal, '回收站', false),
+      (BossAttackKind.devolve, BossAttackKind.freeze, '退化射线', false),
+      (BossAttackKind.freeze, BossAttackKind.rubble, '双重冻气', false),
+      (BossAttackKind.taint, BossAttackKind.lock, '毒池', false),
+      (BossAttackKind.impound, BossAttackKind.devolve, '拆迁队', false),
+      (BossAttackKind.freeze, BossAttackKind.taint, '霜寒之心', false),
+      (BossAttackKind.lock, BossAttackKind.taint, '银行家', true),
+      (BossAttackKind.rubble, BossAttackKind.impound, '崩落巨兽', false),
+      (BossAttackKind.devolve, BossAttackKind.taint, '蚀变工场', true),
+      (BossAttackKind.lock, BossAttackKind.devolve, '终焉保险', true),
+      (BossAttackKind.taint, BossAttackKind.impound, '腐败漩涡', true),
+      (BossAttackKind.devolve, BossAttackKind.rubble, '铁锈君王', true),
+      (BossAttackKind.freeze, BossAttackKind.impound, '终局车王', true),
+    ];
+    return decks[c.clamp(0, decks.length - 1)];
+  }
 }
 
 /// 一次关卡的定义。

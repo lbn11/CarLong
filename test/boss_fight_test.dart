@@ -22,6 +22,18 @@ LevelDefinition _bossLevel({
   double firstDelay = 9999,
   double interval = 9,
   int stock = 90,
+  bool stealTop = false,
+  double lockSec = 0,
+  bool enrage = false,
+  BossAttackKind primary = BossAttackKind.freeze,
+  BossAttackKind? secondary,
+  int freezeCount = 1,
+  int rubbleCount = 1,
+  int impoundSeconds = 3,
+  int taintCards = 2,
+  int devolveLevels = 1,
+  double shieldCycle = 0,
+  double shieldDuration = 3,
 }) {
   return LevelDefinition(
     id: id,
@@ -35,6 +47,18 @@ LevelDefinition _bossLevel({
       hp: hp,
       attackInterval: interval,
       firstDelay: firstDelay,
+      primary: primary,
+      secondary: secondary,
+      stealTopTier: stealTop,
+      lockStockSeconds: lockSec,
+      enrageAtHalf: enrage,
+      freezeCount: freezeCount,
+      rubbleCount: rubbleCount,
+      impoundSeconds: impoundSeconds,
+      taintCards: taintCards,
+      devolveLevels: devolveLevels,
+      shieldCycle: shieldCycle,
+      shieldDuration: shieldDuration,
     ),
   );
 }
@@ -194,30 +218,172 @@ void main() {
     expect(find.text('👑 Boss 击败！'), findsOneWidget);
   });
 
-  testWidgets('Boss 会动手：预警后往棋盘扔冰块', (tester) async {
+  testWidgets('Boss 会动手：技能池至少出一种（冰封/偷车/锁牌堆/扔冰）', (tester) async {
     // firstDelay/interval 都压到 0.6s：测试时间内必然发动攻击。
+    // 默认 spec = 章 0 语义（只会冰封 + 拖最低档 + 冰块填充）。
     final level = _bossLevel(id: 9002, hp: 99, firstDelay: 0.6, interval: 0.6);
     final game = await pumpBossGame(tester, level);
 
-    // 先摆几辆车（也给"拖车"攻击准备目标）。
+    // 先摆几辆车（给冰封/拖车准备目标）。
     for (var i = 0; i < 6; i++) {
       game.drawStock();
       await tester.pump(const Duration(milliseconds: 80));
     }
-    final obsBefore = _obstacleCount(game);
-    expect(obsBefore, 0, reason: '测试关开局无障碍');
+    final carsBefore = _carCount(game);
+    expect(carsBefore, greaterThan(0));
 
     // 攻击周期：idle 0.6 + stalk 0.65 + windup 0.95 + strike 0.34 ≈ 2.5s
-    // 出手一次；再留余量给第二轮（拖车）。
+    // 出手一次；再留余量给第二轮。
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 500));
     }
 
-    expect(_obstacleCount(game), greaterThan(0),
-        reason: 'Boss 应往棋盘扔出至少一块冰');
+    // 攻击证据（任一成立即算 Boss 真的动了手）：
+    final froze = _frozenCount(game) > 0;
+    final iced = _obstacleCount(game) > 0;
+    final locked = game.stockLocked.value;
+    final stolen = _carCount(game) < carsBefore;
+    expect(froze || iced || locked || stolen, isTrue,
+        reason: 'Boss 应发动至少一种攻击（冻=$froze 冰=$iced 锁=$locked 偷=$stolen）');
     expect(game.hint.value, isNotNull);
     expect(game.hint.value!.contains('Boss'), isTrue,
         reason: '攻击要有提示说破：${game.hint.value}');
+  });
+
+  testWidgets('锁牌堆：锁定期间 drawStock 无效，解封后恢复', (tester) async {
+    final level = _bossLevel(id: 9003, hp: 99, firstDelay: 9999);
+    final game = await pumpBossGame(tester, level);
+    final before = game.stockLeft.value;
+
+    // 正常出牌扣牌堆。
+    game.drawStock();
+    await tester.pump(const Duration(milliseconds: 60));
+    expect(game.stockLeft.value, before - 1);
+
+    // Boss 上锁：出牌被拦（MergeGame.drawStock 内的拦截 + UI 置锁）。
+    game.stockLocked.value = true;
+    final lockedAt = game.stockLeft.value;
+    game.drawStock();
+    game.drawStock();
+    await tester.pump(const Duration(milliseconds: 60));
+    expect(game.stockLeft.value, lockedAt, reason: '锁定期牌堆不应减少');
+    expect(game.hint.value, isNotNull);
+
+    // 解封恢复。
+    game.stockLocked.value = false;
+    game.drawStock();
+    await tester.pump(const Duration(milliseconds: 60));
+    expect(game.stockLeft.value, lockedAt - 1);
+  });
+
+  testWidgets('狂怒：半血触发 bossEnraged（章 11+ 专属）', (tester) async {
+    final level = _bossLevel(id: 9004, hp: 4, firstDelay: 9999, enrage: true);
+    final game = await pumpBossGame(tester, level);
+    expect(game.bossEnraged.value, isFalse);
+
+    // 合成目标车打 Boss：4 血打到 2（= 半血）应触发狂怒。
+    var guard = 0;
+    while (!game.bossEnraged.value && guard < 60) {
+      guard++;
+      game.drawStock();
+      game.drawStock();
+      final pair = findMergePair(game);
+      if (pair != null) {
+        await tapCell(tester, game, pair.from.$1, pair.from.$2);
+        await tapCell(tester, game, pair.to.$1, pair.to.$2);
+        await tester.pump(const Duration(milliseconds: 120));
+      }
+    }
+    expect(game.bossEnraged.value, isTrue, reason: '半血应触发狂怒');
+    expect(game.bossHp.value, 2);
+  });
+
+  test('Boss 技能成长线：按章节解锁（章0 冰封 / 章3 抢高档 / 章7 锁牌堆 / 章11 狂怒）', () {
+    // 每章第一个 Boss 的落点（章内偏移 10）。
+    const ids = {0: 81, 3: 216, 7: 396, 11: 576};
+    for (final e in ids.entries) {
+      final lvl = levels[e.value - 1];
+      final spec = lvl.boss;
+      expect(spec, isNotNull, reason: '章${e.key} L${e.value} 应是 Boss 关');
+      final c = e.key;
+      expect(spec!.stealTopTier, c >= 3, reason: '章$c stealTopTier');
+      expect(spec.lockStockSeconds > 0, c >= 7, reason: '章$c lockStock');
+      expect(spec.enrageAtHalf, c >= 11, reason: '章$c enrage');
+      // 冰封张数：章 11+ 恒 2；章 3+ 卡组含冰封也 2（章 0-2 的 0 号位
+      // 普通 Boss 主技恒为冰封，双重冻气提前登场）；章 0 在保护期内仍 1。
+      const freezeCounts = {0: 1, 3: 2, 7: 2, 11: 2};
+      expect(spec.freezeCount, freezeCounts[c], reason: '章$c freezeCount');
+      expect(spec.freezeLayers, 2, reason: '章$c freezeLayers');
+    }
+  });
+
+  test('Boss 关 id 公式与全表实际落点一致（调试面板 56 关列表同源）', () {
+    // 生成器选点：章内偏移 10 + b×11。调试面板的 _allBossIds 用的是
+    // 同一个公式，这里反向钉死：公式集合 == 全表 boss != null 的集合，
+    // 防止一边改了另一边漂移（调面板时少关/多关立刻暴露）。
+    final expected = <int>{};
+    for (var c = 0; c < 14; c++) {
+      for (var b = 0; b < 4; b++) {
+        expected.add(71 + c * 45 + 10 + b * 11);
+      }
+    }
+    final actual = <int>{};
+    for (final lvl in levels) {
+      if (lvl.boss != null) actual.add(lvl.id);
+    }
+    expect(actual.length, 56, reason: '全表应有 56 个 Boss 关');
+    expect(actual, expected, reason: 'Boss 关落点应与公式一致');
+  });
+
+  test('Boss 卡组制：同章 4 个卡组不重样、尖峰有招牌、全表覆盖多技能', () {
+    // 每章 4 个 Boss（章内偏移 10/21/32/43），起始 id = 71 + 章×45。
+    final decksByChapter = <int, Set<String>>{};
+    final primaries = <BossAttackKind>{};
+    for (var c = 0; c < 14; c++) {
+      decksByChapter[c] = {};
+      for (var b = 0; b < 4; b++) {
+        final id = 71 + c * 45 + 10 + b * 11;
+        final spec = levels[id - 1].boss;
+        expect(spec, isNotNull, reason: 'L$id 应是 Boss 关');
+        expect(spec!.primary, isNotNull);
+        expect(spec.secondary, isNotNull, reason: 'L$id 卡组应有辅技能');
+        decksByChapter[c]!.add('${spec.primary.name}+${spec.secondary!.name}');
+        primaries.add(spec.primary);
+        if (b == 3) {
+          // 尖峰位：招牌 Boss，绰号非空。
+          expect(spec.epithet, isNotNull, reason: 'L$id 尖峰应有招牌绰号');
+        } else {
+          expect(spec.epithet, isNull, reason: 'L$id 普通卡组不应有绰号');
+        }
+      }
+    }
+    // 同章 4 个 Boss 卡组：章 2+ 池子 ≥4 种，4 个互不相同；
+    // 章 0-1 池子只有 2 个技能（新手期），0/2 号位主技相同属刻意设计
+    // ——先让玩家把冰封+拖车练熟，再上卡组多样性。
+    for (final e in decksByChapter.entries) {
+      expect(
+          e.value.length,
+          e.key <= 1 ? greaterThanOrEqualTo(3) : 4,
+          reason: '章${e.key} 4 个 Boss 卡组应互不相同，实际 ${e.value.length}');
+    }
+    // 全表 56 个 Boss 至少覆盖 5 种不同主技能（卡组制不是换皮）。
+    expect(primaries.length, greaterThanOrEqualTo(5),
+        reason: '主技能种类：$primaries');
+    // 末章（全池）：4 个 Boss 主技 ≥3 种、主辅合计覆盖 ≥5 个技能
+    // （组合互异已由上面的循环断言；招牌主技允许与普通位相同）。
+    final lastPrimaries = <BossAttackKind>{};
+    final lastSkills = <BossAttackKind>{};
+    for (var b = 0; b < 4; b++) {
+      final id = 71 + 13 * 45 + 10 + b * 11;
+      final spec = levels[id - 1].boss!;
+      lastPrimaries.add(spec.primary);
+      lastSkills.add(spec.primary);
+      lastSkills.add(spec.secondary!);
+    }
+    expect(lastPrimaries.length, greaterThanOrEqualTo(3),
+        reason: '末章主技种类：$lastPrimaries');
+    expect(lastSkills.length, greaterThanOrEqualTo(5),
+        reason: '末章技能覆盖：$lastSkills');
   });
 }
 
@@ -227,6 +393,30 @@ int _obstacleCount(MergeGame game) {
   for (var c = 0; c < game.level.cols; c++) {
     for (var r = 0; r < game.level.rows; r++) {
       if (game.board.obstacleAt(c, r) != null) n++;
+    }
+  }
+  return n;
+}
+
+/// 棋盘上被 Boss 冰封的车辆数（冰封技能的直接证据）。
+int _frozenCount(MergeGame game) {
+  var n = 0;
+  for (var c = 0; c < game.level.cols; c++) {
+    for (var r = 0; r < game.level.rows; r++) {
+      final d = game.board.at(c, r);
+      if (d != null && !d.isEmpty && d.frozen > 0) n++;
+    }
+  }
+  return n;
+}
+
+/// 棋盘上的车辆数（拖车技能的直接证据：变少即被偷）。
+int _carCount(MergeGame game) {
+  var n = 0;
+  for (var c = 0; c < game.level.cols; c++) {
+    for (var r = 0; r < game.level.rows; r++) {
+      final d = game.board.at(c, r);
+      if (d != null && !d.isEmpty) n++;
     }
   }
   return n;

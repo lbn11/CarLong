@@ -10,6 +10,7 @@ import 'package:flutter/widgets.dart' hide View;
 import '../logic/board_logic.dart';
 import '../models/vehicle.dart';
 import '../models/level.dart';
+import '../services/level_data_generator.dart';
 import '../theme/app_theme.dart';
 import 'audio_feedback.dart';
 import 'vehicle_icons.dart';
@@ -127,6 +128,22 @@ class MergeGame extends FlameGame {
   late final ValueNotifier<int> bossHp;
   late final ValueNotifier<int> bossMaxHp;
 
+  /// Boss 是否已狂怒（残血触发）。UI 读它把血条改成闪红。
+  final ValueNotifier<bool> bossEnraged = ValueNotifier<bool>(false);
+
+  /// 牌堆是否被 Boss 锁住（锁牌堆技能）。UI 读它盖锁徽标。
+  final ValueNotifier<bool> stockLocked = ValueNotifier<bool>(false);
+
+  /// Boss 护盾是否张开（护盾光环技能）。UI 读它把血条改成金色。
+  final ValueNotifier<bool> bossShielded = ValueNotifier<bool>(false);
+
+  /// 牌堆污染剩余张数（污染技能：接下来 N 张出牌 -1 档）。
+  final ValueNotifier<int> taintCards = ValueNotifier<int>(0);
+
+  /// 本局用时（整秒，HUD 参考时间 chip 用）。只在秒数变化时通知，
+  /// 避免每帧重建。无参考时间的关卡（限时关/无尽）没有监听者，零成本。
+  final ValueNotifier<int> elapsedTick = ValueNotifier<int>(0);
+
   /// 游戏结束回调 (是否获胜)。
   void Function(bool won)? onGameOver;
 
@@ -148,6 +165,15 @@ class MergeGame extends FlameGame {
   /// 本局统计。
   int maxCombo = 0;
   double elapsedTime = 0;
+
+  /// 实时 pace 倍率（HUD 徽章）：>1 预计快于 par 可速通，<1 无奖励不罚，
+  /// 0 = 不显示（无尽/限时关/开局）。0.25s 节流重算，见
+  /// [LevelDataGenerator.paceRatio]。
+  final ValueNotifier<double> pace = ValueNotifier<double>(0);
+  double _paceT = 0;
+
+  /// [elapsedTick] 上一次发出的整秒值（变化才通知，省重建）。
+  int _lastElapsedTick = 0;
 
   /// 无尽模式动态目标。
   late VehicleType _endlessTarget = level.targetTier ?? VehicleType.taxi;
@@ -194,6 +220,23 @@ class MergeGame extends FlameGame {
 
   /// Boss 死亡演出倒计时（>0 = 正在播死亡动画，结束后才判定胜利）。
   double _bossDeathT = 0;
+
+  /// 锁牌堆剩余秒数（Boss 技能）。>0 时牌堆点不动。
+  double _stockLockT = 0;
+
+  /// 融雪安全阀计时：玩家被冻车卡死时，每 2.5s 全场冻车融 1 层，
+  /// 保证「永远解冻不了」不可能发生。非卡死状态归零。
+  double _meltT = 0;
+
+  /// 扣押中的车（Boss 技能⑤）：到 releaseAt 时刻放回场上。
+  final List<({StackData data, double releaseAt})> _impounded = [];
+
+  /// 污染剩余张数（Boss 技能⑦）：>0 时抽出的牌 -1 档。
+  int _taintCards = 0;
+
+  /// 护盾周期相位（Boss 护盾光环）：cycle 内前 duration 秒开盾。
+  double _shieldPhase = 0;
+  bool _shieldUp = false;
 
   /// 屏震:衰减计时。
   double _shakeT = 0;
@@ -355,9 +398,7 @@ class MergeGame extends FlameGame {
       final boss = BossSprite(
         game: this,
         tier: level.targetTier!.next?.next ?? level.targetTier!,
-        hp: spec.hp,
-        attackInterval: spec.attackInterval,
-        firstDelay: spec.firstDelay,
+        spec: spec,
       )..priority = 2;
       boss.layout(_boardOrigin, _cellSize);
       _boss = boss;
@@ -445,8 +486,61 @@ class MergeGame extends FlameGame {
       }
     }
 
+    // 锁牌堆倒计时：到点自动解封。
+    if (_stockLockT > 0) {
+      _stockLockT -= dt;
+      if (_stockLockT <= 0) {
+        _stockLockT = 0;
+        stockLocked.value = false;
+        hint.value = '🔓 牌堆解锁了';
+      }
+    }
+
+    // Boss 扣押放回：到点的车智能落位回场（满了顺延，不吞车）。
+    _releaseImpounded();
+
+    // Boss 护盾光环：cycle 内前 duration 秒开盾，期间产出不计 HP。
+    final bossSpec = level.boss;
+    if (_boss != null &&
+        !_boss!.dead &&
+        bossSpec != null &&
+        bossSpec.shieldCycle > 0) {
+      _shieldPhase = (_shieldPhase + dt) % bossSpec.shieldCycle;
+      final up = _shieldPhase < bossSpec.shieldDuration;
+      if (up != _shieldUp) {
+        _shieldUp = up;
+        bossShielded.value = up;
+        if (up) {
+          hint.value = '🛡 Boss 张开护盾，攒不住劲了，先布局！';
+          feedback.play(Sfx.bonus);
+        } else {
+          hint.value = '🛡 护盾消失，全力进攻！';
+        }
+      }
+    } else if (_shieldUp) {
+      _shieldUp = false;
+      bossShielded.value = false;
+    }
+
     if (_ended) return;
     elapsedTime += dt;
+    final tick = elapsedTime.round();
+    if (tick != _lastElapsedTick) {
+      _lastElapsedTick = tick;
+      elapsedTick.value = tick;
+    }
+    // pace 徽章节流重算（0.25s）：HUD 显示「照当前手感能不能速通」。
+    _paceT += dt;
+    if (_paceT >= 0.25) {
+      _paceT = 0;
+      pace.value = LevelDataGenerator.paceRatio(
+        level,
+        elapsed: elapsedTime,
+        stockLeft: stockLeft.value,
+        produced: produced.value,
+        bossHp: bossHp.value,
+      );
+    }
     // Boss 死亡演出：血条打空后先播 1.15s 爆炸/彩带再结算，
     // 否则「砰」下一秒就弹窗，事件感被掐掉。
     if (_bossDeathT > 0) {
@@ -498,6 +592,31 @@ class MergeGame extends FlameGame {
         return;
       }
     }
+    // ── 融雪安全阀 ──
+    // 玩家真卡死（牌堆空或棋盘满，且无可合步）时，若场上还有冻车：
+    // 每 2.5s 全场融 1 层。没有它，「Boss 把车全冻住」会出现两种永久的
+    // 坏结局——① hasPossibleMove 曾把冻车算成可合资源，死局检测不触发，
+    // 游戏挂着永不结束；② 检测修好后直接判负，玩家没有任何翻盘机会。
+    // 融雪期间暂停死局收尾；全部融化后仍无步 → 走下面的标准死局处理。
+    if (!level.endless &&
+        board.hasFrozen &&
+        (_deck.isEmpty || board.isFull) &&
+        !board.hasPossibleMove) {
+      _meltT += dt;
+      if (_meltT >= 2.5) {
+        _meltT = 0;
+        final melted = board.meltAllFrozenOneLayer();
+        if (melted > 0) {
+          final left = board.frozenLayers;
+          hint.value = left > 0
+              ? '☃️ 无路可走了…冰层在减弱（还剩 $left 层）'
+              : '☀️ 冰层全部融化！';
+          feedback.play(Sfx.bonus);
+        }
+      }
+      return;
+    }
+    _meltT = 0;
     if (board.isDeadlocked) {
       if (level.endless) {
         _end(false, failReason: MergeFailReason.endlessStuck);
@@ -518,6 +637,12 @@ class MergeGame extends FlameGame {
   /// 落点用 [BoardLogic.placeTierSmart]：优先同等级卡旁（一步可合），其次随机。
   void drawStock([int index = 0]) {
     if (_ended) return;
+    // Boss 锁牌堆：整段读条时间牌堆点不动（打断抽牌节奏）。
+    if (stockLocked.value) {
+      hint.value = '🔒 Boss 锁住了牌堆，等一下！';
+      feedback.play(Sfx.error);
+      return;
+    }
     final source = level.endless ? _upcoming : _deck;
     if (source.isEmpty) return;
     if (board.isFull) {
@@ -526,7 +651,7 @@ class MergeGame extends FlameGame {
       return;
     }
     final safe = index.clamp(0, source.length - 1);
-    final tier = source.removeAt(safe);
+    final tier = _applyTaint(source.removeAt(safe));
     if (!level.endless) stockLeft.value = _deck.length;
     final cell = board.placeTierSmart(tier);
     if (cell != null) {
@@ -590,6 +715,16 @@ class MergeGame extends FlameGame {
   void _damageBoss(int col, int row) {
     final boss = _boss;
     if (boss == null || boss.dead) return;
+    // 护盾张着：这一击被挡下（不扣血、不触发死亡/狂怒判定），
+    // 只播受击反馈——玩家要等盾间隙再爆发。
+    if (_shieldUp) {
+      boss.hit(blocked: true);
+      _spawnFloat(col, row, '🛡 格挡',
+          color: const Color(0xFFFFD54F), fontSize: 20);
+      hint.value = '🛡 护盾挡下了这一击，等盾消失再进攻！';
+      feedback.play(Sfx.error);
+      return;
+    }
     boss.hit();
     bossHp.value = boss.hp;
     _spawnFloat(col, row, '👑 -1',
@@ -597,6 +732,19 @@ class MergeGame extends FlameGame {
     add(Shockwave(_cellCenter(col, row),
         color: const Color(0xFFEF5350), maxRadius: _cellSize * 0.9));
     feedback.play(Sfx.merge);
+    // 残血狂怒（章 11+）：血条过半那一刻 Boss 进入狂暴，攻击提速、
+    // 冰封数 +1、整车变红——Boss 战的节奏弧线顶点。
+    final spec = level.boss;
+    if (spec != null &&
+        spec.enrageAtHalf &&
+        !boss.enraged &&
+        boss.hp <= spec.hp / 2) {
+      boss.enrage();
+      bossEnraged.value = true;
+      hint.value = '👑 Boss 狂怒了！攻击变快了！';
+      feedback.play(Sfx.bonus);
+      shake(6, 0.3);
+    }
     if (boss.hp <= 0) {
       _bossDeathT = 1.15;
       hint.value = '👑 Boss 倒下了！';
@@ -610,7 +758,86 @@ class MergeGame extends FlameGame {
     }
   }
 
-  /// Boss 攻击①：往空格扔一块冰（占格、挡路，邻格合成可融化）。
+  /// Boss 技能①冰封：把场上最高档的**非目标**普通车冻住（默认 1 张，
+  /// 狂怒/深水区 2 张）。冰封车动不了也合不了，玩家必须在其邻格
+  /// 完成 freezeLayers 次合并才能「救」回来——合成链顶端被掐断，
+  /// 这才是真正有痛感的阻挡。
+  ///
+  /// 不冻目标车：胜利资源被偷会造成「赢了却被赖掉」的挫败感，
+  /// 痛感应来自「进度被拖慢」而不是「胜利被剥夺」。
+  /// 返回实际冻住几张（0 = 全场没货，调用方应换招）。
+  int _bossFreezeCar({int count = 1, int layers = 2}) {
+    final target = level.targetTier;
+    final candidates = <({int col, int row, int tierId})>[];
+    for (var c = 0; c < level.cols; c++) {
+      for (var r = 0; r < level.rows; r++) {
+        final d = board.at(c, r);
+        if (d == null || d.isEmpty || d.isWildcard || d.isBomb) continue;
+        if (d.frozen > 0) continue; // 已冻过的别再冻（浪费一招）
+        if (d.tier == target) continue; // 不碰目标车
+        candidates.add((col: c, row: r, tierId: d.tier.index));
+      }
+    }
+    if (candidates.isEmpty) return 0;
+    candidates.sort((a, b) => b.tierId.compareTo(a.tierId));
+    var froze = 0;
+    for (final t in candidates.take(count.clamp(1, 3))) {
+      board.freezeAt(t.col, t.row, layers: layers);
+      add(BurstParticles(
+        _cellCenter(t.col, t.row),
+        const Color(0xFF81D4FA),
+        count: 14,
+        speed: 100,
+      ));
+      add(Shockwave(
+        _cellCenter(t.col, t.row),
+        color: const Color(0xFF4FC3F7),
+        maxRadius: _cellSize * 0.6,
+      ));
+      froze++;
+    }
+    shake(4, 0.2);
+    hint.value = froze > 1
+        ? '🧊 Boss 冰封了 $froze 张原料车，在旁边合成来救它们！'
+        : '🧊 Boss 冻住了你的原料车，在旁边合成来救它！';
+    feedback.play(Sfx.place);
+    return froze;
+  }
+
+  /// Boss 技能②拖车：把场上的一辆车拖走。
+  /// [topTier] = 抢最高档（掠夺资产，章 3+）；false = 拖最低档
+  /// （新手期轻骚扰——最低档本就是待清理的合成废料）。
+  void _bossStealCar(int col, int row) {
+    final data = board.removeAt(col, row);
+    if (data == null) return;
+    final sprite = _findStack(col, row);
+    if (sprite != null) {
+      _stackSprites.remove(sprite);
+      sprite.removePuff();
+    }
+    add(BurstParticles(
+      _cellCenter(col, row),
+      const Color(0xFFAB47BC),
+      count: 14,
+      speed: 90,
+    ));
+    hint.value = '😈 Boss 拖走了你的 ${data.tier.icon} ${data.tier.name}！';
+    feedback.play(Sfx.error);
+    _refreshGoal();
+  }
+
+  /// Boss 技能③锁牌堆：seconds 秒内牌堆点不动（抽牌节奏被打断）。
+  void _bossLockStock(double seconds) {
+    if (seconds <= 0) return;
+    _stockLockT = seconds;
+    stockLocked.value = true;
+    hint.value = '🔒 Boss 锁住了牌堆 ${seconds.round()} 秒！';
+    feedback.play(Sfx.error);
+    shake(5, 0.25);
+  }
+
+  /// Boss 填充技：往空格扔一块冰（占格、挡路，邻格合成可融化）。
+  /// 只在「没有车可冻/可抢」时用——冰块本身很弱，不能当主菜。
   void _bossDropIce(int col, int row) {
     if (board.at(col, row) != null || board.obstacleAt(col, row) != null) return;
     board.addObstacle(ObstacleType.ice, col, row, layers: 1);
@@ -630,8 +857,35 @@ class MergeGame extends FlameGame {
     feedback.play(Sfx.place);
   }
 
-  /// Boss 攻击②：把场上一辆车拖走（优先最低档，不碰万能卡/炸弹）。
-  void _bossStealCar(int col, int row) {
+  /// Boss 技能④塌方：往空格落一块碎石（两层冰，需两次邻格合并化掉）。
+  /// 与冰块的区别：塌方一次落 N 块（章 8+ 两块）且预警环是石灰色，
+  /// 玩家看到褐色圈就要开始清列——范围压迫，不是补位。
+  void _bossDropStone(int col, int row) {
+    if (board.at(col, row) != null || board.obstacleAt(col, row) != null) return;
+    board.addObstacle(ObstacleType.ice, col, row, layers: 2);
+    add(BurstParticles(
+      _cellCenter(col, row),
+      const Color(0xFFBCAAA4),
+      count: 18,
+      speed: 130,
+    ));
+    add(Shockwave(
+      _cellCenter(col, row),
+      color: const Color(0xFF8D6E63),
+      maxRadius: _cellSize * 0.65,
+    ));
+    shake(5, 0.25);
+    feedback.play(Sfx.place);
+  }
+
+  /// Boss 技能⑤扣押：把一辆原料车拖进 Boss 车库，[spec.impoundSeconds]
+  /// 秒后放回场上（[_releaseImpounded] 驱动）。与拖车的区别：车只是
+  /// 「暂时没了」而不是永久损失——痛感来自关键位突然空出来，以及
+  /// 放回位置不可控（智能落点，未必回原格）。
+  ///
+  /// 只扣 count==1 的单张：一堆两辆的车已是半步合成状态，扣了放回时
+  /// 数量恢复不了，属于「赢了却被赖掉」的挫败设计，不做。
+  void _bossImpoundCar(int col, int row) {
     final data = board.removeAt(col, row);
     if (data == null) return;
     final sprite = _findStack(col, row);
@@ -639,15 +893,108 @@ class MergeGame extends FlameGame {
       _stackSprites.remove(sprite);
       sprite.removePuff();
     }
+    _impounded.add((
+      data: data,
+      releaseAt: elapsedTime + (level.boss?.impoundSeconds ?? 3),
+    ));
     add(BurstParticles(
       _cellCenter(col, row),
-      const Color(0xFFAB47BC),
-      count: 14,
-      speed: 90,
+      const Color(0xFFEC407A),
+      count: 16,
+      speed: 100,
     ));
-    hint.value = '😈 Boss 拖走了你的 ${data.tier.icon} ${data.tier.name}！';
+    add(Shockwave(
+      _cellCenter(col, row),
+      color: const Color(0xFFEC407A),
+      maxRadius: _cellSize * 0.6,
+    ));
+    hint.value =
+        '🚗 Boss 把 ${data.tier.icon} ${data.tier.name} 扣押进了车库，'
+        '${level.boss?.impoundSeconds ?? 3} 秒后放回！';
     feedback.play(Sfx.error);
     _refreshGoal();
+  }
+
+  /// 扣押到期放回：智能落点（优先同等级邻格）。棋盘满了就顺延到下一帧，
+  /// 不会吞车。
+  void _releaseImpounded() {
+    if (_impounded.isEmpty) return;
+    for (final item in _impounded.toList()) {
+      if (elapsedTime < item.releaseAt) continue;
+      final cell = board.placeTierSmart(item.data.tier);
+      if (cell == null) continue; // 满了：下一帧再试
+      _impounded.remove(item);
+      _addStack(cell.col, cell.row);
+      add(BurstParticles(
+        _cellCenter(cell.col, cell.row),
+        const Color(0xFFEC407A),
+        count: 12,
+        speed: 90,
+      ));
+      hint.value = '✨ 被扣押的 ${item.data.tier.icon} 放回来了！';
+    }
+  }
+
+  /// Boss 技能⑥退化：把一辆原料车打低 [levels] 档（章 9+ 两档）。
+  /// 不碰目标车；已经是最低档（自行车）的直接拆掉——等级链顶端被
+  /// 削掉，玩家要重新攒，这才是真痛感（对比：冰块占格还能绕）。
+  void _bossDevolveCar(int col, int row, {int levels = 1}) {
+    final d = board.at(col, row);
+    if (d == null || d.isEmpty || d.isWildcard || d.isBomb) return;
+    if (d.tier == level.targetTier) return; // 不碰目标车
+    final newIdx = (d.tier.index - levels)
+        .clamp(0, VehicleType.values.length - 1);
+    final old = d.tier;
+    if (newIdx == d.tier.index) {
+      // 已经到底：拆解移除。
+      board.removeAt(col, row);
+      final sprite = _findStack(col, row);
+      if (sprite != null) {
+        _stackSprites.remove(sprite);
+        sprite.removePuff();
+      }
+      hint.value = '💥 Boss 拆掉了你的 ${old.icon} ${old.name}！';
+    } else {
+      d.tier = VehicleType.values[newIdx];
+      hint.value = '📉 Boss 施了退化射线：${old.icon} ${old.name} '
+          '→ ${d.tier.icon} ${d.tier.name}！';
+    }
+    add(BurstParticles(
+      _cellCenter(col, row),
+      const Color(0xFF7E57C2),
+      count: 18,
+      speed: 110,
+    ));
+    add(Shockwave(
+      _cellCenter(col, row),
+      color: const Color(0xFF7E57C2),
+      maxRadius: _cellSize * 0.7,
+    ));
+    shake(5, 0.25);
+    feedback.play(Sfx.error);
+    _refreshGoal();
+  }
+
+  /// Boss 技能⑦污染：接下来 [spec.taintCards] 张从牌堆出的牌强制 -1 档
+  /// （在 drawStock 里执行）。反制：这几张吃存粮不抽牌，或者故意把
+  /// 要合的垫脚车位置留给它们。
+  void _bossTaint() {
+    final source = level.endless ? _upcoming : _deck;
+    if (source.isEmpty) return;
+    _taintCards = level.boss?.taintCards ?? 2;
+    taintCards.value = _taintCards;
+    hint.value = '☠️ Boss 污染了牌堆！接下来 $_taintCards 张会降一档！';
+    feedback.play(Sfx.error);
+    shake(4, 0.2);
+  }
+
+  /// 抽牌时应用污染：抽出的牌 -1 档（最低档保持不变，不会变负）。
+  VehicleType _applyTaint(VehicleType tier) {
+    if (_taintCards <= 0) return tier;
+    _taintCards--;
+    taintCards.value = _taintCards;
+    return VehicleType.values[(tier.index - 1)
+        .clamp(0, VehicleType.values.length - 1)];
   }
 
   /// 是否还有可撤销的步骤。
@@ -2067,10 +2414,54 @@ class StackSprite extends PositionComponent
 
     if (data.count == 2) _drawBadge(canvas);
 
+    // Boss 冰封覆盖：蓝白霜面 + 层数点，盖在卡面上（迷雾之前）。
+    if (data.frozen > 0) _drawFrost(canvas, rr);
+
     // 迷雾覆盖：隐藏卡面。
     if (game.board.isFogged(col, row)) {
       paintFog(canvas, rr);
     }
+  }
+
+  /// 冰封视觉：半透蓝白霜面 + 霜边 + 层数点（还剩几层没化）。
+  /// 让"这张车动不了"一眼可辨，且层数递减时玩家看得见进度。
+  void _drawFrost(Canvas canvas, RRect rr) {
+    canvas.drawRRect(
+      rr,
+      Paint()
+        ..color = const Color(0xFFB3E5FC).withValues(alpha: 0.62)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1),
+    );
+    canvas.drawRRect(
+      rr,
+      Paint()
+        ..color = const Color(0xFFE1F5FE).withValues(alpha: 0.9)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+    // 层数点：底部一排小圆点，化掉一层少一个。
+    final dotR = size.x * 0.035;
+    final gap = dotR * 3;
+    final totalW = gap * (data.frozen - 1);
+    for (var i = 0; i < data.frozen; i++) {
+      canvas.drawCircle(
+        Offset(-totalW / 2 + gap * i, size.y * 0.38),
+        dotR,
+        Paint()..color = const Color(0xFFFFFFFF).withValues(alpha: 0.95),
+      );
+    }
+    // 中央 ❄ 标，冰封身份 unmistakable。
+    final tp = TextPainter(
+      text: const TextSpan(
+        text: '❄',
+        style: TextStyle(fontSize: 20, color: Color(0xE6FFFFFF)),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(
+      canvas,
+      Offset(-tp.width / 2 + size.x * 0.28, -tp.height / 2 - size.y * 0.28),
+    );
   }
 
   void _drawIcon(Canvas canvas) {
@@ -2447,9 +2838,6 @@ class _ConfettiPiece {
   });
 }
 
-/// Boss 攻击类型。
-enum BossAttackKind { ice, steal }
-
 /// Boss 行为状态。
 enum BossState { intro, idle, stalk, windup, strike, recover, hurt, dead }
 
@@ -2458,30 +2846,35 @@ enum BossState { intro, idle, stalk, windup, strike, recover, hurt, dead }
 /// 行为循环（每一步都有预警，没有暗箱）：
 /// - `intro`  出生弹出（0.6s），期间不攻击
 /// - `idle`   上下浮动待机，血条可见，倒计时下一次攻击
-/// - `stalk`  盯上某个格子，飞过去
-/// - `windup` 举牌预警：目标格红圈收缩闪烁 + Boss 原地抖
-/// - `strike` 出手：往空格扔一块冰 / 把场上一辆车拖走
+/// - `stalk`  盯上目标，飞过去
+/// - `windup` 举牌预警：目标红圈收缩闪烁 + Boss 原地抖
+/// - `strike` 出手
 /// - `recover` 飞回悬浮位
 /// - `hurt`   被玩家的目标车命中：闪白 + 击退，**正在进行的攻击被打断**
 /// - `dead`   血条打空：旋转缩小消失
 ///
-/// 两种攻击都只挑「空格」和「最低档的车」，不碰万能卡/炸弹——
-/// 反派要有压迫感，但不能无耻。
+/// 技能执行走**卡组制**（见 [BossSpec]）：每个 Boss 带 1 主 + 1 辅技能，
+/// [_chooseAttack] 轮换调度，不再从大池随机抽——同章 4 个 Boss 各打各的
+/// 卡组。护盾是被动光环（spec.shieldCycle），不进攻击轮盘。
+///
+/// 反派要有压迫感，但不能无耻：不碰万能卡/炸弹、不冻目标车、
+/// 每次攻击都有预警、残血狂怒也有视觉前置（整车变红）。
 class BossSprite extends PositionComponent {
   BossSprite({
     required this.game,
     required this.tier,
-    required this.hp,
-    required this.attackInterval,
-    required this.firstDelay,
-  }) : maxHp = hp;
+    required this.spec,
+  })  : hp = spec.hp,
+        maxHp = spec.hp;
 
   final MergeGame game;
   final VehicleType tier;
+  final BossSpec spec;
   int hp;
   final int maxHp;
-  final double attackInterval;
-  final double firstDelay;
+
+  /// 残血狂怒标志（攻击提速 + 冰封数 +1 + 变红）。
+  bool enraged = false;
 
   BossState state = BossState.intro;
   double stateT = 0;
@@ -2493,9 +2886,16 @@ class BossSprite extends PositionComponent {
   double _introT = 0;
   double _deadT = 0;
   bool _struck = false;
-  bool _wantIce = true;
-  BossAttackKind _kind = BossAttackKind.ice;
-  ({int col, int row})? _target;
+  BossAttackKind _kind = BossAttackKind.freeze;
+  BossAttackKind? _lastKind;
+
+  /// 本次攻击的全部目标格（冰封深水区可同时冻 2 张）。
+  /// 位置/预警/出手都遍历它；单目标攻击就只有一格。
+  final List<({int col, int row})> _targets = [];
+
+  ({int col, int row})? get _target =>
+      _targets.isNotEmpty ? _targets.first : null;
+
   final Vector2 _knock = Vector2.zero();
   final Random _rnd = Random();
 
@@ -2511,6 +2911,19 @@ class BossSprite extends PositionComponent {
   static const double _recoverDur = 0.5;
   static const double _hurtDur = 0.42;
   static const double _deadDur = 0.8;
+
+  /// 当前攻击间隔（狂怒时提速 40%）。
+  double get _interval => enraged ? spec.attackInterval * 0.6 : spec.attackInterval;
+
+  /// 当前冰封张数（狂怒 +1）。
+  int get _freezeCount => enraged ? spec.freezeCount + 1 : spec.freezeCount;
+
+  /// 残血狂怒（章 11+ 由 MergeGame._damageBoss 触发）。
+  void enrage() {
+    if (enraged) return;
+    enraged = true;
+    _attackTimer = min(_attackTimer, 1.2); // 很快就有下一击
+  }
 
   /// 重新布局：Boss 悬浮在棋盘正上方中央，尺寸 = 1.7 格。
   void layout(Vector2 boardOrigin, double cellSize) {
@@ -2573,7 +2986,7 @@ class BossSprite extends PositionComponent {
         position = _home.clone();
         if (stateT >= _introDur) {
           _setState(BossState.idle);
-          _attackTimer = firstDelay;
+          _attackTimer = spec.firstDelay;
         }
       case BossState.idle:
         _attackTimer -= dt;
@@ -2610,24 +3023,35 @@ class BossSprite extends PositionComponent {
         position = _lerp(position, _home, Curves.easeOut.transform(k));
         if (stateT >= _recoverDur) {
           _setState(BossState.idle);
-          _attackTimer = attackInterval;
+          _attackTimer = _interval;
         }
       case BossState.hurt:
         position =
             _home + Vector2(0, sin(_t * 2.2) * _cell * 0.07) + _knock;
         if (stateT >= _hurtDur) {
           _setState(BossState.idle);
-          _attackTimer = attackInterval;
+          _attackTimer = _interval;
         }
       case BossState.dead:
         break;
     }
   }
 
-  /// 挑选下一次攻击：冰块（占空格）/ 拖车（拿走最低档），交替进行。
+  /// 挑选下一次攻击：按本 Boss 的卡组（主 + 辅）调度。
+  ///
+  /// 卡组可用性判断：
+  /// - freeze/devolve：有未冻的非目标原料车（打合成链顶端）
+  /// - steal/impound：同上（只打扰活跃资产——拖走冻车等于帮玩家解冻）
+  /// - lock：spec 会锁且当前没锁着
+  /// - taint：牌堆还有牌
+  /// - rubble/ice：有空空格
+  ///
+  /// 三条调度规则：① 主辅轮换，不连续重复同一招（保持节奏可预期）；
+  /// ② 卡组全不可用（全场只剩目标车/冻车）→ 有空格就扔块冰，不浪费
+  /// 这一轮预警；③ 全场无货时歇 2 秒再看，不至于空转。
   void _chooseAttack() {
     final empties = <({int col, int row})>[];
-    ({int col, int row, VehicleType tier})? lowest;
+    final cars = <({int col, int row, int tierId, bool isTarget})>[];
     for (var c = 0; c < game.level.cols; c++) {
       for (var r = 0; r < game.level.rows; r++) {
         final d = game.board.at(c, r);
@@ -2638,57 +3062,202 @@ class BossSprite extends PositionComponent {
           continue;
         }
         if (d.isWildcard || d.isBomb) continue;
-        if (lowest == null || d.tier.id < lowest.tier.id) {
-          lowest = (col: c, row: r, tier: d.tier);
-        }
+        cars.add((
+          col: c,
+          row: r,
+          tierId: d.tier.index,
+          isTarget: d.tier == game.level.targetTier,
+        ));
       }
     }
-    if (empties.isEmpty && lowest == null) {
+    if (empties.isEmpty && cars.isEmpty) {
       _attackTimer = 2; // 棋盘空空：歇一会再看
       return;
     }
-    var wantIce = _wantIce;
-    if (wantIce && empties.isEmpty) wantIce = false;
-    if (!wantIce && lowest == null) wantIce = true;
-    _wantIce = !wantIce; // 两种攻击交替，节奏可预期
-    if (wantIce) {
-      empties.shuffle(_rnd);
-      _target = empties.first;
-      _kind = BossAttackKind.ice;
-    } else {
-      _target = (col: lowest!.col, row: lowest.row);
-      _kind = BossAttackKind.steal;
+
+    // 候选原料车：未冻、非目标，按档位降序（最高档在前）。
+    final freeCars =
+        cars.where((c) => !c.isTarget && !_isFrozen(c.col, c.row)).toList()
+          ..sort((a, b) => b.tierId.compareTo(a.tierId));
+
+    bool usable(BossAttackKind k) => switch (k) {
+          BossAttackKind.freeze ||
+          BossAttackKind.devolve ||
+          BossAttackKind.steal ||
+          BossAttackKind.impound =>
+            freeCars.isNotEmpty,
+          BossAttackKind.lock =>
+            spec.lockStockSeconds > 0 && !game.stockLocked.value,
+          BossAttackKind.taint =>
+            (game.level.endless ? game._upcoming : game._deck).isNotEmpty,
+          BossAttackKind.rubble || BossAttackKind.ice => empties.isNotEmpty,
+          BossAttackKind.shield => false, // 被动光环，不进攻击轮盘
+        };
+
+    final deck = <BossAttackKind>[
+      if (usable(spec.primary)) spec.primary,
+      if (spec.secondary != null && usable(spec.secondary!)) spec.secondary!,
+    ];
+    _targets.clear();
+
+    if (deck.isEmpty) {
+      // 卡组全不可用：填充技扔块冰占格，不断压迫感；没空格就歇。
+      if (empties.isNotEmpty) {
+        empties.shuffle(_rnd);
+        _targets.add(empties.first);
+        _kind = BossAttackKind.ice;
+        _setState(BossState.stalk);
+      } else {
+        _attackTimer = 2;
+      }
+      return;
+    }
+
+    // 优先选与上一招不同的（保持节奏可预期）；只剩一招时除外。
+    final pick = deck.length == 1 || deck.first != _lastKind
+        ? deck.first
+        : deck.last;
+    _lastKind = pick;
+    _kind = pick;
+
+    switch (pick) {
+      case BossAttackKind.freeze:
+        // 冰封最高档的 N 张原料车（深水区/狂怒 N=2，双倍掐链）。
+        for (final t in freeCars.take(_freezeCount)) {
+          _targets.add((col: t.col, row: t.row));
+        }
+      case BossAttackKind.devolve:
+        // 退化最高档的一张：出手瞬间校验，被挪走就改打次高档。
+        _targets.add((col: freeCars.first.col, row: freeCars.first.row));
+      case BossAttackKind.steal:
+        // 章 3+ 抢最高档（掠夺资产）；之前拖最低档（轻骚扰）。
+        final victim = spec.stealTopTier
+            ? freeCars.first
+            : (freeCars.toList()
+              ..sort((a, b) => a.tierId.compareTo(b.tierId))).first;
+        _targets.add((col: victim.col, row: victim.row));
+      case BossAttackKind.impound:
+        // 扣押最高档一张（拖进车库，到点放回）。
+        _targets.add((col: freeCars.first.col, row: freeCars.first.row));
+      case BossAttackKind.rubble:
+        // 塌方：N 块碎石落随机空格（章 8+ 两块）。
+        empties.shuffle(_rnd);
+        for (final t in empties.take(spec.rubbleCount)) {
+          _targets.add(t);
+        }
+      case BossAttackKind.ice:
+        empties.shuffle(_rnd);
+        _targets.add(empties.first);
+      case BossAttackKind.lock:
+      case BossAttackKind.taint:
+      case BossAttackKind.shield:
+        break; // 无棋盘目标：靠 Boss 自身光环 + hint 说破
     }
     _setState(BossState.stalk);
   }
 
+  bool _isFrozen(int col, int row) {
+    final d = game.board.at(col, row);
+    return d != null && d.frozen > 0;
+  }
+
   /// 出手瞬间执行攻击（目标可能已被玩家操作改变，先校验）。
   void _performAttack() {
-    final t = _target;
-    if (t == null) return;
-    if (_kind == BossAttackKind.ice) {
-      if (game.board.at(t.col, t.row) != null ||
-          game.board.obstacleAt(t.col, t.row) != null) {
-        return;
-      }
-      game._bossDropIce(t.col, t.row);
-    } else {
-      final d = game.board.at(t.col, t.row);
-      if (d == null || d.isEmpty) return;
-      game._bossStealCar(t.col, t.row);
+    switch (_kind) {
+      case BossAttackKind.freeze:
+        // 冰封最高档的 N 张（深水区/狂怒 N=2）。_bossFreezeCar 内部
+        // 现扫场选取，与预警环选点的规则一致；玩家在 0.95s 预警期内
+        // 挪走了最高档车时会改冻次高档——目标校验以出手瞬间为准。
+        final froze = game._bossFreezeCar(
+            count: _targets.length, layers: spec.freezeLayers);
+        if (froze == 0) {
+          // 目标失效（全场只剩目标车/玩家挪空了）：退化成扔块冰，
+          // 不浪费这一轮预警。
+          final t = _targets.first;
+          if (game.board.at(t.col, t.row) == null &&
+              game.board.obstacleAt(t.col, t.row) == null) {
+            game._bossDropIce(t.col, t.row);
+          }
+        }
+      case BossAttackKind.steal:
+        for (final t in _targets) {
+          final d = game.board.at(t.col, t.row);
+          if (d == null || d.isEmpty) continue;
+          game._bossStealCar(t.col, t.row);
+        }
+      case BossAttackKind.impound:
+        for (final t in _targets) {
+          final d = game.board.at(t.col, t.row);
+          if (d == null || d.isEmpty || d.frozen > 0) continue;
+          game._bossImpoundCar(t.col, t.row);
+        }
+      case BossAttackKind.devolve:
+        // 目标被挪走/合掉/冻住 → 改打当前最高档；全场没货 → 退化成冰封。
+        final t = _targets.isNotEmpty ? _targets.first : null;
+        final d = t == null ? null : game.board.at(t.col, t.row);
+        final ok = d != null &&
+            !d.isEmpty &&
+            d.frozen == 0 &&
+            d.tier != game.level.targetTier;
+        if (ok) {
+          game._bossDevolveCar(t!.col, t.row, levels: spec.devolveLevels);
+        } else if (game._bossFreezeCar(count: 1, layers: spec.freezeLayers) ==
+            0) {
+          final e = t;
+          if (e != null &&
+              game.board.at(e.col, e.row) == null &&
+              game.board.obstacleAt(e.col, e.row) == null) {
+            game._bossDropIce(e.col, e.row);
+          }
+        }
+      case BossAttackKind.rubble:
+        var dropped = 0;
+        for (final t in _targets) {
+          if (game.board.at(t.col, t.row) != null ||
+              game.board.obstacleAt(t.col, t.row) != null) {
+            continue;
+          }
+          game._bossDropStone(t.col, t.row);
+          dropped++;
+        }
+        if (dropped > 0) {
+          game.hint.value = dropped > 1
+              ? '🪨 Boss 掀起塌方，$dropped 块碎石堵住了格子！'
+              : '🪨 Boss 抡下一块碎石，占了一个格子！';
+        } else {
+          game.hint.value = '🪨 Boss 抡起碎石，但你都提前挪开了！';
+        }
+      case BossAttackKind.taint:
+        game._bossTaint();
+      case BossAttackKind.lock:
+        game._bossLockStock(spec.lockStockSeconds);
+      case BossAttackKind.ice:
+        final t = _targets.first;
+        if (game.board.at(t.col, t.row) != null ||
+            game.board.obstacleAt(t.col, t.row) != null) {
+          return;
+        }
+        game._bossDropIce(t.col, t.row);
+      case BossAttackKind.shield:
+        break; // 被动光环，永不出现在攻击分支
     }
   }
 
   /// 被玩家命中：扣 1 HP、闪白、击退；进行中的攻击被打断。
-  void hit() {
+  /// [blocked] = 护盾挡下：只播受击反馈，不扣血、不判死。
+  void hit({bool blocked = false}) {
     if (dead) return;
-    hp -= 1;
     _hurtFlash = 1;
     _knock.setValues(
       (_rnd.nextDouble() - 0.5) * _cell * 0.3,
       -_cell * 0.35,
     );
-    _target = null;
+    _targets.clear(); // 打断进行中的攻击
+    if (blocked) {
+      if (state != BossState.hurt) _setState(BossState.hurt);
+      return;
+    }
+    hp -= 1;
     if (hp <= 0) {
       _setState(BossState.dead);
       _deadT = 0;
@@ -2714,17 +3283,20 @@ class BossSprite extends PositionComponent {
     if (!_laidOut) return;
     final s = _bossSize;
 
-    // 预警环：画在目标格上（世界坐标，先于 translate）。
-    final t = _target;
-    if (t != null &&
+    // 预警环：遍历本次攻击的全部目标格（世界坐标，先于 translate）。
+    // 冰封深水区会同时冻 2 张，两个格子都要画环——每个都有预警。
+    if (_targets.isNotEmpty &&
         (state == BossState.stalk ||
             state == BossState.windup ||
             state == BossState.strike)) {
-      final cellCenter = game._cellCenter(t.col, t.row);
-      _drawWarning(
-        canvas,
-        Offset(cellCenter.x - position.x, cellCenter.y - position.y),
-      );
+      for (final t in _targets) {
+        final cellCenter = game._cellCenter(t.col, t.row);
+        _drawWarning(
+          canvas,
+          Offset(cellCenter.x - position.x, cellCenter.y - position.y),
+          kind: _kind,
+        );
+      }
     }
 
     canvas.save();
@@ -2757,7 +3329,7 @@ class BossSprite extends PositionComponent {
     canvas.restore();
   }
 
-  /// 红色威压光晕：待机缓慢呼吸，锁定目标时急促闪烁。
+  /// 红色威压光晕：待机缓慢呼吸，锁定目标时急促闪烁，狂怒时常亮急闪。
   void _drawAura(Canvas canvas, double s) {
     if (!_auraReady) {
       _auraReady = true;
@@ -2769,21 +3341,43 @@ class BossSprite extends PositionComponent {
       ).createShader(Rect.fromCircle(center: Offset.zero, radius: s / 2));
     }
     final charging = state == BossState.stalk || state == BossState.windup;
-    final pulse = 0.5 + 0.5 * sin(_t * (charging ? 9 : 3));
+    final speed = enraged ? 14 : (charging ? 9 : 3);
+    final pulse = 0.5 + 0.5 * sin(_t * speed);
     _auraPaint.color = const Color(0xFFFF1744).withValues(
-      alpha: charging ? 0.30 + 0.25 * pulse : 0.15 + 0.08 * pulse,
+      alpha: enraged
+          ? 0.40 + 0.25 * pulse
+          : charging
+              ? 0.30 + 0.25 * pulse
+              : 0.15 + 0.08 * pulse,
     );
-    canvas.drawCircle(Offset.zero, s * (charging ? 0.80 : 0.70), _auraPaint);
+    canvas.drawCircle(
+        Offset.zero, s * (enraged ? 0.86 : (charging ? 0.80 : 0.70)), _auraPaint);
   }
 
-  void _drawWarning(Canvas canvas, Offset center) {
+  /// 目标格预警环：外圈 + 收缩内圈 + 十字准星。
+  /// 颜色按技能类型区分——冰封冰蓝、退化深紫、扣押紫红、拖车紫、
+  /// 塌方石灰、锁牌堆琥珀、污染毒绿、冰块亮蓝，
+  /// 玩家看一眼环的颜色就知道 Boss 要干什么。
+  void _drawWarning(Canvas canvas, Offset center,
+      {BossAttackKind kind = BossAttackKind.ice}) {
+    final ring = switch (kind) {
+      BossAttackKind.freeze => const Color(0xFF40C4FF),
+      BossAttackKind.devolve => const Color(0xFF7E57C2),
+      BossAttackKind.impound => const Color(0xFFEC407A),
+      BossAttackKind.steal => const Color(0xFFAB47BC),
+      BossAttackKind.rubble => const Color(0xFF8D6E63),
+      BossAttackKind.lock => const Color(0xFFFFB300),
+      BossAttackKind.taint => const Color(0xFF8BC34A),
+      BossAttackKind.ice => const Color(0xFF81D4FA),
+      BossAttackKind.shield => const Color(0xFFFFD54F),
+    };
     final r = _cell * 0.44;
     final pulse = 0.5 + 0.5 * sin(_t * 12);
     canvas.drawCircle(
       center,
       r,
       Paint()
-        ..color = const Color(0xFFFF1744).withValues(alpha: 0.25 + 0.3 * pulse)
+        ..color = ring.withValues(alpha: 0.25 + 0.3 * pulse)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3,
     );
@@ -2797,7 +3391,7 @@ class BossSprite extends PositionComponent {
       center,
       r * (1 - 0.55 * k),
       Paint()
-        ..color = const Color(0xFFFF5252).withValues(alpha: 0.5 + 0.4 * pulse)
+        ..color = ring.withValues(alpha: 0.5 + 0.4 * pulse)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2,
     );
@@ -2865,8 +3459,9 @@ class BossSprite extends PositionComponent {
   }
 
   /// 车身静态部分烘焙：暗色渐变 + 王冠 + 怒眉 + 车型 emoji。
+  /// 狂怒时整套烘焙换成亮红（缓存 key 带 enraged 位，切换即重建）。
   void _ensureFace() {
-    final key = (size.x * 32).round();
+    final key = (size.x * 32).round() * (enraged ? -1 : 1);
     if (_face != null && _faceKey == key && _faceTier == tier.id) return;
     _faceKey = key;
     _faceTier = tier.id;
@@ -2884,14 +3479,16 @@ class BossSprite extends PositionComponent {
         ..color = const Color(0x66000000)
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, s * 0.08),
     );
-    // 反派车身：深红 → 炭黑
+    // 反派车身：深红 → 炭黑；狂怒时换成亮红（一眼看出"它急了"）。
     c.drawRRect(
       rr,
       Paint()
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: const [Color(0xFF6B1420), Color(0xFF1E1218)],
+          colors: enraged
+              ? const [Color(0xFFE53935), Color(0xFF7F0000)]
+              : const [Color(0xFF6B1420), Color(0xFF1E1218)],
         ).createShader(rr.outerRect),
     );
     // 顶部高光

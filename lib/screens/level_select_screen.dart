@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart'; // kDebugMode：调试专用按钮用
 import 'package:flutter/material.dart';
 
 import '../game/audio_feedback.dart';
@@ -104,6 +105,16 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
           ),
         ),
       ),
+      // ─────────────────────────────────────────────────────────────
+      //  调试专用（发布前删除）：Boss 关快速入口
+      //  debug/profile 模式渲染，release 构建自动不渲染（这就是上次
+      //  release 预览看不到按钮的原因）；删代码时连同本段 +
+      //  文件末尾 _BossDebugButton + 顶部 foundation import 一起删。
+      // ─────────────────────────────────────────────────────────────
+      floatingActionButton: (kDebugMode || kProfileMode)
+          ? _BossDebugButton(onPick: (id) => _openLevel(levels[id - 1]))
+          : null,
+      // ─────────────────────────────────────────────────────────────
     );
   }
 
@@ -566,6 +577,200 @@ class LevelCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  调试专用（发布前删除）：Boss 关快速入口
+//  删除时连同 build 里的 floatingActionButton 段和顶部
+//  `import 'package:flutter/foundation.dart';` 一起删。
+// ─────────────────────────────────────────────────────────────
+
+/// 调试专用 Boss 入口：debug/profile 模式渲染，release 自动不渲染。
+///
+/// 点开列出**全量 56 个 Boss 关**（14 章 × 4，与生成器选点公式一致：
+/// 章内偏移 10 + b×11），按章分组；每行显示卡组摘要（主技+辅技+绰号/盾/怒）
+/// 和 HP，点哪行进哪关，不需要先解锁。调 Boss 手感、验卡组分布时用。
+class _BossDebugButton extends StatelessWidget {
+  const _BossDebugButton({required this.onPick});
+
+  final void Function(int levelId) onPick;
+
+  /// 技能中文名（仅调试面板展示；线上玩家的识别手段是预警环配色）。
+  static const Map<BossAttackKind, String> _skillNames = {
+    BossAttackKind.freeze: '冰封',
+    BossAttackKind.steal: '拖车',
+    BossAttackKind.lock: '锁堆',
+    BossAttackKind.ice: '冰块',
+    BossAttackKind.rubble: '塌方',
+    BossAttackKind.impound: '扣押',
+    BossAttackKind.devolve: '退化',
+    BossAttackKind.taint: '污染',
+    BossAttackKind.shield: '护盾',
+  };
+
+  /// 全量 Boss 关 id：章 c 内偏移 10 + b×11（b = 0..3）。
+  static List<int> get _allBossIds => [
+        for (var c = 0; c < LevelDataGenerator.chapterCount; c++)
+          for (var b = 0; b < 4; b++)
+            LevelDataGenerator.firstId +
+                c * LevelDataGenerator.chapterSize +
+                10 +
+                b * 11,
+      ];
+
+  /// 「冰封 + 拖车 · 碎石王 盾」式卡组摘要。
+  static String _deckLabel(BossSpec spec) {
+    final skills = [
+      _skillNames[spec.primary] ?? spec.primary.name,
+      if (spec.secondary != null)
+        _skillNames[spec.secondary!] ?? spec.secondary!.name,
+    ].join(' + ');
+    final marks = [
+      if (spec.epithet != null) spec.epithet!,
+      if (spec.shieldCycle > 0) '盾',
+      if (spec.enrageAtHalf) '怒',
+    ];
+    return marks.isEmpty ? skills : '$skills · ${marks.join(' ')}';
+  }
+
+  /// Boss 在章内的槽位（0..3，3 = 尖峰招牌）。
+  static int _slotOf(int id) {
+    final c =
+        (id - LevelDataGenerator.firstId) ~/ LevelDataGenerator.chapterSize;
+    return (id - LevelDataGenerator.firstId - c * LevelDataGenerator.chapterSize -
+            10) ~/
+        11;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FloatingActionButton.extended(
+      backgroundColor: const Color(0xFFB3372F),
+      foregroundColor: Colors.white,
+      elevation: 6,
+      onPressed: () => _showBossSheet(context),
+      icon: const Text('👑', style: TextStyle(fontSize: 18)),
+      label: const Text('BOSS',
+          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+    );
+  }
+
+  void _showBossSheet(BuildContext context) {
+    AudioFeedback.uiTap();
+    // 扁平化行表：章头 + 该章 4 个 Boss 行。
+    final rows = <({bool header, int chapter, int id})>[];
+    for (var c = 0; c < LevelDataGenerator.chapterCount; c++) {
+      rows.add((header: true, chapter: c, id: 0));
+      for (final id in _allBossIds) {
+        final cc =
+            (id - LevelDataGenerator.firstId) ~/ LevelDataGenerator.chapterSize;
+        if (cc == c) rows.add((header: false, chapter: c, id: id));
+      }
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surfaceLight,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.of(ctx).size.height * 0.72,
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              const Text('👑 Boss 调试入口 · 全 56 关',
+                  style: TextStyle(
+                      color: AppColors.ink1,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 17)),
+              const SizedBox(height: 2),
+              const Text('仅调试模式可见 · 发布前删除',
+                  style: TextStyle(color: AppColors.ink2, fontSize: 11.5)),
+              const SizedBox(height: 6),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: rows.length,
+                  itemBuilder: (_, i) {
+                    final r = rows[i];
+                    return r.header
+                        ? _chapterHeader(r.chapter)
+                        : _bossTile(ctx, r.id);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _chapterHeader(int c) {
+    final color = _chapterColors[c % _chapterColors.length];
+    final firstIdOfChapter =
+        LevelDataGenerator.firstId + c * LevelDataGenerator.chapterSize;
+    final tierName = levels[firstIdOfChapter - 1].targetTier?.name ?? '';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text('第 ${c + 1} 章',
+                style: TextStyle(
+                    color: color, fontWeight: FontWeight.w900, fontSize: 12.5)),
+          ),
+          const SizedBox(width: 8),
+          Text('L$firstIdOfChapter 起 · $tierName',
+              style: const TextStyle(color: AppColors.ink2, fontSize: 11.5)),
+        ],
+      ),
+    );
+  }
+
+  Widget _bossTile(BuildContext ctx, int id) {
+    final level = levels[id - 1];
+    final spec = level.boss!;
+    final c =
+        (id - LevelDataGenerator.firstId) ~/ LevelDataGenerator.chapterSize;
+    final b = _slotOf(id);
+    final isPeak = b == 3;
+    return ListTile(
+      dense: true,
+      leading: Container(
+        width: 38,
+        height: 38,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isPeak ? const Color(0xFF8E24AA) : const Color(0xFFB3372F),
+          shape: BoxShape.circle,
+        ),
+        child: Text(
+          isPeak ? '👑' : '${b + 1}',
+          style: const TextStyle(
+              color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15),
+        ),
+      ),
+      title: Text('L$id · ${_deckLabel(spec)}',
+          style: const TextStyle(
+              color: AppColors.ink1, fontWeight: FontWeight.w800, fontSize: 13.5)),
+      subtitle: Text(
+        '第 ${c + 1} 章 · 第 ${b + 1} 个${isPeak ? ' · 尖峰' : ''} · HP ${spec.hp}',
+        style: const TextStyle(color: AppColors.ink2, fontSize: 11.5),
+      ),
+      trailing: const Icon(Icons.play_arrow_rounded, color: AppColors.ink2),
+      onTap: () {
+        Navigator.pop(ctx);
+        onPick(id);
+      },
     );
   }
 }
