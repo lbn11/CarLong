@@ -23,6 +23,8 @@ class MoveResult {
   final ({int col, int row})? detonatedAt;
   /// 炸弹引爆清除的格子（含炸弹自身）。
   final List<({int col, int row})> detonatedCells;
+  /// 移动的卡被黑洞吞掉（格子变空，不结算合并——落点陷阱）。
+  final bool swallowed;
 
   const MoveResult({
     this.valid = false,
@@ -34,6 +36,7 @@ class MoveResult {
     this.detonated = false,
     this.detonatedAt,
     this.detonatedCells = const [],
+    this.swallowed = false,
   });
 }
 
@@ -46,9 +49,16 @@ typedef BoardSnapshot = ({
   List<bool> fogged,
 });
 
+/// Boss 黑洞格子（可变的剩余秒数，故用类不用 record）。
+class _Hole {
+  final int col;
+  final int row;
+  double left;
+  _Hole(this.col, this.row, this.left);
+}
+
 /// 纯逻辑棋盘。不依赖任何渲染，方便单测。
-class BoardLogic {
-  final LevelDefinition level;
+class BoardLogic {  final LevelDefinition level;
   final int cols;
   final int rows;
   final Random _random;
@@ -62,6 +72,10 @@ class BoardLogic {
 
   /// 迷雾覆盖的格子索引（true = 未揭开，卡牌被隐藏）。
   late final List<bool> _fogged;
+
+  /// Boss 黑洞：临时占格的旋涡格子（col,row + 剩余秒数）。
+  /// 占格期间落不下牌，但**可以主动把卡拖进去喂给它**（吞掉不结算）。
+  final List<_Hole> _holes = [];
 
   /// 已产出的目标车辆数量。
   int producedCount = 0;
@@ -118,8 +132,9 @@ class BoardLogic {
     return null;
   }
 
-  /// 指定格是否可被占用（无生效障碍物）。
-  bool _usable(int col, int row) => obstacleAt(col, row) == null;
+  /// 指定格是否可被占用（无生效障碍物、无黑洞）。
+  bool _usable(int col, int row) =>
+      obstacleAt(col, row) == null && !holeAt(col, row);
 
   /// 直接在某格放置一张卡片（测试/初始化用）。
   void placeAt(int col, int row, StackData data) {
@@ -137,6 +152,106 @@ class BoardLogic {
     final s = _grid[_idx(col, row)];
     if (s == null || s.isEmpty || s.isWildcard || s.isBomb) return;
     s.frozen = layers;
+    _invalidate();
+  }
+
+  /// Boss 胶水：把 (col,row) 上的车粘住 [seconds] 秒（只随时间流逝干掉，
+  /// 不像冰封要靠邻格合并救）。与冰封共用 [StackData.locked] 阻断面，
+  /// 死局检测/hint 自动同步感知。
+  void glueAt(int col, int row, double seconds) {
+    if (col < 0 || col >= cols || row < 0 || row >= rows) return;
+    if (seconds <= 0) return;
+    final s = _grid[_idx(col, row)];
+    if (s == null || s.isEmpty || s.isWildcard || s.isBomb) return;
+    s.glueT = seconds;
+    _invalidate();
+  }
+
+  /// 全场胶水倒计时（MergeGame.update 驱动）。返回本次干掉的张数。
+  int tickGlue(double dt) {
+    if (dt <= 0) return 0;
+    var dried = 0;
+    for (final s in _grid) {
+      if (s == null || s.isEmpty || s.glueT <= 0) continue;
+      s.glueT -= dt;
+      if (s.glueT <= 0) {
+        s.glueT = 0;
+        dried++;
+      }
+    }
+    if (dried > 0) _invalidate();
+    return dried;
+  }
+
+  /// 场上是否有被胶水粘住的车（死局等待判定的条件之一）。
+  bool get hasGlue {
+    for (final s in _grid) {
+      if (s != null && !s.isEmpty && s.glueT > 0) return true;
+    }
+    return false;
+  }
+
+  /// 剩余胶水秒数（最大值；0 = 没有）。供 hint 显示「再等 N 秒」。
+  double get glueLeft {
+    var left = 0.0;
+    for (final s in _grid) {
+      if (s != null && !s.isEmpty && s.glueT > left) left = s.glueT;
+    }
+    return left;
+  }
+
+  /// Boss 黑洞：在空格上开一个持续 [seconds] 秒的旋涡。
+  /// 占格期间落不下牌（[placeTierSmart] 自动避开），但玩家可以把卡
+  /// **拖进去喂给它**——[move] 命中黑洞 = 吞卡（[MoveResult.swallowed]）。
+  void addHole(int col, int row, double seconds) {
+    if (col < 0 || col >= cols || row < 0 || row >= rows) return;
+    if (seconds <= 0) return;
+    if (_grid[_idx(col, row)] != null) return; // 只开在空格
+    if (obstacleAt(col, row) != null) return;
+    if (holeAt(col, row)) return;
+    _holes.add(_Hole(col, row, seconds));
+    _invalidate();
+  }
+
+  bool holeAt(int col, int row) {
+    for (final h in _holes) {
+      if (h.col == col && h.row == row) return true;
+    }
+    return false;
+  }
+
+  /// 黑洞剩余秒数（0 = 没有）。
+  double holeLeftAt(int col, int row) {
+    for (final h in _holes) {
+      if (h.col == col && h.row == row) return h.left;
+    }
+    return 0;
+  }
+
+  /// 黑洞倒计时。返回本次消失的个数。
+  int tickHoles(double dt) {
+    if (dt <= 0 || _holes.isEmpty) return 0;
+    var gone = 0;
+    for (final h in _holes.toList()) {
+      h.left -= dt;
+      if (h.left <= 0) {
+        _holes.remove(h);
+        gone++;
+      }
+    }
+    if (gone > 0) _invalidate();
+    return gone;
+  }
+
+  bool get hasHoles => _holes.isNotEmpty;
+
+  /// 把指定格盖上的迷雾重新打开（Boss 迷雾技能用；与关卡初始迷雾
+  /// 同一张 [ _fogged ] 表，落子揭开/反制逻辑全部复用）。
+  void fogCellsAt(List<({int col, int row})> cells) {
+    for (final c in cells) {
+      if (c.col < 0 || c.col >= cols || c.row < 0 || c.row >= rows) continue;
+      _fogged[_idx(c.col, c.row)] = true;
+    }
     _invalidate();
   }
 
@@ -438,8 +553,9 @@ class BoardLogic {
     if (from == null || (fc == tc && fr == tr)) {
       return const MoveResult();
     }
-    // Boss 冰封：冻住的车一步也动不了——先在旁边合两次「救它」。
-    if (from.frozen > 0) return const MoveResult();
+    // Boss 冰封/胶水：动不了的车一步也动不了——冰封要在旁边合
+    // 「救它」，胶水只能等时间。两种状态共用 locked 阻断面。
+    if (from.locked) return const MoveResult();
 
     // 传送门改道：目标若是传送门，改为从配对出口出现。
     var teleported = false;
@@ -450,6 +566,14 @@ class BoardLogic {
       teleported = true;
     }
     if (fc == tc && fr == tr) return const MoveResult();
+
+    // Boss 黑洞：落点是旋涡 → 卡被吞掉（不结算合并）。这是**陷阱**
+    // 不是墙——玩家可以主动喂卡清位，也可以绕着走。
+    if (holeAt(tc, tr)) {
+      _grid[_idx(fc, fr)] = null;
+      return MoveResult(valid: true, swallowed: true, teleported: teleported);
+    }
+
     if (!_usable(tc, tr)) {
       // flyOver 能力：忽略障碍物，允许降落
       final moverAbility = from.tier.stats.ability;
@@ -461,8 +585,8 @@ class BoardLogic {
     }
 
     final target = _grid[_idx(tc, tr)];
-    // Boss 冰封的目标格也不能进：冰冻车不参与合成/交换。
-    if (target != null && target.frozen > 0) return const MoveResult();
+    // Boss 冰封/胶水的目标格也不能进：动不了的车不参与合成/交换。
+    if (target != null && target.locked) return const MoveResult();
     if (target == null) {
       _grid[_idx(tc, tr)] = from;
       _grid[_idx(fc, fr)] = null;
@@ -673,8 +797,9 @@ class BoardLogic {
       if (s == null || s.isEmpty) continue;
       // Boss 冰封：冻住的车不可动、不可被合——不算可合资源。
       // 不排除它会把「唯一同等级对是冻车」误判成有步可走，玩家零操作
-      // 而死局检测不触发，游戏永久卡死。
-      if (s.frozen > 0) continue;
+      // 而死局检测不触发，游戏永久卡死。胶水（glueT）同理——它虽然
+      // 几秒后自动干掉，但等待期间不该被算成可合资源。
+      if (s.locked) continue;
       if (s.isWildcard) {
         wildcards += s.count;
       } else if (s.isBomb) {
@@ -692,7 +817,9 @@ class BoardLogic {
     for (var c = 0; c < cols; c++) {
       for (var r = 0; r < rows; r++) {
         final s = at(c, r);
+        // 冻车/胶车自己动不了，不能当「起点」算可步（否则又是软锁）。
         if (s == null || s.isEmpty || s.isWildcard || s.isBomb) continue;
+        if (s.locked) continue;
         if (_canReachSameTier(c, r, s.tier)) return true;
         if (_swapCreatesMerge(c, r)) return true;
       }
@@ -722,10 +849,11 @@ class BoardLogic {
 
         final ns = _grid[ni];
         if (ns == null || ns.isEmpty) {
-          queue.add(ni);
+          // 空格才可通行；黑洞占着格，绕不过去。
+          if (!holeAt(nc, nr)) queue.add(ni);
         } else if (!ns.isWildcard &&
             !ns.isBomb &&
-            ns.frozen == 0 &&
+            !ns.locked &&
             ns.tier == tier) {
           return true;
         }
@@ -737,7 +865,8 @@ class BoardLogic {
   /// 检查 (col,row) 的卡片与任意邻居交换后是否制造同等级相邻。
   bool _swapCreatesMerge(int col, int row) {
     final s = at(col, row);
-    if (s == null) return false;
+    // 冻车/胶车自己动不了，不能当交换起点。
+    if (s == null || s.locked) return false;
 
     for (final (dc, dr) in [(1, 0), (-1, 0), (0, 1), (0, -1)]) {
       final nc = col + dc, nr = row + dr;
@@ -747,7 +876,7 @@ class BoardLogic {
           ns.isEmpty ||
           ns.isWildcard ||
           ns.isBomb ||
-          ns.frozen > 0 || // 冻车不能参与交换
+          ns.locked || // 冻车/胶车不能参与交换
           ns.tier == s.tier) {
         continue;
       }
@@ -763,7 +892,7 @@ class BoardLogic {
           final adj = at(ac, ar);
           if (adj != null &&
               !adj.isEmpty &&
-              adj.frozen == 0 && // 合成目标也不能是冻车
+              !adj.locked && // 合成目标也不能是冻车/胶车
               !adj.isWildcard &&
               !adj.isBomb &&
               adj.tier == s.tier) {
@@ -773,6 +902,29 @@ class BoardLogic {
       }
     }
     return false;
+  }
+
+  /// Boss 洗牌：只重排**没被冻/粘**的车（冻车胶车原地不动，
+  /// 否则「洗完冻车换位置」会和冰封的「原地救车」叙事打架）。
+  /// 车的多重集合不变，纯搅局——破坏玩家布局，也顺带破解死局。
+  /// 返回参与重排的张数。
+  int shuffleUnlocked() {
+    final movable = <int>[]; // 格子索引
+    final cards = <StackData>[];
+    for (var i = 0; i < _grid.length; i++) {
+      final s = _grid[i];
+      if (s == null || s.isEmpty || s.locked) continue;
+      if (!_usable(i % cols, i ~/ cols)) continue;
+      movable.add(i);
+      cards.add(s);
+    }
+    if (movable.length < 2) return 0;
+    cards.shuffle(_random);
+    for (var k = 0; k < movable.length; k++) {
+      _grid[movable[k]] = cards[k];
+    }
+    _invalidate();
+    return movable.length;
   }
 
   /// 洗牌重排（金币道具）：收集所有非空卡片，打乱后重新分配到全部可占用格
@@ -805,7 +957,7 @@ class BoardLogic {
     var firstBomb = -1;
     for (var i = 0; i < _grid.length; i++) {
       final s = _grid[i];
-      if (s != null && s.isBomb && s.frozen == 0) {
+      if (s != null && s.isBomb && !s.locked) {
         if (firstBomb == -1) {
           firstBomb = i;
         } else {
@@ -823,7 +975,7 @@ class BoardLogic {
     var firstNormal = -1;
     for (var i = 0; i < _grid.length; i++) {
       final s = _grid[i];
-      if (s == null || s.isEmpty || s.frozen > 0) continue;
+      if (s == null || s.isEmpty || s.locked) continue;
       if (s.isWildcard) {
         if (firstWild == -1) firstWild = i;
       } else if (!s.isBomb) {
@@ -842,11 +994,11 @@ class BoardLogic {
     for (var i = 0; i < _grid.length; i++) {
       final s = _grid[i];
       if (s == null || s.isEmpty || s.isWildcard || s.isBomb) continue;
-      if (s.frozen > 0) continue;
+      if (s.locked) continue;
       for (var j = i + 1; j < _grid.length; j++) {
         final t = _grid[j];
         if (t == null || t.isEmpty || t.isWildcard || t.isBomb) continue;
-        if (t.frozen > 0) continue;
+        if (t.locked) continue;
         if (t.tier == s.tier) {
           return (
             fc: i % cols,

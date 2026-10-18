@@ -224,6 +224,10 @@ class MergeGame extends FlameGame {
   /// 锁牌堆剩余秒数（Boss 技能）。>0 时牌堆点不动。
   double _stockLockT = 0;
 
+  /// 禁合：被禁的档位 + 剩余秒数（Boss 技能）。
+  VehicleType? _banTier;
+  double _banT = 0;
+
   /// 融雪安全阀计时：玩家被冻车卡死时，每 2.5s 全场冻车融 1 层，
   /// 保证「永远解冻不了」不可能发生。非卡死状态归零。
   double _meltT = 0;
@@ -496,6 +500,31 @@ class MergeGame extends FlameGame {
       }
     }
 
+    // 胶水倒计时：到点自动干掉（不像冰封要邻格合并救）。
+    final glueDried = board.tickGlue(dt);
+    if (glueDried > 0) {
+      hint.value = '🍯 胶水干了，车可以动了！';
+      feedback.play(Sfx.bonus);
+    }
+
+    // 黑洞倒计时：到点闭合。
+    final holesGone = board.tickHoles(dt);
+    if (holesGone > 0) {
+      hint.value = '🌀 黑洞闭合了，格子能用了！';
+      feedback.play(Sfx.bonus);
+    }
+
+    // 禁合倒计时：到点解禁。
+    if (_banT > 0) {
+      _banT -= dt;
+      if (_banT <= 0) {
+        _banT = 0;
+        _banTier = null;
+        hint.value = '🚫 禁合解除，可以正常合成了！';
+        feedback.play(Sfx.bonus);
+      }
+    }
+
     // Boss 扣押放回：到点的车智能落位回场（满了顺延，不吞车）。
     _releaseImpounded();
 
@@ -598,21 +627,29 @@ class MergeGame extends FlameGame {
     // 坏结局——① hasPossibleMove 曾把冻车算成可合资源，死局检测不触发，
     // 游戏挂着永不结束；② 检测修好后直接判负，玩家没有任何翻盘机会。
     // 融雪期间暂停死局收尾；全部融化后仍无步 → 走下面的标准死局处理。
+    // 胶水同理但更简单：它只随时间干掉，等着就行（给个倒计时提示）。
     if (!level.endless &&
-        board.hasFrozen &&
+        (board.hasFrozen || board.hasGlue) &&
         (_deck.isEmpty || board.isFull) &&
         !board.hasPossibleMove) {
-      _meltT += dt;
-      if (_meltT >= 2.5) {
-        _meltT = 0;
-        final melted = board.meltAllFrozenOneLayer();
-        if (melted > 0) {
-          final left = board.frozenLayers;
-          hint.value = left > 0
-              ? '☃️ 无路可走了…冰层在减弱（还剩 $left 层）'
-              : '☀️ 冰层全部融化！';
-          feedback.play(Sfx.bonus);
+      if (board.hasFrozen) {
+        _meltT += dt;
+        if (_meltT >= 2.5) {
+          _meltT = 0;
+          final melted = board.meltAllFrozenOneLayer();
+          if (melted > 0) {
+            final left = board.frozenLayers;
+            hint.value = left > 0
+                ? '☃️ 无路可走了…冰层在减弱（还剩 $left 层）'
+                : '☀️ 冰层全部融化！';
+            feedback.play(Sfx.bonus);
+          }
         }
+      } else {
+        // 只有胶水：等它自己干（最多几秒，不做额外动作）。
+        _meltT = 0;
+        final left = board.glueLeft.ceil();
+        hint.value = '🍯 无路可走了…胶水还有 $left 秒干掉，等一下';
       }
       return;
     }
@@ -663,6 +700,10 @@ class MergeGame extends FlameGame {
       _consumeMove();
       _refreshGoal();
       onPlayerAction?.call('draw', tier);
+    } else if (board.hasHoles) {
+      // 有黑洞占着格导致落不下牌：说破，别让玩家以为 bug。
+      hint.value = '🌀 黑洞堵着，落不下牌——喂它一张或等它闭合';
+      feedback.play(Sfx.error);
     }
   }
 
@@ -773,7 +814,7 @@ class MergeGame extends FlameGame {
       for (var r = 0; r < level.rows; r++) {
         final d = board.at(c, r);
         if (d == null || d.isEmpty || d.isWildcard || d.isBomb) continue;
-        if (d.frozen > 0) continue; // 已冻过的别再冻（浪费一招）
+        if (d.locked) continue; // 已冻/粘过的别再冻（浪费一招）
         if (d.tier == target) continue; // 不碰目标车
         candidates.add((col: c, row: r, tierId: d.tier.index));
       }
@@ -995,6 +1036,181 @@ class MergeGame extends FlameGame {
     taintCards.value = _taintCards;
     return VehicleType.values[(tier.index - 1)
         .clamp(0, VehicleType.values.length - 1)];
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Boss 战 · 第二批技能（胶水 / 黑洞 / 洗牌 / 禁合 / 抢目标 / 迷雾）
+  // ─────────────────────────────────────────────────────────────
+
+  /// 当前被禁合的档位（null = 没有）。StackSprite 读它给该档车画红 ✕。
+  VehicleType? get banTier => _banTier;
+
+  /// 禁合是否生效中（秒数 > 0）。
+  bool get banActive => _banT > 0 && _banTier != null;
+
+  /// Boss 技能⑧胶水：把一辆原料车粘住 [seconds] 秒。与冰封共用
+  /// [StackData.locked] 阻断面（动不了/合不了、死局检测/hint 同步
+  /// 感知），但**只随时间干掉**——反制就是等，短促的节奏干扰。
+  void _bossGlueCar(int col, int row, {double seconds = 4}) {
+    final d = board.at(col, row);
+    if (d == null || d.isEmpty || d.isWildcard || d.isBomb) return;
+    if (d.locked) return;
+    board.glueAt(col, row, seconds);
+    add(BurstParticles(
+      _cellCenter(col, row),
+      const Color(0xFFFFB300),
+      count: 16,
+      speed: 100,
+    ));
+    add(Shockwave(
+      _cellCenter(col, row),
+      color: const Color(0xFFFFB300),
+      maxRadius: _cellSize * 0.6,
+    ));
+    shake(4, 0.2);
+    hint.value = '🍯 Boss 泼了胶水：${d.tier.icon} ${d.tier.name} '
+        '${seconds.round()} 秒内动不了，等它干！';
+    feedback.play(Sfx.error);
+    _refreshGoal();
+  }
+
+  /// 胶水的「出手瞬间改判」版：现扫场选最高档原料车粘住。
+  /// 返回是否粘到（0 张可粘 → 调用方退化成冰/空转）。
+  bool _bossGlueHighest({double seconds = 4}) {
+    final pick = _highestFreeCar();
+    if (pick == null) return false;
+    _bossGlueCar(pick.col, pick.row, seconds: seconds);
+    return true;
+  }
+
+  /// Boss 技能⑨黑洞：在空格撕开一个持续 [seconds] 秒的旋涡。
+  /// 占格期间落不下牌（[BoardLogic.placeTierSmart] 自动避开），
+  /// 但玩家可以把卡**拖进去喂给它**——陷阱不是墙，有利用空间。
+  void _bossAddHole(int col, int row, {double seconds = 6}) {
+    if (board.at(col, row) != null || board.obstacleAt(col, row) != null) {
+      return;
+    }
+    board.addHole(col, row, seconds);
+    add(BurstParticles(
+      _cellCenter(col, row),
+      const Color(0xFF4A148C),
+      count: 20,
+      speed: 140,
+    ));
+    add(Shockwave(
+      _cellCenter(col, row),
+      color: const Color(0xFF7B1FA2),
+      maxRadius: _cellSize * 0.7,
+    ));
+    shake(5, 0.25);
+    hint.value = '🌀 Boss 撕开一个黑洞！落子要避开，也可以把废牌喂给它';
+    feedback.play(Sfx.error);
+  }
+
+  /// Boss 技能⑩洗牌：全场没冻/粘的车随机重排（冻车胶车原地不动）。
+  /// 纯搅局——破坏玩家布局，也顺带破解死局。视觉：全部卡片瞬移
+  /// 重排 + 屏幕轻晃。
+  void _bossShuffle() {
+    final n = board.shuffleUnlocked();
+    if (n == 0) {
+      hint.value = '🌀 Boss 想洗牌，但你的车都被冻住/粘住了，没得洗！';
+      return;
+    }
+    _syncSpritesFromBoard();
+    shake(6, 0.3);
+    hint.value = '🌀 Boss 洗牌！$n 辆车被打乱了，重新找组合！';
+    feedback.play(Sfx.error);
+    _refreshGoal();
+  }
+
+  /// Boss 技能⑪禁合：[tier] 在 [seconds] 秒内不能合并（只挡合并，
+  /// 不挡换位/挪窝——留出路，不制造软锁）。该档车会画红 ✕。
+  void _bossBanMerge(VehicleType? tier, {double seconds = 4}) {
+    if (tier == null) return;
+    _banTier = tier;
+    _banT = seconds;
+    hint.value = '🚫 禁合：${tier.icon} ${tier.name} ${seconds.round()} '
+        '秒内不能合并，先合别的！';
+    feedback.play(Sfx.error);
+    shake(4, 0.2);
+  }
+
+  /// 场上数量最多的非目标档位（禁合的出手瞬间改判用）。
+  VehicleType? _mostCommonFreeTier() {
+    final byTier = <VehicleType, int>{};
+    for (var c = 0; c < level.cols; c++) {
+      for (var r = 0; r < level.rows; r++) {
+        final d = board.at(c, r);
+        if (d == null || d.isEmpty || d.isWildcard || d.isBomb) continue;
+        if (d.locked) continue;
+        if (d.tier == level.targetTier) continue;
+        byTier[d.tier] = (byTier[d.tier] ?? 0) + 1;
+      }
+    }
+    if (byTier.isEmpty) return null;
+    var best = byTier.entries.first;
+    for (final e in byTier.entries) {
+      if (e.value > best.value) best = e;
+    }
+    return best.key;
+  }
+
+  /// 场上最高档的可动原料车（胶水/退化式「现扫场」选点共用）。
+  ({int col, int row})? _highestFreeCar() {
+    ({int col, int row, int tierId})? best;
+    for (var c = 0; c < level.cols; c++) {
+      for (var r = 0; r < level.rows; r++) {
+        final d = board.at(c, r);
+        if (d == null || d.isEmpty || d.isWildcard || d.isBomb) continue;
+        if (d.locked) continue;
+        if (d.tier == level.targetTier) continue;
+        if (best == null || d.tier.index > best.tierId) {
+          best = (col: c, row: r, tierId: d.tier.index);
+        }
+      }
+    }
+    return best == null ? null : (col: best.col, row: best.row);
+  }
+
+  /// Boss 技能⑫抢目标：抓回一个已达成的目标车补 1 血。
+  /// **唯一碰胜利资源的技能**——所以：① 金色预警；② 只在 Boss
+  /// 已受伤时可用（满血没东西可抢，天然防连放）；③ 深水区才入池。
+  void _bossStealGoal() {
+    final boss = _boss;
+    if (boss == null || boss.dead) return;
+    boss.hp += 1;
+    if (boss.hp > boss.maxHp) boss.maxHp = boss.hp;
+    bossHp.value = boss.hp;
+    bossMaxHp.value = boss.maxHp;
+    add(FloatText(
+      '🏆 抢回 1 血！',
+      position: boss.position.clone() + Vector2(0, -_cellSize * 0.5),
+      color: const Color(0xFFFFD700),
+      fontSize: 20,
+    ));
+    add(Shockwave(boss.position.clone(),
+        color: const Color(0xFFFFD700), maxRadius: _cellSize * 1.2));
+    add(BurstParticles(
+      boss.position.clone(),
+      const Color(0xFFFFD54F),
+      count: 18,
+      speed: 130,
+    ));
+    hint.value = '🏆 Boss 抢走了你一个目标车，回了 1 点血！';
+    feedback.play(Sfx.error);
+    shake(6, 0.3);
+  }
+
+  /// Boss 技能⑬迷雾：盖住 [cells] 里的车（复用关卡迷雾表与
+  /// [BoardLogic.revealNear]——落子/合并不远处就能揭开，反制靠探头）。
+  void _bossFog(List<({int col, int row})> cells) {
+    if (cells.isEmpty) return;
+    board.fogCellsAt(cells);
+    hint.value = cells.length > 1
+        ? '🌫 Boss 放出迷雾，盖住了 ${cells.length} 辆车！'
+        : '🌫 Boss 放出一团迷雾，盖住了 1 辆车！';
+    feedback.play(Sfx.error);
+    shake(4, 0.2);
   }
 
   /// 是否还有可撤销的步骤。
@@ -1252,6 +1468,26 @@ class MergeGame extends FlameGame {
     if (from == null) return false;
     if (fc == tc && fr == tr) return false;
 
+    // Boss 禁合：该档位合并被禁（只挡合并，不挡换位/挪窝——留出路，
+    // 不制造软锁；禁合最多几秒，等待有界）。
+    if (banActive) {
+      final dst = board.at(tc, tr);
+      if (dst != null &&
+          !dst.isEmpty &&
+          !from.isBomb &&
+          !dst.isBomb &&
+          (from.isWildcard || dst.isWildcard || from.tier == dst.tier)) {
+        final mergedTier = from.isWildcard ? dst.tier : from.tier;
+        if (mergedTier == _banTier) {
+          hint.value = '🚫 禁合中：${_banTier!.icon} ${_banTier!.name} '
+              '还不能合并（还剩 ${_banT.ceil()} 秒）';
+          feedback.play(Sfx.error);
+          feedback.reject();
+          return false;
+        }
+      }
+    }
+
     _undoStack.add((snap: board.snapshot(), bonus: _bonusScore));
     if (_undoStack.length > _maxUndo) _undoStack.removeAt(0);
     final mergesBefore = board.totalMerges;
@@ -1265,6 +1501,27 @@ class MergeGame extends FlameGame {
       return false;
     }
     _consumeMove();
+
+    // Boss 黑洞：卡被旋涡吞掉（不结算合并）。拖拽中的卡先飞进旋涡
+    // 再消失——「废牌喂黑洞」是合法策略，「好牌掉进去」是惩罚。
+    if (result.swallowed) {
+      final sprite = _findStack(fc, fr);
+      if (sprite != null) {
+        _stackSprites.remove(sprite);
+        sprite.flyTo(_cellPos(tc, tr), onDone: sprite.removePuff);
+      }
+      final center = _cellCenter(tc, tr);
+      add(BurstParticles(center, const Color(0xFF4A148C), count: 22,
+          speed: 150));
+      add(Shockwave(center,
+          color: const Color(0xFF7B1FA2), maxRadius: _cellSize * 0.8));
+      hint.value = '🌀 黑洞吞掉了你的 ${from.tier.icon} ${from.tier.name}！';
+      feedback.play(Sfx.error);
+      shake(5, 0.25);
+      _refreshGoal();
+      onPlayerAction?.call('swallow', from.tier);
+      return true;
+    }
 
     // 落子揭开附近迷雾（sonar 能力扩大侦察范围）。
     final wasFogged = board.isFogged(fc, fr) || board.isFogged(tc, tr);
@@ -1795,10 +2052,57 @@ class CellSprite extends PositionComponent with TapCallbacks {
     final obs = game.board.obstacleAt(col, row);
     if (obs != null) _drawObstacle(canvas, obs, size.x);
 
+    // 黑洞旋涡（Boss 技能）：暗紫涡旋占格，落子要绕开。
+    final holeLeft = game.board.holeLeftAt(col, row);
+    if (holeLeft > 0) _drawHole(canvas, size.x, holeLeft);
+
     // 迷雾盖住空格。
     if (obs == null && game.board.isFogged(col, row)) {
       paintFog(canvas, _rr);
     }
+  }
+
+  /// 黑洞视觉：暗紫径向底 + 两条反向旋转的螺旋弧 + 中心白点。
+  /// 出场/消失带淡入淡出（holeLeft 判寿命），旋转相位取对局时间，
+  /// 停住的游戏里涡旋也是凝住的。
+  void _drawHole(Canvas canvas, double s, double left) {
+    final c = Offset(s / 2, s / 2);
+    final fade = left < 0.5 ? (left / 0.5).clamp(0.0, 1.0) : 1.0;
+    canvas.drawCircle(
+      c,
+      s * 0.42,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            const Color(0xFF1A0033).withValues(alpha: 0.95 * fade),
+            const Color(0xFF4A148C).withValues(alpha: 0.75 * fade),
+            const Color(0xFF7B1FA2).withValues(alpha: 0.0),
+          ],
+          stops: const [0.0, 0.55, 1.0],
+        ).createShader(Rect.fromCircle(center: c, radius: s * 0.42)),
+    );
+    final phase = game.elapsedTime * 3.2;
+    for (var i = 0; i < 2; i++) {
+      final dir = i == 0 ? 1.0 : -1.0;
+      final arc = Paint()
+        ..color = const Color(0xFFCE93D8).withValues(alpha: 0.85 * fade)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = s * 0.05
+        ..strokeCap = StrokeCap.round;
+      final r = s * (0.16 + 0.1 * i);
+      canvas.drawArc(
+        Rect.fromCircle(center: c, radius: r),
+        phase * dir + i * 2.1,
+        2.4,
+        false,
+        arc,
+      );
+    }
+    canvas.drawCircle(
+      c,
+      s * 0.05,
+      Paint()..color = const Color(0xFFFFFFFF).withValues(alpha: 0.9 * fade),
+    );
   }
 
   /// 障碍物绘制：冰（青色半透明 + 裂缝）、锁（灰底 + 锁头）、石块（暗色 + 叉）。
@@ -2417,10 +2721,72 @@ class StackSprite extends PositionComponent
     // Boss 冰封覆盖：蓝白霜面 + 层数点，盖在卡面上（迷雾之前）。
     if (data.frozen > 0) _drawFrost(canvas, rr);
 
+    // Boss 胶水覆盖：蜂蜜色膜 + 滴点（只有秒数没有层数）。
+    if (data.glueT > 0) _drawGlue(canvas, rr);
+
+    // Boss 禁合徽章：该档位被禁时，卡面右上角红 ✕（预警名单可视化）。
+    if (game.banActive && !data.isWildcard && !data.isBomb &&
+        data.tier == game.banTier) {
+      _drawBanBadge(canvas);
+    }
+
     // 迷雾覆盖：隐藏卡面。
     if (game.board.isFogged(col, row)) {
       paintFog(canvas, rr);
     }
+  }
+
+  /// 胶水视觉：半透蜂蜜膜 + 深色描边 + 底部滴点 + 中央 🍯 标。
+  /// 与冰封的蓝霜面严格区分——一眼看出「这张要等」而不是「要合两次救」。
+  void _drawGlue(Canvas canvas, RRect rr) {
+    canvas.drawRRect(
+      rr,
+      Paint()
+        ..color = const Color(0xFFFFC107).withValues(alpha: 0.5)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1),
+    );
+    canvas.drawRRect(
+      rr,
+      Paint()
+        ..color = const Color(0xFFFFE082).withValues(alpha: 0.9)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+    // 蠕动的滴点：底部三个小圆，位置随时间轻晃——"黏稠感"。
+    final dotR = size.x * 0.04;
+    final wobble = sin(_breathT * 6) * dotR * 0.5;
+    for (var i = 0; i < 3; i++) {
+      canvas.drawCircle(
+        Offset(-dotR * 3 + dotR * 3 * i + wobble, size.y * 0.4),
+        dotR,
+        Paint()..color = const Color(0xFFFFE082).withValues(alpha: 0.95),
+      );
+    }
+    final tp = TextPainter(
+      text: const TextSpan(
+        text: '🍯',
+        style: TextStyle(fontSize: 18, color: Color(0xE6FFFFFF)),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(
+      canvas,
+      Offset(-tp.width / 2 + size.x * 0.28, -tp.height / 2 - size.y * 0.28),
+    );
+  }
+
+  /// 禁合徽章：右上角红色禁行圆牌（该档位几秒内不能合并）。
+  void _drawBanBadge(Canvas canvas) {
+    final r = size.x * 0.16;
+    final c = Offset(size.x * 0.34, -size.y * 0.34);
+    canvas.drawCircle(c, r, Paint()..color = const Color(0xD5E53935));
+    final bar = Paint()
+      ..color = const Color(0xFFFFFFFF)
+      ..strokeWidth = r * 0.32
+      ..strokeCap = StrokeCap.round;
+    final d = r * 0.5;
+    canvas.drawLine(c + Offset(-d, -d), c + Offset(d, d), bar);
+    canvas.drawLine(c + Offset(-d, d), c + Offset(d, -d), bar);
   }
 
   /// 冰封视觉：半透蓝白霜面 + 霜边 + 层数点（还剩几层没化）。
@@ -2857,6 +3223,13 @@ enum BossState { intro, idle, stalk, windup, strike, recover, hurt, dead }
 /// [_chooseAttack] 轮换调度，不再从大池随机抽——同章 4 个 Boss 各打各的
 /// 卡组。护盾是被动光环（spec.shieldCycle），不进攻击轮盘。
 ///
+/// 技能池两批（按章节解锁线逐步开放）：
+/// - 第一批：冰封最高档原料车（主菜）/ 拖车 / 锁牌堆 / 冰块（填充技）
+/// - 第二批：胶水（定时粘住）/ 黑洞（占格陷阱，可喂卡清位）/ 洗牌
+///   （重排布局）/ 禁合（某等级禁合几秒）/ 迷雾（盖车看不见）/
+///   抢目标（抓回已达成的目标车补 1 血——唯一碰胜利资源的技能，
+///   所以只在章 9+ 出现且满血时不可用，天然防连放）
+///
 /// 反派要有压迫感，但不能无耻：不碰万能卡/炸弹、不冻目标车、
 /// 每次攻击都有预警、残血狂怒也有视觉前置（整车变红）。
 class BossSprite extends PositionComponent {
@@ -2871,7 +3244,9 @@ class BossSprite extends PositionComponent {
   final VehicleType tier;
   final BossSpec spec;
   int hp;
-  final int maxHp;
+  /// 血条上限。抢目标技能会让 Boss 回血超出初始 HP，上限跟着涨
+  /// （否则血条比例失真）——写成非 final 就是这个原因。
+  int maxHp;
 
   /// 残血狂怒标志（攻击提速 + 冰封数 +1 + 变红）。
   bool enraged = false;
@@ -2888,6 +3263,9 @@ class BossSprite extends PositionComponent {
   bool _struck = false;
   BossAttackKind _kind = BossAttackKind.freeze;
   BossAttackKind? _lastKind;
+
+  /// 禁合技能选中的档位（预警环点亮名单 + 出手时交给 MergeGame）。
+  VehicleType? _banTier;
 
   /// 本次攻击的全部目标格（冰封深水区可同时冻 2 张）。
   /// 位置/预警/出手都遍历它；单目标攻击就只有一格。
@@ -3040,10 +3418,15 @@ class BossSprite extends PositionComponent {
   /// 挑选下一次攻击：按本 Boss 的卡组（主 + 辅）调度。
   ///
   /// 卡组可用性判断：
-  /// - freeze/devolve：有未冻的非目标原料车（打合成链顶端）
+  /// - freeze/devolve/glue：有未冻的非目标原料车（打合成链顶端）
   /// - steal/impound：同上（只打扰活跃资产——拖走冻车等于帮玩家解冻）
   /// - lock：spec 会锁且当前没锁着
   /// - taint：牌堆还有牌
+  /// - ban：有车可禁（选场上最多的非目标档位）
+  /// - fog：场上有车可盖
+  /// - hole：有空格可开
+  /// - shuffle：至少 2 张没冻/粘的车（重排它们）
+  /// - stealGoal：Boss 已受伤（满血没东西可抢）；非 Boss 关要有目标车
   /// - rubble/ice：有空空格
   ///
   /// 三条调度规则：① 主辅轮换，不连续重复同一招（保持节奏可预期）；
@@ -3056,7 +3439,8 @@ class BossSprite extends PositionComponent {
       for (var r = 0; r < game.level.rows; r++) {
         final d = game.board.at(c, r);
         if (d == null || d.isEmpty) {
-          if (game.board.obstacleAt(c, r) == null) {
+          if (game.board.obstacleAt(c, r) == null &&
+              !game.board.holeAt(c, r)) {
             empties.add((col: c, row: r));
           }
           continue;
@@ -3077,19 +3461,51 @@ class BossSprite extends PositionComponent {
 
     // 候选原料车：未冻、非目标，按档位降序（最高档在前）。
     final freeCars =
-        cars.where((c) => !c.isTarget && !_isFrozen(c.col, c.row)).toList()
+        cars.where((c) => !c.isTarget && !_isLocked(c.col, c.row)).toList()
           ..sort((a, b) => b.tierId.compareTo(a.tierId));
+
+    // 禁合选档：场上数量最多的非目标档位（最能打乱玩家当前计划）。
+    // 选点即预警——_targets 点亮该档全部车，玩家一眼看懂要被禁什么。
+    VehicleType? banTier;
+    if (freeCars.isNotEmpty) {
+      final byTier = <VehicleType, int>{};
+      for (final c in freeCars) {
+        final t = VehicleType.values[c.tierId];
+        byTier[t] = (byTier[t] ?? 0) + 1;
+      }
+      var best = -1;
+      for (final e in byTier.entries) {
+        if (e.value > best || (e.value == best && _rnd.nextBool())) {
+          best = e.value;
+          banTier = e.key;
+        }
+      }
+    }
+
+    // 迷雾选点：优先盖住高档位原料车（信息价值最大），数量 = spec.fogCells。
+    final fogTargets = cars
+        .where((c) => !_isLocked(c.col, c.row))
+        .toList()
+      ..sort((a, b) => b.tierId.compareTo(a.tierId));
+    final fogPicks = fogTargets.take(spec.fogCells).toList();
 
     bool usable(BossAttackKind k) => switch (k) {
           BossAttackKind.freeze ||
           BossAttackKind.devolve ||
           BossAttackKind.steal ||
-          BossAttackKind.impound =>
+          BossAttackKind.impound ||
+          BossAttackKind.glue =>
             freeCars.isNotEmpty,
           BossAttackKind.lock =>
             spec.lockStockSeconds > 0 && !game.stockLocked.value,
           BossAttackKind.taint =>
             (game.level.endless ? game._upcoming : game._deck).isNotEmpty,
+          BossAttackKind.ban => banTier != null,
+          BossAttackKind.fog => fogPicks.isNotEmpty,
+          BossAttackKind.hole => empties.isNotEmpty,
+          BossAttackKind.shuffle => freeCars.length >= 2,
+          // 满血的 Boss 没被抢过东西，无可抢——天然防连放。
+          BossAttackKind.stealGoal => game.bossHp.value < game.bossMaxHp.value,
           BossAttackKind.rubble || BossAttackKind.ice => empties.isNotEmpty,
           BossAttackKind.shield => false, // 被动光环，不进攻击轮盘
         };
@@ -3099,6 +3515,7 @@ class BossSprite extends PositionComponent {
       if (spec.secondary != null && usable(spec.secondary!)) spec.secondary!,
     ];
     _targets.clear();
+    _banTier = null;
 
     if (deck.isEmpty) {
       // 卡组全不可用：填充技扔块冰占格，不断压迫感；没空格就歇。
@@ -3129,6 +3546,9 @@ class BossSprite extends PositionComponent {
       case BossAttackKind.devolve:
         // 退化最高档的一张：出手瞬间校验，被挪走就改打次高档。
         _targets.add((col: freeCars.first.col, row: freeCars.first.row));
+      case BossAttackKind.glue:
+        // 胶水粘住最高档的一张（定时干扰，反制 = 等）。
+        _targets.add((col: freeCars.first.col, row: freeCars.first.row));
       case BossAttackKind.steal:
         // 章 3+ 抢最高档（掠夺资产）；之前拖最低档（轻骚扰）。
         final victim = spec.stealTopTier
@@ -3139,6 +3559,21 @@ class BossSprite extends PositionComponent {
       case BossAttackKind.impound:
         // 扣押最高档一张（拖进车库，到点放回）。
         _targets.add((col: freeCars.first.col, row: freeCars.first.row));
+      case BossAttackKind.ban:
+        // 禁合：点亮该档全部车（预警即名单）。
+        _banTier = banTier;
+        for (final t in freeCars.where((c) =>
+            VehicleType.values[c.tierId] == banTier).take(4)) {
+          _targets.add((col: t.col, row: t.row));
+        }
+      case BossAttackKind.fog:
+        for (final t in fogPicks) {
+          _targets.add((col: t.col, row: t.row));
+        }
+      case BossAttackKind.hole:
+        // 黑洞开在随机空格（占格陷阱；玩家可以绕，也可以喂卡）。
+        empties.shuffle(_rnd);
+        _targets.add(empties.first);
       case BossAttackKind.rubble:
         // 塌方：N 块碎石落随机空格（章 8+ 两块）。
         empties.shuffle(_rnd);
@@ -3148,17 +3583,24 @@ class BossSprite extends PositionComponent {
       case BossAttackKind.ice:
         empties.shuffle(_rnd);
         _targets.add(empties.first);
+      case BossAttackKind.stealGoal:
+        // 抢目标：Boss 关没有棋盘目标（补血本身即惩罚，金色预警走
+        // Boss 光环）；理论上非 Boss 关才点目标车，生成器不会产出。
+        break;
       case BossAttackKind.lock:
       case BossAttackKind.taint:
+      case BossAttackKind.shuffle:
       case BossAttackKind.shield:
         break; // 无棋盘目标：靠 Boss 自身光环 + hint 说破
     }
     _setState(BossState.stalk);
   }
 
-  bool _isFrozen(int col, int row) {
+  /// 冰封或胶水（任何「动不了」的状态）——选目标/出手校验用它，
+  /// 避免堵了一种又漏一种（冻结死局 bug 的教训）。
+  bool _isLocked(int col, int row) {
     final d = game.board.at(col, row);
-    return d != null && d.frozen > 0;
+    return d != null && d.locked;
   }
 
   /// 出手瞬间执行攻击（目标可能已被玩家操作改变，先校验）。
@@ -3229,6 +3671,41 @@ class BossSprite extends PositionComponent {
         }
       case BossAttackKind.taint:
         game._bossTaint();
+      case BossAttackKind.glue:
+        // 胶水：定时粘住。目标被挪走/合掉 → 改粘当前最高档；
+        // 全场没货 → 不浪费预警，扔块冰。
+        final gt = _targets.isNotEmpty ? _targets.first : null;
+        final gd = gt == null ? null : game.board.at(gt.col, gt.row);
+        if (gd != null && !gd.isEmpty && !gd.locked) {
+          game._bossGlueCar(gt!.col, gt.row, seconds: spec.glueSeconds);
+        } else {
+          game._bossGlueHighest(seconds: spec.glueSeconds);
+        }
+      case BossAttackKind.hole:
+        final ht = _targets.isNotEmpty ? _targets.first : null;
+        if (ht != null &&
+            game.board.at(ht.col, ht.row) == null &&
+            game.board.obstacleAt(ht.col, ht.row) == null &&
+            !game.board.holeAt(ht.col, ht.row)) {
+          game._bossAddHole(ht.col, ht.row, seconds: spec.holeSeconds);
+        }
+      case BossAttackKind.shuffle:
+        game._bossShuffle();
+      case BossAttackKind.ban:
+        // 出手瞬间重选档位：玩家可能在预警期内把该档合没了。
+        game._bossBanMerge(_banTier ?? game._mostCommonFreeTier(),
+            seconds: spec.banSeconds);
+      case BossAttackKind.fog:
+        final fogNow = _targets
+            .where((t) => game.board.at(t.col, t.row) != null)
+            .toList();
+        if (fogNow.isNotEmpty) {
+          game._bossFog(fogNow);
+        } else {
+          game.hint.value = '🌫 Boss 放出迷雾，但你已经把车都挪开了！';
+        }
+      case BossAttackKind.stealGoal:
+        game._bossStealGoal();
       case BossAttackKind.lock:
         game._bossLockStock(spec.lockStockSeconds);
       case BossAttackKind.ice:
@@ -3356,7 +3833,8 @@ class BossSprite extends PositionComponent {
 
   /// 目标格预警环：外圈 + 收缩内圈 + 十字准星。
   /// 颜色按技能类型区分——冰封冰蓝、退化深紫、扣押紫红、拖车紫、
-  /// 塌方石灰、锁牌堆琥珀、污染毒绿、冰块亮蓝，
+  /// 塌方石灰、锁牌堆琥珀、污染毒绿、冰块亮蓝、胶水蜂蜜、黑洞暗紫、
+  /// 禁合警告红、抢目标金、迷雾灰，
   /// 玩家看一眼环的颜色就知道 Boss 要干什么。
   void _drawWarning(Canvas canvas, Offset center,
       {BossAttackKind kind = BossAttackKind.ice}) {
@@ -3369,6 +3847,12 @@ class BossSprite extends PositionComponent {
       BossAttackKind.lock => const Color(0xFFFFB300),
       BossAttackKind.taint => const Color(0xFF8BC34A),
       BossAttackKind.ice => const Color(0xFF81D4FA),
+      BossAttackKind.glue => const Color(0xFFFFB300),
+      BossAttackKind.hole => const Color(0xFF7B1FA2),
+      BossAttackKind.ban => const Color(0xFFE53935),
+      BossAttackKind.stealGoal => const Color(0xFFFFD700),
+      BossAttackKind.fog => const Color(0xFF90A4AE),
+      BossAttackKind.shuffle => const Color(0xFF00BCD4),
       BossAttackKind.shield => const Color(0xFFFFD54F),
     };
     final r = _cell * 0.44;

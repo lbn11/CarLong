@@ -123,6 +123,20 @@ enum BossAttackKind {
   devolve,
   taint,
   shield,
+  // ── 第二批（2026-10-18）──
+  /// 胶水：把一辆车粘住几秒（只随时间干掉，反制 = 等）。
+  glue,
+  /// 黑洞：空格开旋涡占格，可以把卡拖进去喂给它（吞掉不结算）。
+  hole,
+  /// 洗牌：全场没冻/粘的车随机重排（搅局，顺带破解死局）。
+  shuffle,
+  /// 禁合：某等级几秒内不能合并（红 ✕ 标出，预警环点名单辆车）。
+  ban,
+  /// 抢目标：Boss 抓回一个已达成的目标车补 1 血（唯一碰胜利资源的
+  /// 技能，所以金色预警 + 只在水战区/招牌位出现）。
+  stealGoal,
+  /// 迷雾：盖住几辆车看不见（落子附近可揭开，反制 = 靠记忆/探头）。
+  fog,
 }
 
 /// Boss 战配置（仅合成模式，null = 普通关）。
@@ -193,6 +207,18 @@ class BossSpec {
   /// 护盾持续秒数（盾期间产出不计 HP）。
   final double shieldDuration;
 
+  /// 胶水：粘几秒（章越深越久，4-6 秒）。
+  final double glueSeconds;
+
+  /// 黑洞：旋涡持续秒数。
+  final double holeSeconds;
+
+  /// 禁合：某等级禁止合并秒数。
+  final double banSeconds;
+
+  /// 迷雾：一次盖住几辆车。
+  final int fogCells;
+
   const BossSpec({
     required this.hp,
     this.attackInterval = 9,
@@ -211,6 +237,10 @@ class BossSpec {
     this.devolveLevels = 1,
     this.shieldCycle = 0,
     this.shieldDuration = 3,
+    this.glueSeconds = 4,
+    this.holeSeconds = 6,
+    this.banSeconds = 4,
+    this.fogCells = 2,
   });
 
   /// 按章节深度推导卡组（Boss 成长线，见类文档）。
@@ -221,9 +251,11 @@ class BossSpec {
   /// 攻击技能池按章解锁（同维度不堆同技能，保持组合差异）：
   /// - 章 0-1：冰封 + 拖车（新手期轻骚扰）
   /// - 章 2-3：+ 塌方 + 扣押
-  /// - 章 4-5：+ 退化
-  /// - 章 6-7：+ 污染 + 锁牌堆
-  /// - 章 8+：全池（7 个攻击技能）
+  /// - 章 3：+ 胶水（第一种「等时间」型干扰）
+  /// - 章 4-5：+ 退化、洗牌
+  /// - 章 6-7：+ 污染 + 锁牌堆 + 禁合
+  /// - 章 7-8：+ 黑洞、迷雾
+  /// - 章 9+：+ 抢目标（唯一碰胜利资源的技能，压轴）
   ///
   /// 普通 Boss 主技按序号轮转（保证同章不重样）、辅技按种子抽；
   /// 尖峰 Boss 查招牌表。被动（狂怒章 11+ / 护盾章 9+）与攻击卡组
@@ -236,9 +268,17 @@ class BossSpec {
       BossAttackKind.steal,
     ];
     if (c >= 2) pool.addAll([BossAttackKind.rubble, BossAttackKind.impound]);
+    if (c >= 3) pool.add(BossAttackKind.glue);
     if (c >= 4) pool.add(BossAttackKind.devolve);
-    if (c >= 6) pool.addAll([BossAttackKind.taint, BossAttackKind.lock]);
-    // 章 8+ 全池已齐；ice 是填充技不进卡组。
+    if (c >= 5) pool.add(BossAttackKind.shuffle);
+    if (c >= 6) {
+      pool.addAll([BossAttackKind.taint, BossAttackKind.lock]);
+    }
+    if (c >= 6) pool.add(BossAttackKind.ban);
+    if (c >= 7) pool.add(BossAttackKind.hole);
+    if (c >= 8) pool.add(BossAttackKind.fog);
+    if (c >= 9) pool.add(BossAttackKind.stealGoal);
+    // ice 是填充技不进卡组。
 
     final rnd = Random(c * 31 + bossIndex * 7 + 101);
     final sig = _signatureDeck(c);
@@ -254,7 +294,12 @@ class BossSpec {
       epithet = sig.$3;
       shieldCycle = sig.$4 ? 12 : 0;
     } else {
-      primary = pool[bossIndex % pool.length];
+      // 主技轮转带章偏移：pool[(序号 + 章×2) % 池长]。只按序号轮转时
+      // 深章也永远从池头（冰封/拖车/塌方）起跳，池尾技能（抢目标等）
+      // 只能当辅技偶然露脸；加章偏移后每章领头羊不同，覆盖更匀。
+      // 池 ≥3 时三个序号的主技必然互异（连续三格）；池 =2 的章 0-1
+      // 刻意让 0/2 号位重复（新手期先练熟冰封+拖车）。
+      primary = pool[(bossIndex + c * 2) % pool.length];
       var rest = pool.where((k) => k != primary).toList();
       // 辅技避开招牌组合：尖峰位要独一份，不能被普通位抢先。
       if (primary == sig.$1 && rest.length > 1) {
@@ -284,6 +329,10 @@ class BossSpec {
       impoundSeconds: (3 + c ~/ 3).clamp(3, 6),
       taintCards: c >= 6 ? 3 : 2,
       devolveLevels: c >= 9 ? 2 : 1,
+      glueSeconds: (4 + c ~/ 4).clamp(4, 6).toDouble(),
+      holeSeconds: 6,
+      banSeconds: (3 + c ~/ 4).clamp(3, 5).toDouble(),
+      fogCells: (2 + c ~/ 6).clamp(2, 4),
       shieldCycle: shieldCycle,
       shieldDuration: 3,
     );
@@ -297,7 +346,9 @@ class BossSpec {
   ///
   /// 排布逻辑：前 10 章每章亮出一个新技能的「纯正形态」（碎石王 /
   /// 回收站 / 退化射线 / 毒池…），后 4 章上双强组合 + 护盾，终章
-  /// 「终局车王」冰封 + 扣押 + 盾全齐。
+  /// 「终局车王」冰封 + 扣押 + 盾全齐。第二批技能（胶水/黑洞/洗牌/
+  /// 禁合/迷雾/抢目标）从第 10 章起进招牌位——新机制先在普通池
+  /// 里让玩家见过面，尖峰位再给记忆点。
   static (BossAttackKind, BossAttackKind?, String, bool) _signatureDeck(
       int c) {
     const decks = <(BossAttackKind, BossAttackKind?, String, bool)>[
@@ -311,9 +362,9 @@ class BossSpec {
       (BossAttackKind.lock, BossAttackKind.taint, '银行家', true),
       (BossAttackKind.rubble, BossAttackKind.impound, '崩落巨兽', false),
       (BossAttackKind.devolve, BossAttackKind.taint, '蚀变工场', true),
-      (BossAttackKind.lock, BossAttackKind.devolve, '终焉保险', true),
-      (BossAttackKind.taint, BossAttackKind.impound, '腐败漩涡', true),
-      (BossAttackKind.devolve, BossAttackKind.rubble, '铁锈君王', true),
+      (BossAttackKind.lock, BossAttackKind.ban, '终焉保险', true),
+      (BossAttackKind.taint, BossAttackKind.fog, '腐败漩涡', true),
+      (BossAttackKind.devolve, BossAttackKind.glue, '铁锈君王', true),
       (BossAttackKind.freeze, BossAttackKind.impound, '终局车王', true),
     ];
     return decks[c.clamp(0, decks.length - 1)];

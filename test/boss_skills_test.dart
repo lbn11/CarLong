@@ -2,6 +2,7 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:merge_fleet/game/merge_game.dart';
+import 'package:merge_fleet/logic/board_logic.dart';
 import 'package:merge_fleet/models/level.dart';
 import 'package:merge_fleet/models/vehicle.dart';
 import 'package:merge_fleet/save/save_repository.dart';
@@ -24,6 +25,10 @@ LevelDefinition _skillLevel({
   int taintCards = 2,
   double shieldCycle = 0,
   double shieldDuration = 3,
+  double glueSeconds = 4,
+  double holeSeconds = 6,
+  double banSeconds = 4,
+  int fogCells = 2,
 }) {
   return LevelDefinition(
     id: id,
@@ -42,6 +47,10 @@ LevelDefinition _skillLevel({
       taintCards: taintCards,
       shieldCycle: shieldCycle,
       shieldDuration: shieldDuration,
+      glueSeconds: glueSeconds,
+      holeSeconds: holeSeconds,
+      banSeconds: banSeconds,
+      fogCells: fogCells,
     ),
   );
 }
@@ -279,7 +288,401 @@ void main() {
     }
     expect(game.bossHp.value, lessThan(2), reason: '盾消失后应扣血');
   });
+
+  // ─────────────────────────────────────────────────────────────
+  //  第二批技能（2026-10-18）：纯逻辑（BoardLogic 直驱）
+  // ─────────────────────────────────────────────────────────────
+
+  test('胶水状态：粘住 → locked 阻断 → 到期自动干掉', () {
+    final board = _board();
+    board.placeAt(0, 0, StackData(VehicleType.bicycle));
+    board.placeAt(1, 0, StackData(VehicleType.bicycle));
+    board.glueAt(0, 0, 3);
+    expect(board.at(0, 0)!.locked, isTrue);
+    // 胶车不能动、不能被合（与冰封同一 locked 阻断面）。
+    expect(board.move(0, 0, 1, 0).valid, isFalse);
+    expect(board.move(1, 0, 0, 0).valid, isFalse);
+    expect(board.hasGlue, isTrue);
+    expect(board.glueLeft, closeTo(3, 0.001));
+
+    // 倒计时递减，归零解封。
+    expect(board.tickGlue(1), 0);
+    expect(board.glueLeft, closeTo(2, 0.001));
+    expect(board.tickGlue(2), 1, reason: '返回干掉的张数');
+    expect(board.hasGlue, isFalse);
+    expect(board.move(0, 0, 1, 0).valid, isTrue, reason: '解封后能合');
+  });
+
+  test('死局感知：唯一可合对被胶水粘住 → 无步可走、hint 不指它', () {
+    final board = _board();
+    board.placeAt(0, 0, StackData(VehicleType.bicycle));
+    board.placeAt(1, 0, StackData(VehicleType.bicycle));
+    expect(board.hasPossibleMove, isTrue);
+    board.glueAt(0, 0, 4);
+    expect(board.hasPossibleMove, isFalse,
+        reason: '粘住的车不算可合资源（防软锁）');
+    expect(board.hintMove(), isNull, reason: 'hint 不能指向粘住的车');
+  });
+
+  test('黑洞：占格挡落点 + 拖进去被吞 + 到期闭合', () {
+    final board = _board();
+    board.placeAt(0, 0, StackData(VehicleType.bicycle));
+    board.placeAt(1, 0, StackData(VehicleType.bicycle));
+    board.addHole(2, 0, 5);
+    expect(board.holeAt(2, 0), isTrue);
+    expect(board.holeLeftAt(2, 0), closeTo(5, 0.001));
+
+    // 占格：落点永远避开黑洞（4x4 有 13 个可用空格）。
+    for (var i = 0; i < 12; i++) {
+      final cell = board.placeTierSmart(VehicleType.bicycle);
+      expect(cell, isNotNull);
+      expect(board.holeAt(cell!.col, cell.row), isFalse);
+    }
+
+    // 拖卡进黑洞：被吞（valid 但不结算合并，源格清空）。
+    final r = board.move(0, 0, 2, 0);
+    expect(r.valid, isTrue);
+    expect(r.swallowed, isTrue);
+    expect(board.at(0, 0), isNull);
+    expect(board.at(2, 0), isNull, reason: '黑洞格本身不落卡');
+
+    // 到期闭合。
+    expect(board.tickHoles(5), 1);
+    expect(board.hasHoles, isFalse);
+    expect(board.holeAt(2, 0), isFalse);
+  });
+
+  test('洗牌：多重集合不变、冻车原地不动', () {
+    final board = _board();
+    board.placeAt(0, 0, StackData(VehicleType.bicycle));
+    board.placeAt(0, 1, StackData(VehicleType.sedan));
+    board.placeAt(1, 0, StackData(VehicleType.bus));
+    board.placeAt(1, 1, StackData(VehicleType.bicycle));
+    board.freezeAt(1, 1); // 冻住 (1,1) 的自行车
+
+    final n = board.shuffleUnlocked();
+    expect(n, 3, reason: '只有 3 张没冻/粘的车参与重排');
+
+    // 冻车没动（冰封叙事是「原地救车」，不能被洗走）。
+    expect(board.at(1, 1)!.tier, VehicleType.bicycle);
+    expect(board.at(1, 1)!.frozen, greaterThan(0));
+
+    // 多重集合不变。
+    final tiers = <VehicleType>[];
+    for (var c = 0; c < 4; c++) {
+      for (var r = 0; r < 4; r++) {
+        final d = board.at(c, r);
+        if (d != null && !d.isEmpty) tiers.add(d.tier);
+      }
+    }
+    tiers.sort((a, b) => a.index.compareTo(b.index));
+    expect(tiers, [
+      VehicleType.bicycle,
+      VehicleType.bicycle,
+      VehicleType.sedan,
+      VehicleType.bus,
+    ]);
+  });
+
+  test('迷雾：盖住 + 落子揭开（远处的雾不揭）', () {
+    final board = _board();
+    board.placeAt(2, 2, StackData(VehicleType.bicycle));
+    expect(board.isFogged(2, 2), isFalse);
+    board.fogCellsAt([
+      (col: 2, row: 2),
+      (col: 0, row: 0),
+    ]);
+    expect(board.isFogged(2, 2), isTrue);
+    expect(board.isFogged(0, 0), isTrue);
+    board.revealNear(2, 2);
+    expect(board.isFogged(2, 2), isFalse);
+    expect(board.isFogged(0, 0), isTrue, reason: '远处的雾不该被揭');
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  //  第二批技能（2026-10-18）：widget 级（驱动真实对局）
+  // ─────────────────────────────────────────────────────────────
+
+  testWidgets('胶水：车被定时粘住，到期自动干掉', (tester) async {
+    final level = _skillLevel(
+        primary: BossAttackKind.glue, id: 9216, glueSeconds: 2, interval: 30);
+    final game = await pumpSkillGame(tester, level);
+
+    for (var i = 0; i < 6; i++) {
+      game.drawStock();
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+    final glued = await pumpUntil(tester, () => game.board.hasGlue, 60);
+    expect(glued, isTrue, reason: '胶水应粘住一辆车');
+    expect(game.hint.value, isNotNull);
+    expect(game.hint.value!.contains('胶水'), isTrue);
+
+    // 粘住的车合不了（board.move 直接验证 locked 阻断面）。
+    ({int col, int row})? gluedCell() {
+      for (var c = 0; c < game.level.cols; c++) {
+        for (var r = 0; r < game.level.rows; r++) {
+          final d = game.board.at(c, r);
+          if (d != null && !d.isEmpty && d.glueT > 0) return (col: c, row: r);
+        }
+      }
+      return null;
+    }
+
+    final gc = gluedCell();
+    expect(gc, isNotNull);
+    // 找一个空格：胶车挪不过去。
+    var target = (-1, -1);
+    outer:
+    for (var c = 0; c < game.level.cols; c++) {
+      for (var r = 0; r < game.level.rows; r++) {
+        final d = game.board.at(c, r);
+        if (d == null || d.isEmpty) {
+          target = (c, r);
+          break outer;
+        }
+      }
+    }
+    expect(target.$1, greaterThanOrEqualTo(0));
+    expect(game.board.move(gc!.col, gc.row, target.$1, target.$2).valid, isFalse,
+        reason: '胶水期间挪不动');
+
+    // 到期自动干掉（glueSeconds=2）。
+    final dried = await pumpUntil(tester, () => !game.board.hasGlue, 60);
+    expect(dried, isTrue, reason: '胶水应到点自动干掉');
+    expect(game.hint.value, contains('胶水干'));
+  });
+
+  testWidgets('黑洞：占格期间抽牌落不进旋涡，到期闭合', (tester) async {
+    final level = _skillLevel(
+        primary: BossAttackKind.hole, id: 9217, holeSeconds: 2, interval: 30);
+    final game = await pumpSkillGame(tester, level);
+
+    for (var i = 0; i < 6; i++) {
+      game.drawStock();
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+    final holed = await pumpUntil(tester, () => game.board.hasHoles, 60);
+    expect(holed, isTrue, reason: '黑洞应出现');
+    expect(game.hint.value, isNotNull);
+    expect(game.hint.value!.contains('黑洞'), isTrue);
+
+    // 占格期间抽牌：永远落不进黑洞（placeTierSmart 避开）。
+    ({int col, int row})? holeCell() {
+      for (var c = 0; c < game.level.cols; c++) {
+        for (var r = 0; r < game.level.rows; r++) {
+          if (game.board.holeAt(c, r)) return (col: c, row: r);
+        }
+      }
+      return null;
+    }
+
+    final hc = holeCell();
+    expect(hc, isNotNull);
+    for (var i = 0; i < 8; i++) {
+      game.drawStock();
+      await tester.pump(const Duration(milliseconds: 60));
+    }
+    expect(game.board.at(hc!.col, hc.row), isNull,
+        reason: '黑洞格不能被落牌占据');
+
+    // 到期闭合。
+    final closed = await pumpUntil(tester, () => !game.board.hasHoles, 60);
+    expect(closed, isTrue, reason: '黑洞应到期闭合');
+    expect(game.hint.value, contains('黑洞闭合'));
+  });
+
+  testWidgets('洗牌：布局被打乱但车辆集合不变', (tester) async {
+    final level = _skillLevel(
+        primary: BossAttackKind.shuffle, id: 9218, interval: 30);
+    final game = await pumpSkillGame(tester, level);
+
+    for (var i = 0; i < 8; i++) {
+      game.drawStock();
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+    List<VehicleType> tiersNow() {
+      final tiers = <VehicleType>[];
+      for (var c = 0; c < game.level.cols; c++) {
+        for (var r = 0; r < game.level.rows; r++) {
+          final d = game.board.at(c, r);
+          if (d != null && !d.isEmpty) tiers.add(d.tier);
+        }
+      }
+      tiers.sort((a, b) => a.index.compareTo(b.index));
+      return tiers;
+    }
+
+    final before = tiersNow();
+    expect(before.length, greaterThanOrEqualTo(4), reason: '场上要有车可洗');
+
+    final shuffled = await pumpUntil(
+        tester, () => game.hint.value?.contains('洗牌') ?? false, 60);
+    expect(shuffled, isTrue, reason: '洗牌应出手并说破');
+    expect(tiersNow(), before, reason: '洗牌不增不减车辆');
+  });
+
+  testWidgets('禁合：该档合并被拒，到期恢复', (tester) async {
+    final level = _skillLevel(
+        primary: BossAttackKind.ban, id: 9219, banSeconds: 3, interval: 30);
+    final game = await pumpSkillGame(tester, level);
+
+    for (var i = 0; i < 8; i++) {
+      game.drawStock();
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+    final banned = await pumpUntil(tester, () => game.banActive, 60);
+    expect(banned, isTrue, reason: '禁合应生效');
+    expect(game.banTier, isNotNull);
+    expect(game.hint.value, isNotNull);
+    expect(game.hint.value!.contains('禁合'), isTrue);
+
+    // 找两张被禁档位的车（没有就摆两张）：点选合并 → 应被拒。
+    final tier = game.banTier!;
+    ({int col, int row})? findCar(VehicleType t, {({int col, int row})? skip}) {
+      for (var c = 0; c < game.level.cols; c++) {
+        for (var r = 0; r < game.level.rows; r++) {
+          if (skip != null && skip.col == c && skip.row == r) continue;
+          final d = game.board.at(c, r);
+          if (d != null && !d.isEmpty && !d.isWildcard && !d.isBomb &&
+              d.tier == t) {
+            return (col: c, row: r);
+          }
+        }
+      }
+      return null;
+    }
+
+    var a = findCar(tier);
+    var b = a == null ? null : findCar(tier, skip: a);
+    if (a == null || b == null) {
+      // 场上凑不齐两张：摆两张再重刷精灵表（shuffleBoard 内部
+      // _syncSpritesFromBoard，直接 placeAt 是没有精灵的，点不到）。
+      final empties = <({int col, int row})>[];
+      for (var c = 0; c < game.level.cols; c++) {
+        for (var r = 0; r < game.level.rows; r++) {
+          final d = game.board.at(c, r);
+          if (d == null || d.isEmpty) empties.add((col: c, row: r));
+        }
+      }
+      if (empties.length >= 2) {
+        game.board.placeAt(empties[0].col, empties[0].row, StackData(tier));
+        game.board.placeAt(empties[1].col, empties[1].row, StackData(tier));
+        game.shuffleBoard();
+        a = findCar(tier);
+        b = a == null ? null : findCar(tier, skip: a);
+      }
+    }
+    expect(a, isNotNull, reason: '场上应有被禁档位的车');
+    expect(b, isNotNull);
+
+    await tapCell(tester, game, a!.col, a.row);
+    await tapCell(tester, game, b!.col, b.row);
+    await tester.pump(const Duration(milliseconds: 120));
+    expect(game.board.at(a.col, a.row), isNotNull,
+        reason: '禁合期间合并应被拒，车没动');
+    expect(game.board.at(b.col, b.row), isNotNull);
+    expect(game.hint.value, contains('禁合'));
+
+    // 到期恢复：同样的两步合并成功（b 格变成 2 张）。
+    final recovered = await pumpUntil(tester, () => !game.banActive, 60);
+    expect(recovered, isTrue, reason: '禁合应到期解除');
+    await tapCell(tester, game, a.col, a.row);
+    await tapCell(tester, game, b.col, b.row);
+    await tester.pump(const Duration(milliseconds: 120));
+    final srcAfter = game.board.at(a.col, a.row);
+    expect(srcAfter == null || srcAfter.isEmpty, isTrue,
+        reason: '解禁后合并成功，源格清空');
+    expect(game.board.at(b.col, b.row)!.count, greaterThanOrEqualTo(2));
+  });
+
+  testWidgets('抢目标：Boss 受伤后才可放，命中回 1 血', (tester) async {
+    // interval 3s：首次攻击（满血 → 无可抢 → 退化成扔冰）之后很快
+    // 就有第二击；测试窗口（pumpUntil 60 步 ≈ 9s）内必须吃到抢目标。
+    final level = _skillLevel(
+        primary: BossAttackKind.stealGoal, id: 9220, hp: 5, interval: 3);
+    final game = await pumpSkillGame(tester, level);
+
+    // 先打掉 1 血：满血时抢目标不可用（没东西可抢，天然防连放）。
+    var guard = 0;
+    while (game.bossHp.value == 5 && guard < 100) {
+      guard++;
+      if (game.board.isFull) game.shuffleBoard();
+      game.drawStock();
+      game.drawStock();
+      final pair = findMergePair(game);
+      if (pair != null) {
+        await tapCell(tester, game, pair.from.$1, pair.from.$2);
+        await tapCell(tester, game, pair.to.$1, pair.to.$2);
+      }
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    final before = game.bossHp.value;
+    expect(before, lessThan(5), reason: '至少打掉 1 血才能被抢');
+    expect(before, greaterThan(0), reason: '别把 Boss 打死了');
+
+    // 等抢目标出手：血涨回去（只有抢目标会加血）。
+    final stolen = await pumpUntil(
+        tester, () => game.bossHp.value > before, 60);
+    expect(stolen, isTrue, reason: '抢目标应把血抢回去');
+    expect(game.hint.value, contains('抢'));
+  });
+
+  testWidgets('迷雾：盖住的车看不见，落子附近揭开', (tester) async {
+    final level = _skillLevel(
+        primary: BossAttackKind.fog, id: 9221, fogCells: 2, interval: 30);
+    final game = await pumpSkillGame(tester, level);
+
+    for (var i = 0; i < 8; i++) {
+      game.drawStock();
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+    final fogged = await pumpUntil(
+        tester, () => game.hint.value?.contains('迷雾') ?? false, 60);
+    expect(fogged, isTrue, reason: '迷雾应出手并说破');
+
+    // 有车被盖住。
+    var foggedCars = 0;
+    for (var c = 0; c < game.level.cols; c++) {
+      for (var r = 0; r < game.level.rows; r++) {
+        final d = game.board.at(c, r);
+        if (d != null && !d.isEmpty && game.board.isFogged(c, r)) {
+          foggedCars++;
+        }
+      }
+    }
+    expect(foggedCars, greaterThan(0), reason: '迷雾应盖住车');
+
+    // 落子揭开：在一张被盖的车旁合并/落子 → 雾散。
+    ({int col, int row})? foggedCell() {
+      for (var c = 0; c < game.level.cols; c++) {
+        for (var r = 0; r < game.level.rows; r++) {
+          final d = game.board.at(c, r);
+          if (d != null && !d.isEmpty && game.board.isFogged(c, r)) {
+            return (col: c, row: r);
+          }
+        }
+      }
+      return null;
+    }
+
+    final fc = foggedCell();
+    expect(fc, isNotNull);
+    game.board.revealNear(fc!.col, fc.row);
+    expect(game.board.isFogged(fc.col, fc.row), isFalse,
+        reason: '落子附近应揭开迷雾');
+  });
 }
+
+/// 第二批技能的纯逻辑棋盘（4x4 无障碍）。
+BoardLogic _board() => BoardLogic(LevelDefinition(
+      id: 9990,
+      name: '逻辑测试关',
+      cols: 4,
+      rows: 4,
+      stockSize: 10,
+      targetTier: VehicleType.scooter,
+      targetCount: 1,
+    ));
 
 // ─────────────────────────────────────────────────────────────
 //  辅助（与 boss_fight_test 同款，复制以保持测试文件独立）

@@ -248,12 +248,18 @@ class StackData {
   /// 玩家必须先在旁边合两次「救它」，节奏被打断才有痛感。
   int frozen;
 
+  /// Boss 胶水剩余秒数。>0 时同样动不了/合不了，但**只随时间流逝**
+  /// 自动干掉（不像冰封要靠邻格合并救）。反制就是等——短而纯粹的
+  /// 节奏干扰，与冰封的「主动救车」形成互补。
+  double glueT;
+
   StackData(
     this.tier, {
     this.count = 1,
     this.isWildcard = false,
     this.isBomb = false,
     this.frozen = 0,
+    this.glueT = 0,
   });
 
   bool get isEmpty => count <= 0;
@@ -261,11 +267,19 @@ class StackData {
   /// 是否被 Boss 冰封（动不了）。
   bool get isFrozen => frozen > 0;
 
+  /// 是否被胶水粘住（动不了，但会随时间自动干掉）。
+  bool get isGlued => glueT > 0;
+
+  /// 任何「当前动不了」的状态（冰封或胶水）。move/可步判定/hint
+  /// 一律用这个，避免堵了一种又漏一种（冻结死局 bug 的教训）。
+  bool get locked => frozen > 0 || glueT > 0;
+
   StackData copy() => StackData(
         tier,
         count: count,
         isWildcard: isWildcard,
         isBomb: isBomb,
         frozen: frozen,
+        glueT: glueT,
       );
 }

@@ -309,9 +309,9 @@ void main() {
       expect(spec!.stealTopTier, c >= 3, reason: '章$c stealTopTier');
       expect(spec.lockStockSeconds > 0, c >= 7, reason: '章$c lockStock');
       expect(spec.enrageAtHalf, c >= 11, reason: '章$c enrage');
-      // 冰封张数：章 11+ 恒 2；章 3+ 卡组含冰封也 2（章 0-2 的 0 号位
-      // 普通 Boss 主技恒为冰封，双重冻气提前登场）；章 0 在保护期内仍 1。
-      const freezeCounts = {0: 1, 3: 2, 7: 2, 11: 2};
+      // 冰封张数：章 11+ 恒 2；章 3+ 卡组含冰封也 2（提前登场）；
+      // 章 0 保护期内 1；章 7 的 0 号位（impound+shuffle）不含冰封 → 1。
+      const freezeCounts = {0: 1, 3: 2, 7: 1, 11: 2};
       expect(spec.freezeCount, freezeCounts[c], reason: '章$c freezeCount');
       expect(spec.freezeLayers, 2, reason: '章$c freezeLayers');
     }
@@ -384,6 +384,28 @@ void main() {
         reason: '末章主技种类：$lastPrimaries');
     expect(lastSkills.length, greaterThanOrEqualTo(5),
         reason: '末章技能覆盖：$lastSkills');
+
+    // 第二批技能（2026-10-18）六个新技能在全表至少各出现一次
+    // （主或辅）——入池不是摆设，玩家真的能见到。
+    const secondBatch = {
+      BossAttackKind.glue,
+      BossAttackKind.hole,
+      BossAttackKind.shuffle,
+      BossAttackKind.ban,
+      BossAttackKind.stealGoal,
+      BossAttackKind.fog,
+    };
+    final seen = <BossAttackKind>{};
+    for (var c = 0; c < 14; c++) {
+      for (var b = 0; b < 4; b++) {
+        final s = BossSpec.forLevel(c, b, 10);
+        seen.add(s.primary);
+        if (s.secondary != null) seen.add(s.secondary!);
+      }
+    }
+    for (final k in secondBatch) {
+      expect(seen, contains(k), reason: '第二批技能 $k 应在全表出现');
+    }
   });
 }
 
