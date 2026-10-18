@@ -714,13 +714,12 @@ Offset _cellCenter(WidgetTester tester, MergeGame game, int col, int row) {
       find.byWidgetPredicate((w) => w is GameWidget));
   const gap = 6.0;
   final cell = game.cellPx.value;
-  final boardW = game.level.cols * cell + gap * (game.level.cols - 1);
-  final boardH = game.level.rows * cell + gap * (game.level.rows - 1);
-  final ox = rect.left + (rect.width - boardW) / 2;
-  final oy = rect.top + (rect.height - boardH) / 2;
+  // 必须用游戏真实 boardOrigin：Boss 关为悬浮位预留空间后棋盘不再
+  // 垂直居中（2026-10-19 压棋盘修复），按居中公式算会点偏格子。
+  final origin = game.boardOriginForTest;
   return Offset(
-    ox + col * (cell + gap) + cell / 2,
-    oy + row * (cell + gap) + cell / 2,
+    rect.left + origin.x + col * (cell + gap) + cell / 2,
+    rect.top + origin.y + row * (cell + gap) + cell / 2,
   );
 }
 

@@ -288,6 +288,43 @@ class BoardLogic {  final LevelDefinition level;
     return melted;
   }
 
+  /// 场上是否还有 Boss 扔的冰块障碍（融雪安全阀的触发条件之一）。
+  bool get hasIce {
+    for (final o in _obstacles) {
+      if (o.type == ObstacleType.ice && !o.removed && o.layers > 0) return true;
+    }
+    return false;
+  }
+
+  /// 全场活跃冰块剩余层数总数（融雪提示文案用）。
+  int get iceLayers {
+    var total = 0;
+    for (final o in _obstacles) {
+      if (o.type == ObstacleType.ice && !o.removed && o.layers > 0) {
+        total += o.layers;
+      }
+    }
+    return total;
+  }
+
+  /// 融雪安全阀（冰块版）：全场活跃冰块统一融 1 层，返回本次融掉层的冰块数。
+  ///
+  /// 与冻车版的关键区别：冰块**只能被相邻合并融化**，玩家被 Boss 用冰块
+  /// 填满棋盘时没有任何自助手段。没有这条阀，「冰封棋盘」会永久卡死对局——
+  /// 死局收尾（_clearLowestAuto）只删车删不到冰，牌堆又永远抽不完，
+  /// 游戏挂着永不结束。层数归零即标记 removed，格子重新可落子。
+  int meltAllIceOneLayer() {
+    var melted = 0;
+    for (final o in _obstacles) {
+      if (o.type != ObstacleType.ice || o.removed || o.layers <= 0) continue;
+      o.layers -= 1;
+      melted++;
+      if (o.layers <= 0) o.removed = true;
+    }
+    if (melted > 0) _invalidate();
+    return melted;
+  }
+
   /// 运行时添加障碍物（Boss 攻击往空格扔冰用）。
   ///
   /// 快照会序列化当前全部障碍（含运行时添加的），因此**撤销自动兼容**：
@@ -779,8 +816,16 @@ class BoardLogic {  final LevelDefinition level;
     return null;
   }
 
-  /// 是否存在任意可合并操作（用于提示，含万能卡与炸弹）。
+  /// 是否存在任意可合并操作（用于死局检测与提示，含万能卡与炸弹）。
   /// 结果缓存到 [_possibleMoveCache]，棋盘被改写时由 [_invalidate] 失效。
+  ///
+  /// 规则必须与 [move] / [hintMove] / UI 高亮（MergeGame._canMergeWith）
+  /// 严格一致：**格对格合并——任意两张同档车点哪都能合，不看距离、
+  /// 不看空格通路**。
+  /// 2026-10-19 修复：旧实现要求 BFS 空格通路或相邻交换（W1 滑块合并
+  /// 时代的遗留，d491acc），比 [move] 严苛——被别的车墙隔开的同档对
+  /// 会被误判「无路可走」，牌堆空时直接误判负（而 hint 按钮照样能
+  /// 指出那一步，自相矛盾）。
   bool get hasPossibleMove {
     final cached = _possibleMoveCache;
     if (cached != null) return cached;
@@ -792,7 +837,8 @@ class BoardLogic {  final LevelDefinition level;
   bool _computePossibleMove() {
     var wildcards = 0;
     var bombs = 0;
-    final normalByTier = <VehicleType, int>{};
+    final stacksByTier = <VehicleType, int>{};
+    var normalStacks = 0;
     for (final s in _grid) {
       if (s == null || s.isEmpty) continue;
       // Boss 冰封：冻住的车不可动、不可被合——不算可合资源。
@@ -805,101 +851,17 @@ class BoardLogic {  final LevelDefinition level;
       } else if (s.isBomb) {
         bombs += s.count;
       } else {
-        normalByTier[s.tier] = (normalByTier[s.tier] ?? 0) + s.count;
+        // 数**堆数**不是 count：单堆 count=2 无法自己合自己。
+        stacksByTier[s.tier] = (stacksByTier[s.tier] ?? 0) + 1;
+        normalStacks += 1;
       }
     }
     if (wildcards >= 2) return true;
     if (bombs >= 2) return true;
-    final normalCount = normalByTier.values.fold(0, (a, b) => a + b);
-    if (wildcards >= 1 && normalCount >= 1) return true;
-
-    // 普通卡：检查是否有任意两张同等级卡可达，或交换可制造合并
-    for (var c = 0; c < cols; c++) {
-      for (var r = 0; r < rows; r++) {
-        final s = at(c, r);
-        // 冻车/胶车自己动不了，不能当「起点」算可步（否则又是软锁）。
-        if (s == null || s.isEmpty || s.isWildcard || s.isBomb) continue;
-        if (s.locked) continue;
-        if (_canReachSameTier(c, r, s.tier)) return true;
-        if (_swapCreatesMerge(c, r)) return true;
-      }
-    }
-    return false;
-  }
-
-  /// BFS 搜索：从 (col,row) 出发，能否到达任意同等级卡。
-  /// 空格可通过，障碍 / 其他卡片阻挡。
-  bool _canReachSameTier(int col, int row, VehicleType tier) {
-    final visited = <int>{};
-    final queue = <int>[_idx(col, row)];
-    visited.add(_idx(col, row));
-
-    var head = 0;
-    while (head < queue.length) {
-      final curr = queue[head++];
-      final cc = curr % cols;
-      final cr = curr ~/ cols;
-
-      for (final (dc, dr) in [(1, 0), (-1, 0), (0, 1), (0, -1)]) {
-        final nc = cc + dc, nr = cr + dr;
-        if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) continue;
-        final ni = _idx(nc, nr);
-        if (visited.contains(ni)) continue;
-        visited.add(ni);
-
-        final ns = _grid[ni];
-        if (ns == null || ns.isEmpty) {
-          // 空格才可通行；黑洞占着格，绕不过去。
-          if (!holeAt(nc, nr)) queue.add(ni);
-        } else if (!ns.isWildcard &&
-            !ns.isBomb &&
-            !ns.locked &&
-            ns.tier == tier) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  /// 检查 (col,row) 的卡片与任意邻居交换后是否制造同等级相邻。
-  bool _swapCreatesMerge(int col, int row) {
-    final s = at(col, row);
-    // 冻车/胶车自己动不了，不能当交换起点。
-    if (s == null || s.locked) return false;
-
-    for (final (dc, dr) in [(1, 0), (-1, 0), (0, 1), (0, -1)]) {
-      final nc = col + dc, nr = row + dr;
-      if (nc < 0 || nc >= cols || nr < 0 || nr >= rows) continue;
-      final ns = at(nc, nr);
-      if (ns == null ||
-          ns.isEmpty ||
-          ns.isWildcard ||
-          ns.isBomb ||
-          ns.locked || // 冻车/胶车不能参与交换
-          ns.tier == s.tier) {
-        continue;
-      }
-
-      // 模拟交换后检查 (nc,nr) 周围是否有 s 的同等级卡
-      for (final (dc2, dr2) in [(1, 0), (-1, 0), (0, 1), (0, -1)]) {
-        final ac = nc + dc2, ar = nr + dr2;
-        if (ac >= 0 &&
-            ac < cols &&
-            ar >= 0 &&
-            ar < rows &&
-            !(ac == col && ar == row)) {
-          final adj = at(ac, ar);
-          if (adj != null &&
-              !adj.isEmpty &&
-              !adj.locked && // 合成目标也不能是冻车/胶车
-              !adj.isWildcard &&
-              !adj.isBomb &&
-              adj.tier == s.tier) {
-            return true;
-          }
-        }
-      }
+    if (wildcards >= 1 && normalStacks >= 1) return true;
+    // 普通卡：任意两堆同档即可合（move() 格对格，无通路/距离要求）。
+    for (final n in stacksByTier.values) {
+      if (n >= 2) return true;
     }
     return false;
   }

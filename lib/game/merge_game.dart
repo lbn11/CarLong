@@ -218,6 +218,11 @@ class MergeGame extends FlameGame {
   /// Boss 实体（null = 非 Boss 关）。
   BossSprite? _boss;
 
+  // 测试专用 getter（boss_layout/boss_fight/boss_skills 回归测试用）：
+  // 布局不变量必须在真实 widget 树里断言，不能只靠浏览器人肉截图。
+  BossSprite? get bossForTest => _boss;
+  Vector2 get boardOriginForTest => _boardOrigin;
+
   /// Boss 死亡演出倒计时（>0 = 正在播死亡动画，结束后才判定胜利）。
   double _bossDeathT = 0;
 
@@ -418,16 +423,36 @@ class MergeGame extends FlameGame {
     const margin = 12.0;
     final availW = size.x - margin * 2;
     final availH = size.y - margin * 2;
+    final hasBoss = level.boss != null;
     // 优先撑满屏幕：卡片恒为正方形、比例不变，仅靠格子大小适配。
     // 竖屏按宽度撑满，横屏/超宽屏按高度撑满，始终占满受约束的那个维度。
     var cell = (availW - _gap * (level.cols - 1)) / level.cols;
+    // Boss 关：Boss 常驻悬浮在棋盘正上方，占 1.7 格 + 间距。这段高度必须
+    // 先从 availH 里扣掉再算格子——否则布局公式的 max() 钳位会把 Boss
+    // 按到棋盘第一行上（实测竖屏盖住第 1 行 2/3、横屏盖住整个第 1 行），
+    // 玩家的棋子被 Boss 压住看不见。解一环：
+    //   cell*rows + gap*(rows-1) + cell*1.7 + 12 <= availH
+    if (hasBoss) {
+      final bossCell =
+          (availH - _gap * (level.rows - 1) - 12) / (level.rows + 1.7);
+      if (cell > bossCell) cell = bossCell;
+    }
     if (cell * level.rows + _gap * (level.rows - 1) > availH) {
       cell = (availH - _gap * (level.rows - 1)) / level.rows;
     }
     _cellSize = cell.clamp(12.0, double.infinity);
     final totalW = _cellSize * level.cols + _gap * (level.cols - 1);
     final totalH = _cellSize * level.rows + _gap * (level.rows - 1);
-    _boardOrigin = Vector2((size.x - totalW) / 2, (size.y - totalH) / 2);
+    // Boss 关：棋盘整体下移给悬浮 Boss 让位（贴顶 + 1.7 格 + 间距），
+    // home.y 的 max() 钳位就不会再把 Boss 按回棋盘上；非 Boss 关保持垂直居中。
+    // min() 兜底防止极端矮屏幕把棋盘顶出底部。
+    final bossPad = hasBoss ? _cellSize * 1.7 + 12 : 0.0;
+    _boardOrigin = Vector2(
+      (size.x - totalW) / 2,
+      hasBoss
+          ? min(bossPad, max(0.0, size.y - totalH - 4))
+          : (size.y - totalH) / 2,
+    );
 
     _backdrop?.removeFromParent();
     _backdrop = BoardBackdrop(size: Vector2(totalW + 24, totalH + 24))
@@ -622,14 +647,16 @@ class MergeGame extends FlameGame {
       }
     }
     // ── 融雪安全阀 ──
-    // 玩家真卡死（牌堆空或棋盘满，且无可合步）时，若场上还有冻车：
+    // 玩家真卡死（牌堆空或棋盘满，且无可合步）时，若场上还有冻车/冰块：
     // 每 2.5s 全场融 1 层。没有它，「Boss 把车全冻住」会出现两种永久的
     // 坏结局——① hasPossibleMove 曾把冻车算成可合资源，死局检测不触发，
     // 游戏挂着永不结束；② 检测修好后直接判负，玩家没有任何翻盘机会。
+    // 冰块（addObstacle 的 ice）同理但更严重：它只能被相邻合并融化，
+    // 填满棋盘后玩家零操作、死局收尾删不到冰、牌堆永远抽不完——
+    // 不接进来就是永久软锁。胶水更简单：它只随时间干掉，等着就行。
     // 融雪期间暂停死局收尾；全部融化后仍无步 → 走下面的标准死局处理。
-    // 胶水同理但更简单：它只随时间干掉，等着就行（给个倒计时提示）。
     if (!level.endless &&
-        (board.hasFrozen || board.hasGlue) &&
+        (board.hasFrozen || board.hasGlue || board.hasIce) &&
         (_deck.isEmpty || board.isFull) &&
         !board.hasPossibleMove) {
       if (board.hasFrozen) {
@@ -642,6 +669,19 @@ class MergeGame extends FlameGame {
             hint.value = left > 0
                 ? '☃️ 无路可走了…冰层在减弱（还剩 $left 层）'
                 : '☀️ 冰层全部融化！';
+            feedback.play(Sfx.bonus);
+          }
+        }
+      } else if (board.hasIce) {
+        _meltT += dt;
+        if (_meltT >= 2.5) {
+          _meltT = 0;
+          final melted = board.meltAllIceOneLayer();
+          if (melted > 0) {
+            final left = board.iceLayers;
+            hint.value = left > 0
+                ? '🧊 冰封棋盘…冰块在裂开（还剩 $left 层）'
+                : '💧 冰块全部融化！';
             feedback.play(Sfx.bonus);
           }
         }
@@ -3278,6 +3318,8 @@ class BossSprite extends PositionComponent {
   final Random _rnd = Random();
 
   Vector2 _home = Vector2.zero();
+  // 测试专用：布局测试断言 home 必须落在棋盘带中心。
+  Vector2 get homeForTest => _home;
   double _cell = 64;
   double _bossSize = 108;
   bool _laidOut = false;
@@ -3776,8 +3818,11 @@ class BossSprite extends PositionComponent {
       }
     }
 
+    // 注意：Flame 的 Transform2DDecorator 已在 render 前把画布平移到
+    // position（anchor=topLeft），这里只能再叠击退偏移，绝不能重复平移
+    // position——否则 Boss 会被画到 2×position（竖屏直接飞出右缘）。
     canvas.save();
-    canvas.translate(position.x + _knock.x, position.y + _knock.y);
+    canvas.translate(_knock.x, _knock.y);
     if (state == BossState.dead) {
       final k = (_deadT / _deadDur).clamp(0.0, 1.0);
       canvas.rotate(k * 2.4);
