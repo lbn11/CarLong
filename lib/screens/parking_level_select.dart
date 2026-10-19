@@ -49,6 +49,27 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
   /// 不给反馈的话玩家会以为点愣住了）。null = 空闲。
   int? _loadingId;
 
+  final ScrollController _scroll = ScrollController();
+
+  /// 量尺寸/校正用的锚点：每日卡、每一章的卡片、列表视口。
+  final GlobalKey _dailyKey = GlobalKey();
+  final GlobalKey _viewportKey = GlobalKey();
+  final List<GlobalKey> _chapterKeys =
+      List.generate(ParkingChapters.all.length, (_) => GlobalKey());
+
+  /// 定位到「下一关」的格子（滚动后把格子精确推进视口）。
+  final GlobalKey _currentTileKey = GlobalKey();
+
+  /// 自动定位只跑一次（进页跑一次即可，返回本页时 State 不重建）。
+  bool _located = false;
+
+  /// 定位落定前先隐藏列表，避免玩家先看到列表顶部再"跳"下去。
+  bool _listReady = false;
+
+  /// 玩家接下来该打的那一关（= 下一个待解锁关卡）。
+  int get _currentLevelId =>
+      widget.data.parkingUnlocked.clamp(1, ParkingChapters.totalLevels);
+
   @override
   void initState() {
     super.initState();
@@ -61,6 +82,160 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
           .where((id) => ParkingChapters.chapterForId(id) == c)
           .toList();
     }
+    // 首帧之后才有尺寸可量。
+    WidgetsBinding.instance.addPostFrameCallback((_) => _autoLocate());
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// 800 关分 22 章：进页把视口推到「下一关」所在的章节与格子。
+  ///
+  /// 章节卡高度差异很大（解锁章整片关卡格 vs 锁定章一个提示条），
+  /// 单靠公式外推会飘几百像素，所以采用「先跳到估算位 → 用已构建章节卡
+  /// 的真实位置反推误差 → 再跳」的校正循环，最后用 ensureVisible 收口。
+  Future<void> _autoLocate() async {
+    if (_located || !mounted || !_scroll.hasClients) return;
+    _located = true;
+
+    var dest = _estimateOffset(_currentLevelId);
+    for (var attempt = 0; attempt < 4; attempt++) {
+      if (dest == null) break;
+      _scroll.jumpTo(dest.clamp(0.0, _scroll.position.maxScrollExtent));
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+      if (_currentTileKey.currentContext != null) break;
+      // 目标格还没被建出来：拿任一个已构建章节卡的真实起点校正模型。
+      final fix = _modelError();
+      if (fix == null) break;
+      dest -= fix;
+    }
+
+    if (mounted) setState(() => _listReady = true);
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    await _settleOnCurrentTile();
+  }
+
+  /// 收口：优先把「这一章的卡头」推到视口上沿，让玩家一眼看清自己在
+  /// 哪一章（停车格很小，只推格子会把章标题挤出屏幕）；目标格因此
+  /// 掉出视口下方时，退回「格子落在上三分之一」。
+  Future<void> _settleOnCurrentTile() async {
+    final tileCtx = _currentTileKey.currentContext;
+    if (tileCtx == null) return;
+    final dest = _headerPreferredOffset();
+    if (dest != null && (dest - _scroll.offset).abs() > 2) {
+      await _scroll.animateTo(
+        dest.clamp(0.0, _scroll.position.maxScrollExtent),
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOutCubic,
+      );
+      return;
+    }
+    await Scrollable.ensureVisible(
+      tileCtx,
+      alignment: 0.3,
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  /// 目标关所在章节的卡头贴住视口上沿所需落点；目标格会被挤出时返回 null。
+  double? _headerPreferredOffset() {
+    final viewportBox = _viewportKey.currentContext?.findRenderObject();
+    final tileCtx = _currentTileKey.currentContext;
+    if (viewportBox is! RenderBox || tileCtx == null) return null;
+    final chIdx = ParkingChapters.all
+        .indexWhere((c) => _currentLevelId >= c.startId && _currentLevelId <= c.endId);
+    if (chIdx < 0) return null;
+    final chapterCtx = _chapterKeys[chIdx].currentContext;
+    if (chapterCtx == null) return null;
+    final chapterBox = chapterCtx.findRenderObject();
+    final tileBox = tileCtx.findRenderObject();
+    if (chapterBox is! RenderBox || tileBox is! RenderBox) return null;
+    final chTop = _scroll.offset +
+        chapterBox.localToGlobal(Offset.zero, ancestor: viewportBox).dy;
+    final tTop =
+        _scroll.offset + tileBox.localToGlobal(Offset.zero, ancestor: viewportBox).dy;
+    final tBottom = tTop + tileBox.size.height;
+    final viewH = _scroll.position.viewportDimension;
+    final aligned = chTop - 8;
+    if (tTop - aligned < 0 || tBottom - aligned > viewH - 10) return null;
+    return aligned;
+  }
+
+  /// 已构建章节卡里「模型起点 − 真实起点」的最大值（= 累计误差估计）。
+  ///
+  /// 取离视口最近的那张已构建卡片做参照：它的上方所有章节都被跨过，
+  /// 误差与目标处的误差最接近。
+  double? _modelError() {
+    final viewportBox = _viewportKey.currentContext?.findRenderObject();
+    if (viewportBox is! RenderBox) return null;
+    for (var i = ParkingChapters.all.length - 1; i >= 0; i--) {
+      final ctx = _chapterKeys[i].currentContext;
+      if (ctx == null) continue;
+      final box = ctx.findRenderObject();
+      if (box is! RenderBox || !box.hasSize) continue;
+      final real =
+          _scroll.offset + box.localToGlobal(Offset.zero, ancestor: viewportBox).dy;
+      return _chapterTop(i) - real;
+    }
+    return null;
+  }
+
+  /// 第 idx 章卡片在滚动内容里的模型起点（含列表内边距与章间距）。
+  double _chapterTop(int idx) {
+    var y = 4 + _dailyBlockH + 14;
+    for (var i = 0; i < idx; i++) {
+      y += _chapterBlockH(i) + 14;
+    }
+    return y;
+  }
+
+  /// 目标关卡所在格子的估算落点；null = 章节映射失败（不该发生）。
+  double? _estimateOffset(int levelId) {
+    final viewportBox = _viewportKey.currentContext?.findRenderObject();
+    if (viewportBox is! RenderBox || !viewportBox.hasSize) return null;
+    final chIdx = ParkingChapters.all
+        .indexWhere((c) => levelId >= c.startId && levelId <= c.endId);
+    if (chIdx < 0) return null;
+    final ch = ParkingChapters.all[chIdx];
+    const columns = 5;
+    const gap = 7.0;
+    const chromeV = 12 + 66 + 14; // 网格内边距 + 卡头 + 网格下边距估算
+    final cardW = viewportBox.size.width - 28;
+    final cellW = (cardW - 4 - 24 - gap * (columns - 1)) / columns;
+    final cellH = cellW / 0.92;
+    final row = (levelId - ch.startId) ~/ columns;
+    final gridTop = _chapterTop(chIdx) + chromeV;
+    final viewportH = _scroll.position.viewportDimension;
+    return gridTop + row * (cellH + gap) - viewportH * 0.30;
+  }
+
+  /// 每日挑战卡整块高度（含上下间距的一半），首帧实测。
+  double get _dailyBlockH =>
+      _dailyKey.currentContext?.size?.height ?? 88.0;
+
+  /// 章节卡高度：解锁章按网格行数推，锁定章是固定提示条（估算）。
+  ///
+  /// 误差不影响正确性——[_modelError] 会拿实际布局把它校回来。
+  double _chapterBlockH(int idx) {
+    final ch = ParkingChapters.all[idx];
+    if (!_chapterAccessible(ch)) return 134;
+    final count = _byChapter[ch]!.length;
+    const columns = 5;
+    const gap = 7.0;
+    final rows = (count + columns - 1) ~/ columns;
+    final viewportBox = _viewportKey.currentContext?.findRenderObject();
+    final width = viewportBox is RenderBox && viewportBox.hasSize
+        ? viewportBox.size.width
+        : 390.0;
+    final cellW = ((width - 28) - 4 - 24 - gap * (columns - 1)) / columns;
+    final cellH = cellW / 0.92;
+    return 66 + 14 + rows * cellH + (rows - 1) * gap;
   }
 
   /// 章节是否可进入（双向联动）。
@@ -91,16 +266,30 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                 ],
               ),
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(14, 4, 14, 20),
-                  children: [
-                    _buildDailyChallengeCard(),
-                    const SizedBox(height: 14),
-                    for (final chapter in ParkingChapters.all) ...[
-                      _chapterCard(chapter),
+                child: AnimatedOpacity(
+                  // 定位落定前不显示：不然会先瞥见列表顶部再"跳"下去。
+                  // 透明度不影响布局，首帧照样能量到真实高度。
+                  opacity: _listReady ? 1 : 0,
+                  duration: const Duration(milliseconds: 180),
+                  child: ListView(
+                    key: _viewportKey,
+                    controller: _scroll,
+                    padding: const EdgeInsets.fromLTRB(14, 4, 14, 20),
+                    children: [
+                      KeyedSubtree(
+                        key: _dailyKey,
+                        child: _buildDailyChallengeCard(),
+                      ),
                       const SizedBox(height: 14),
+                      for (var i = 0; i < ParkingChapters.all.length; i++) ...[
+                        KeyedSubtree(
+                          key: _chapterKeys[i],
+                          child: _chapterCard(ParkingChapters.all[i]),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -289,8 +478,11 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
   Widget _levelTile(int levelId, Color chapterColor) {
     final stars = widget.data.parkingBestStars[levelId] ?? 0;
     final cleared = stars > 0;
+    // 「接下来该打的那一关」：加一圈实色环 + ▶ 角标，进页自动定位后
+    // 玩家不用再猜该点哪个格子。
+    final current = levelId == _currentLevelId;
     final accent = cleared ? AppColors.sun : chapterColor;
-    return Pressable(
+    final tile = Pressable(
       onTap: () async {
         AudioFeedback.uiTap();
         if (_loadingId != null) return; // 正在生成，防连点
@@ -325,15 +517,22 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
           ),
           borderRadius: BorderRadius.circular(15),
           border: Border.all(
-            color: accent.withValues(alpha: cleared ? 0.42 : 0.24),
-            width: cleared ? 1.8 : 1,
+            color: accent.withValues(
+                alpha: current ? 1.0 : (cleared ? 0.42 : 0.24)),
+            width: current ? 2.6 : (cleared ? 1.8 : 1),
           ),
           boxShadow: [
             BoxShadow(
-              color: accent.withValues(alpha: cleared ? 0.20 : 0.12),
-              blurRadius: 9,
+              color: accent.withValues(alpha: current ? 0.40 : (cleared ? 0.20 : 0.12)),
+              blurRadius: current ? 16 : 9,
               offset: const Offset(0, 3),
             ),
+            if (current)
+              BoxShadow(
+                color: accent.withValues(alpha: 0.26),
+                blurRadius: 20,
+                spreadRadius: 2,
+              ),
           ],
         ),
         child: Stack(
@@ -394,6 +593,24 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                   ),
                 ),
               ),
+            // 「继续」角标：当前关右下角挂一枚播放按钮，配合实色环
+            // 让"点哪一格"无需阅读。
+            if (current)
+              Positioned(
+                bottom: 3,
+                right: 3,
+                child: Container(
+                  width: 15,
+                  height: 15,
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.gradientFor(accent),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1.2),
+                  ),
+                  child: const Icon(Icons.play_arrow_rounded,
+                      size: 10, color: Colors.white),
+                ),
+              ),
             // 生成中的加载态：盖住卡片内容 + 中央转圈，避免同步生成
             // （尖峰关最坏 ~0.7s）期间玩家以为点愣住了。
             if (_loadingId == levelId)
@@ -420,6 +637,7 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
         ),
       ),
     );
+    return current ? KeyedSubtree(key: _currentTileKey, child: tile) : tile;
   }
 
   Widget _buildDailyChallengeCard() {
