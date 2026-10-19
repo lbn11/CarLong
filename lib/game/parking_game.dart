@@ -398,10 +398,15 @@ class ParkingGame extends ChangeNotifier {
   }
 
   void _checkWin() {
-    // 胜利条件:目标等级的任意一辆车停在停车位
-    final targetVehicle =
-        _vehicles.where((v) => v.tier == level.targetTier).firstOrNull;
-    if (targetVehicle != null && targetVehicle.parked) {
+    // 胜利条件：任意一辆目标车停进车位。
+    // 不用 `firstOrNull` 取第一辆：生成器当前保证目标档只有一辆，
+    // 但这条约定一旦被破坏（改填充池 / 加车型 / 手写关写重），取第一辆
+    // 会让「另一辆已经停好」既判不出胜利（玩家看着车位里的车干等到死），
+    // 又会在限步时误判负。any() 对两种情形都成立。
+    final parked = _vehicles.any(
+      (v) => v.tier == level.targetTier && v.parked,
+    );
+    if (parked) {
       _won = true;
       _timer?.cancel();
     }
@@ -411,20 +416,16 @@ class ParkingGame extends ChangeNotifier {
   /// 死局不在此判负——由 [isDeadlocked] 暴露给 UI 弹窗引导撤销/道具/重开，
   /// 因为炸弹等道具可以解除死局，自动判负会误伤持道具的玩家。
   void _checkLose() {
-    if (level.movesLimit != null &&
-        _moves >= level.movesLimit! &&
-        _targetVehicle != null &&
-        !_targetVehicle!.parked) {
-      if (!_lost) {
-        _lost = true;
-        _timer?.cancel();
-      }
-      return;
+    if (level.movesLimit == null || _moves < level.movesLimit!) return;
+    final targets = _vehicles.where((v) => v.tier == level.targetTier);
+    if (targets.isEmpty) return;
+    // 有任何一辆目标车停好就不算输（同上：不赌唯一性）。
+    if (targets.any((v) => v.parked)) return;
+    if (!_lost) {
+      _lost = true;
+      _timer?.cancel();
     }
   }
-
-  VehicleState? get _targetVehicle =>
-      _vehicles.where((v) => v.tier == level.targetTier).firstOrNull;
 
   /// 是否还有任意一辆车能滑动一步（单步 canMoveTo 即完整路径校验：
   /// 一步平移后车身 = 原车身移一格，新进入格已被目标占格检查覆盖）。

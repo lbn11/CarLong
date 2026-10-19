@@ -17,6 +17,7 @@ void main() {
   test('停车 1..800 关全部可解（solver 逐关验证）', () {
     final unsolvable = <int>[];
     final noTarget = <int>[];
+    final multiTarget = <int>[];
     final multiParking = <int>[];
     final tooEasy = <int>[];
     final minMovesHist = <int, int>{};
@@ -24,9 +25,15 @@ void main() {
     for (var id = 1; id <= ParkingChapters.totalLevels; id++) {
       final lvl = ParkingLevelGenerator.generateOne(id);
 
-      // 结构不变量：目标车存在、停车位唯一。
-      final hasTarget = lvl.vehicles.any((v) => v.tier == lvl.targetTier);
-      if (!hasTarget) noTarget.add(id);
+      // 结构不变量：目标车存在且唯一、停车位唯一。
+      // 唯一性不是洁癖：`ParkingGame._checkWin` 曾用 firstOrNull 取第一辆
+      // 目标车判断是否停好，一旦盘上有第二辆目标车，玩家把其中一辆开进
+      // 车位也永远判不出胜利（看着车停好了却还在关卡里）。判定已改成
+      // any()，这里继续锁住生成器侧的唯一性，两头都不留洞。
+      final targets =
+          lvl.vehicles.where((v) => v.tier == lvl.targetTier).toList();
+      if (targets.isEmpty) noTarget.add(id);
+      if (targets.length > 1) multiTarget.add(id);
       var parkingCells = 0;
       for (final row in lvl.grid) {
         for (final c in row) {
@@ -47,6 +54,7 @@ void main() {
     // ignore: avoid_print
     print('minMoves 分布: $minMovesHist');
     expect(noTarget, isEmpty, reason: '每关必须有目标车');
+    expect(multiTarget, isEmpty, reason: '目标车必须唯一: $multiTarget');
     expect(multiParking, isEmpty, reason: '停车位必须唯一');
     expect(unsolvable, isEmpty, reason: '不可解关卡: $unsolvable');
     expect(tooEasy, isEmpty, reason: '一步弱关: $tooEasy');

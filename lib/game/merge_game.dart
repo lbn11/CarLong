@@ -297,6 +297,19 @@ class MergeGame extends FlameGame {
     return board.producedCount >= level.targetCount;
   }
 
+  /// 玩家操作落地后立刻补一次结算检查（不等下一帧 update）。
+  ///
+  /// `update` 每帧也会查，但它依赖 Flame 的 game loop 一直转：关卡介绍卡、
+  /// 暂停遮罩、特写浮层等页面态一旦让引擎停摆，而玩家已经达成目标，
+  /// 就会出现「任务做完了却停在关卡里」的观感。判定本身很便宜
+  /// （几个字段比较），在操作后同步补一次是兜底也是即时反馈。
+  /// Boss 关的死亡演出由 `_isWin` 里的 `_bossDeathT` 条件自然挡住。
+  void _checkGoalNow() {
+    if (_ended) return;
+    if (!_isWin) return;
+    _end(true);
+  }
+
   int _endlessLevel = 1;
   int get endlessLevel => _endlessLevel;
 
@@ -739,6 +752,8 @@ class MergeGame extends FlameGame {
       feedback.tap();
       _consumeMove();
       _refreshGoal();
+      // 清道夫关：抽走最后一张牌 + 场上残堆达标 = 达成，立即结算。
+      _checkGoalNow();
       onPlayerAction?.call('draw', tier);
     } else if (board.hasHoles) {
       // 有黑洞占着格导致落不下牌：说破，别让玩家以为 bug。
@@ -1727,9 +1742,20 @@ class MergeGame extends FlameGame {
         _spawnBurst(tc, tr, const Color(0xFFFFD54F), count: 18, speed: 90);
         add(Shockwave(_cellCenter(tc, tr),
             color: const Color(0xFFFFD54F), maxRadius: _cellSize * 0.95));
-        _spawnFloat(tc, tr,
-            level.goalType == GoalType.clearBoard ? '+300 清掉一格!' : '+300 目标达成!',
-            color: const Color(0xFFFFD54F), fontSize: 24);
+        _spawnFloat(
+            tc,
+            tr,
+            // 「目标达成」只在真的达成时喊。以前每合出一辆目标车都飘
+            // 「目标达成」，多目标关（×2/×3）打到第 1 辆就喊，玩家会以为
+            // 关该结算了却没结算——这是"达到任务却不退出"的观感来源。
+            level.goalType == GoalType.clearBoard
+                ? '+300 清掉一格!'
+                : (board.producedCount >= level.targetCount
+                    ? '+300 目标达成!'
+                    : '+300 目标车 '
+                        '${board.producedCount}/${level.targetCount}'),
+            color: const Color(0xFFFFD54F),
+            fontSize: 24);
         feedback.play(Sfx.bonus);
         feedback.success();
         if (level.endless) _onEndlessGoalHit();
@@ -1737,6 +1763,8 @@ class MergeGame extends FlameGame {
     }
     score.value = board.totalMerges * 5 + _bonusScore;
     _refreshGoal();
+    // 达成即结算：不等下一帧 update（见 _checkGoalNow 注释）。
+    _checkGoalNow();
 
     // 最高级合成后目标格被清空（count 归 0）：移除目标卡精灵，避免幽灵卡残留。
     if (result.upgraded) {
