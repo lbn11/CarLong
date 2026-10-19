@@ -48,8 +48,16 @@ void main() {
       home: CollectionScreen(data: data, repo: repo),
     ));
     await tester.pumpAndSettle();
+    // Boss 徽章墙是第一个 section（56 格，桌面视口下总高 3000+px），
+    // 车辆卡在 ListView 懒加载区外——滚到位之前 widget 根本不存在，
+    // dragUntilVisible 不适用（它要求目标已构建），只能固定步数拖。
+    for (var i = 0; i < 20; i++) {
+      if (find.text('自行车').evaluate().isNotEmpty) break;
+      await tester.drag(find.byType(ListView), const Offset(0, -300));
+      await tester.pumpAndSettle();
+    }
     // 点第一张车卡（自行车，50 车系统迁移后的 1 级车）
-    await tester.tap(find.text('自行车').first, warnIfMissed: false);
+    await tester.tap(find.text('自行车').first);
     await tester.pumpAndSettle();
     expect(find.textContaining('已收集'), findsWidgets); // 详情弹层出现
   });

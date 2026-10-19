@@ -59,6 +59,35 @@ class _GameScreenState extends State<GameScreen> {
   static final int _shuffleCost = GameConfig.shuffleCost;
   static final int _hintCost = GameConfig.hintCost;
 
+  /// 新车特写的 overlay entry（防重入：连出两辆新车时旧的让位给新的）。
+  OverlayEntry? _carCinematicEntry;
+
+  /// 新车首次合成特写：非阻塞浮层（IgnorePointer），1.6s 后自动淡出。
+  /// 设计红线：**不暂停游戏**——Boss 关 9 秒一刀，停车关限步，
+  /// 任何"停下来看演出"都是惩罚。玩家可以边打边看。
+  void _showNewCarCinematic(VehicleType tier) {
+    if (!mounted || _finished) return;
+    // 替换旧的（同一局连锁连出新车时后者覆盖前者，不排队——排队会遮屏）。
+    _carCinematicEntry?.remove();
+    final entry = OverlayEntry(
+      builder: (_) => _NewCarCinematic(
+        tier: tier,
+        onDone: () {
+          // 必须 remove：只置 opacity=0 的话 entry 永远挂在 overlay 上
+          // （透明但占命中测试与内存，重入替换时旧 entry 也不会走 dispose）。
+          // 此时 _carCinematicEntry 就是本 entry（重入场景下旧的 timer
+          // 已被 dispose cancel，走不到这里），经字段间接移除。
+          _carCinematicEntry?.remove();
+          _carCinematicEntry = null;
+        },
+      ),
+    );
+    _carCinematicEntry = entry;
+    Overlay.of(context).insert(entry);
+    _game.feedback.play(Sfx.bonus);
+    _game.feedback.success();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -70,6 +99,10 @@ class _GameScreenState extends State<GameScreen> {
         _game.hint.value = '📖 图鉴点亮 ${tier.icon} ${tier.name} +5🪙';
         widget.repo.save(widget.data);
         _analytics.collectionNew(tier.index);
+        // 新车特写：hint 文字只有 2 秒且容易被棋盘操作淹没，
+        // 首次合成值得一个不被忽略的瞬间（不暂停、不挡操作，
+        // Boss 关 9 秒一刀，停下来会害玩家）。
+        _showNewCarCinematic(tier);
       }
     };
     _game.onEndlessMilestone = (endlessLevel, reward) {
@@ -223,6 +256,18 @@ class _GameScreenState extends State<GameScreen> {
     if (isEndless) {
       endlessRank = _submitEndlessScore(score);
     }
+    // Boss 徽章墙：击败即点亮。用生成时算好的稳定 key（「章.序号」），
+    // 重温旧关不会重复解锁同一枚徽章。每日/无尽无 Boss 配置，key 为 null。
+    final bossKey = widget.level.bossKey;
+    if (won && bossKey != null) {
+      widget.data.defeatedBosses.add(bossKey);
+    }
+    // 历史最高连消：跨关卡的技巧成长标尺（结算弹窗与首页都读它）。
+    final prevBestCombo = widget.data.bestCombo;
+    final comboNewRecord = _game.maxCombo > prevBestCombo && _game.maxCombo >= 2;
+    if (_game.maxCombo > widget.data.bestCombo) {
+      widget.data.bestCombo = _game.maxCombo;
+    }
     _analytics.levelEnd(
       level: widget.level,
       won: won,
@@ -289,6 +334,8 @@ class _GameScreenState extends State<GameScreen> {
           title: title,
           stars: stars,
           maxCombo: _game.maxCombo,
+          comboNewRecord: comboNewRecord,
+          bestCombo: widget.data.bestCombo,
           elapsedText: _elapsedText(),
           parText: par > 0 ? _clockText(par.round()) : null,
           beatPar: beatPar,
@@ -2050,6 +2097,12 @@ class _ResultDialog extends StatelessWidget {
   /// 通关星级（1-3，失败/无尽为 0）。
   final int stars;
   final int maxCombo;
+
+  /// 本局连消是否刷新历史最高（≥2 才算纪录，x1 不值得庆祝）。
+  final bool comboNewRecord;
+
+  /// 历史最高连消（[PlayerData.bestCombo]，跨关卡技巧标尺）。
+  final int bestCombo;
   final String elapsedText;
 
   /// 参考时间（par，null = 本关无参考线：限时关/无尽）。
@@ -2089,6 +2142,8 @@ class _ResultDialog extends StatelessWidget {
     required this.title,
     required this.stars,
     required this.maxCombo,
+    this.comboNewRecord = false,
+    this.bestCombo = 0,
     required this.elapsedText,
     this.parText,
     this.beatPar = false,
@@ -2219,8 +2274,14 @@ class _ResultDialog extends StatelessWidget {
                     Column(
                       children: [
                         Text(
-                          '最大连消 x$maxCombo  ·  用时 $elapsedText'
-                          '${parText != null ? '  ·  参考 $parText' : ''}',
+                          comboNewRecord
+                              ? '最大连消 x$maxCombo  ·  🔥 新纪录！'
+                                  '  ·  用时 $elapsedText'
+                                  '${parText != null ? '  ·  参考 $parText' : ''}'
+                              : '最大连消 x$maxCombo'
+                                  '  ·  历史最高 x$bestCombo'
+                                  '  ·  用时 $elapsedText'
+                                  '${parText != null ? '  ·  参考 $parText' : ''}',
                           style: const TextStyle(
                               color: AppColors.ink2, fontSize: 14),
                         ),
@@ -2285,6 +2346,153 @@ class _ResultDialog extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 新车首次合成特写：大卡 + 放射光 + 自动淡出（约 2 秒）。
+///
+/// 不暂停、不挡操作（IgnorePointer）——合成是快节奏操作，Boss 关
+/// 9 秒一刀，任何阻断式演出都是惩罚。玩家边打边看完这个瞬间。
+class _NewCarCinematic extends StatefulWidget {
+  const _NewCarCinematic({required this.tier, required this.onDone});
+
+  final VehicleType tier;
+
+  /// 淡出动画结束时调用（供外层移除 overlay entry）。
+  final VoidCallback onDone;
+
+  @override
+  State<_NewCarCinematic> createState() => _NewCarCinematicState();
+}
+
+class _NewCarCinematicState extends State<_NewCarCinematic> {
+  bool _visible = false;
+  Timer? _fadeTimer;
+  Timer? _removeTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // 插帧后置 true，让 AnimatedOpacity 有 0→1 的淡入。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _visible = true);
+    });
+    _fadeTimer = Timer(const Duration(milliseconds: 1600), () {
+      if (mounted) setState(() => _visible = false);
+    });
+    _removeTimer = Timer(const Duration(milliseconds: 1950), () {
+      widget.onDone();
+    });
+  }
+
+  @override
+  void dispose() {
+    _fadeTimer?.cancel();
+    _removeTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tier = widget.tier;
+    return IgnorePointer(
+      child: AnimatedOpacity(
+        opacity: _visible ? 1 : 0,
+        duration: const Duration(milliseconds: 320),
+        child: Container(
+          color: Colors.black.withValues(alpha: 0.28),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 放射光：车型色同心圆，营造"登场"感。
+                Container(
+                  width: 190,
+                  height: 190,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        tier.color.withValues(alpha: 0.38),
+                        tier.color.withValues(alpha: 0.0),
+                      ],
+                    ),
+                  ),
+                  child: Center(
+                    child: VehicleImage(vehicle: tier, size: 130),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 26, vertical: 18),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.white,
+                        Color.lerp(tier.color, Colors.white, 0.78)!,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(26),
+                    border:
+                        Border.all(color: tier.color.withValues(alpha: 0.5), width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: tier.color.withValues(alpha: 0.32),
+                        blurRadius: 28,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '✨ 新车加入图鉴',
+                        style: TextStyle(
+                          color: AppTheme.deepen(tier.color, 0.42),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(tier.icon,
+                              style: const TextStyle(fontSize: 24)),
+                          const SizedBox(width: 8),
+                          Text(
+                            tier.name,
+                            style: const TextStyle(
+                              color: AppColors.ink1,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${tier.category.label}系 · 首次合成',
+                        style: const TextStyle(
+                          color: AppColors.ink2,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

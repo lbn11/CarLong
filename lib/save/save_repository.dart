@@ -70,6 +70,15 @@ class PlayerData {
   /// 全图鉴大奖（17/17 点亮）是否已领取。
   bool collectionRewardClaimed;
 
+  /// 已击败的 Boss 集合，key 为「章索引.Boss序号」（如 "3.2" = 第 4 章
+  /// 尖峰招牌位）。BossSpec.forLevel 是确定性函数——同一个 (章, 序号)
+  /// 永远是同一个 Boss，徽章墙据此点亮。key 而非关卡 id：玩家重温旧关
+  /// 不该重复解锁同一枚徽章。
+  Set<String> defeatedBosses;
+
+  /// 合成模式历史最高连消（跨关卡持久化，技巧成长的标尺）。
+  int bestCombo;
+
   PlayerData({
     this.coins = 0,
     this.unlockedLevel = 1,
@@ -95,6 +104,8 @@ class PlayerData {
     this.adWatchDate,
     this.adWatchCount = 0,
     this.collectionRewardClaimed = false,
+    Set<String>? defeatedBosses,
+    this.bestCombo = 0,
   })  : bestScores = bestScores ?? {},
         bestStars = bestStars ?? {},
         endlessBest = endlessBest ?? [],
@@ -102,7 +113,8 @@ class PlayerData {
         claimedAchievements = claimedAchievements ?? {},
         boosters = boosters ?? {},
         analyticsEvents = analyticsEvents ?? [],
-        parkingBestStars = parkingBestStars ?? {};
+        parkingBestStars = parkingBestStars ?? {},
+        defeatedBosses = defeatedBosses ?? {};
 
   Map<String, dynamic> toJson() => {
         'coins': coins,
@@ -130,6 +142,8 @@ class PlayerData {
         'adWatchDate': adWatchDate,
         'adWatchCount': adWatchCount,
         'collectionRewardClaimed': collectionRewardClaimed,
+        'defeatedBosses': defeatedBosses.toList(),
+        'bestCombo': bestCombo,
       };
 
   factory PlayerData.fromJson(Map<String, dynamic> json) => PlayerData(
@@ -181,6 +195,9 @@ class PlayerData {
         adWatchCount: (json['adWatchCount'] as num?)?.toInt() ?? 0,
         collectionRewardClaimed:
             json['collectionRewardClaimed'] as bool? ?? false,
+        defeatedBosses:
+            (json['defeatedBosses'] as List?)?.cast<String>().toSet() ?? {},
+        bestCombo: (json['bestCombo'] as num?)?.toInt() ?? 0,
       );
 }
 

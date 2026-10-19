@@ -59,6 +59,13 @@ class LevelDataGenerator {
   /// 生成段章数（630 / 45 = 14）。
   static const int chapterCount = 14;
 
+  /// 每章 Boss 数（11 关超级周期占 1 个，章内偏移 %11==10 判定）。
+  static const int bossPerChapter = 4;
+
+  /// Boss 徽章墙总格数（14 × 4 = 56，与 [BossSpec.forLevel] 的
+  /// (chapterIdx, bossIndex) 参数空间一致）。首页进度与徽章墙共用。
+  static int get bossTotal => chapterCount * bossPerChapter;
+
   /// 难度心跳周期（关）：合成 5 关一轮。
   ///
   /// 与停车模式（[ParkingLevelGenerator.rhythmPeriod] = 6）**故意不同** ——
@@ -471,6 +478,9 @@ class LevelDataGenerator {
       if (tighten < 1.0) stock = (stock * tighten).round();
     }
 
+    // bossKey（徽章墙稳定 id）与 spec 同参数算，避免两处公式漂移。
+    final bossIndex = (id - firstId - c * chapterSize - 10) ~/ 11;
+
     return LevelDefinition(
       id: id,
       name: boss ? '👑 Boss · ${_chapterName(id)}' : _chapterName(id),
@@ -487,10 +497,9 @@ class LevelDataGenerator {
       // 卡组按章节深度解锁（主+辅技能，尖峰位是招牌 Boss），
       // 详见 [BossSpec.forLevel]。
       boss: boss
-          ? BossSpec.forLevel(
-              c, (id - firstId - c * chapterSize - 10) ~/ 11,
-              (clearBoard ? 1 : count) + 2)
+          ? BossSpec.forLevel(c, bossIndex, (clearBoard ? 1 : count) + 2)
           : null,
+      bossKey: boss ? '$c.$bossIndex' : null,
       highTierBias: bias,
       fogCells: fog,
       wildcards: wildcards,

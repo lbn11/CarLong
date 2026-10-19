@@ -14,6 +14,7 @@ import '../models/vehicle.dart';
 import '../theme/app_theme.dart';
 import '../models/level.dart';
 import '../save/save_repository.dart';
+import '../services/level_data_generator.dart';
 import '../widgets/candy_ui.dart';
 import '../widgets/vehicle_image.dart';
 import 'achievements_screen.dart';
@@ -930,6 +931,24 @@ class _HomeScreenState extends State<HomeScreen>
                             color: AppColors.ink3,
                             fontSize: 11.5,
                             letterSpacing: 0.6)),
+                    const SizedBox(height: 3),
+                    // 成长标尺行：跨关卡的技巧纪录 + Boss 徽章墙进度。
+                    // 有值才显示对应段——0 纪录的玩家只看到 Boss 目标，
+                    // 不会被空白的"x0"提醒自己不行。
+                    Text(
+                      [
+                        if (data.bestCombo >= 2)
+                          '🔥 最高连消 x${data.bestCombo}',
+                        '👑 Boss ${data.defeatedBosses.length}'
+                            '/${LevelDataGenerator.bossTotal}',
+                      ].join('  ·  '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: AppColors.ink2,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700),
+                    ),
                   ],
                 ),
               ),

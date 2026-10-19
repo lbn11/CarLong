@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../game/audio_feedback.dart';
+import '../models/level.dart';
 import '../models/vehicle.dart';
 import '../save/save_repository.dart';
+import '../services/level_data_generator.dart';
 import '../theme/app_theme.dart';
 import '../widgets/candy_ui.dart';
 import '../widgets/pressable.dart';
@@ -55,6 +57,8 @@ class CollectionScreen extends StatelessWidget {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                   children: [
+                    _buildBossWallSection(context),
+                    const SizedBox(height: 16),
                     for (final family in VehicleCategory.values) ...[
                       _buildFamilySection(context, family),
                       const SizedBox(height: 16),
@@ -63,6 +67,160 @@ class CollectionScreen extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Boss 徽章墙：56 枚（14 章 × 4）。已击败显主技能 + 绰号/章号，
+  /// 未击败是问号剪影。Boss 卡组已全部做成确定性生成（同章同序号永远
+  /// 同一只），差的只是"打过"这个事实被记住。
+  Widget _buildBossWallSection(BuildContext context) {
+    final total = LevelDataGenerator.bossTotal;
+    final done = data.defeatedBosses.length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionTitle(
+          title: '👑 Boss 徽章墙',
+          subtitle: '每章四位守关者 · 已击败 $done/$total',
+          accent: AppColors.grape,
+        ),
+        const SizedBox(height: 10),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 4,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: 0.84,
+          ),
+          itemCount: total,
+          itemBuilder: (context, i) {
+            final c = i ~/ LevelDataGenerator.bossPerChapter;
+            final b = i % LevelDataGenerator.bossPerChapter;
+            final spec = BossSpec.forLevel(c, b, 5);
+            return _BossBadge(
+              spec: spec,
+              chapterIdx: c,
+              bossIndex: b,
+              defeated: data.defeatedBosses.contains('$c.$b'),
+              onTap: () => _showBossDetail(context, spec, c, b),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  /// Boss 详情抽屉：绰号/技能组/所在章。未击败也可见配置——
+  /// 收藏墙的意义一半是"还没打过的那些长什么样"。
+  void _showBossDetail(
+      BuildContext context, BossSpec spec, int c, int b) {
+    final defeated = data.defeatedBosses.contains('$c.$b');
+    final skills = <BossAttackKind>[
+      spec.primary,
+      if (spec.secondary != null) spec.secondary!,
+    ];
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        margin: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.surfaceLight, Color(0xFFF3E9F9)],
+          ),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: AppColors.grape.withValues(alpha: 0.34)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.grape.withValues(alpha: 0.26),
+              blurRadius: 26,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: AppColors.ink3.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(spec.epithet ?? '第 ${c + 1} 章 · 守关者 ${b + 1}',
+                    style: const TextStyle(
+                        color: AppColors.ink1,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900)),
+                const SizedBox(height: 4),
+                Text(
+                  b == 3 ? '尖峰招牌 Boss' : '章内第 ${b + 1} 位',
+                  style: const TextStyle(color: AppColors.ink3, fontSize: 12),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    for (final k in skills) ...[
+                      SoftChip(
+                        label: '${bossSkillIcon(k)} ${bossSkillLabel(k)}',
+                        color: AppColors.grape,
+                        solid: true,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    if (spec.enrageAtHalf) ...[
+                      const SoftChip(
+                        label: '💢 狂怒',
+                        color: AppColors.blossom,
+                        solid: true,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    if (spec.shieldCycle > 0) ...[
+                      const SoftChip(
+                        label: '🛡️ 护盾',
+                        color: AppColors.lemon,
+                        solid: true,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 14),
+                SoftChip(
+                  label: defeated
+                      ? '已击败 · 徽章已点亮'
+                      : '未击败 · 在第 ${c + 1} 章 Boss 关取胜',
+                  icon: defeated ? Icons.check_circle : Icons.search,
+                  color: defeated ? AppColors.mint : AppColors.ink3,
+                  solid: defeated,
+                ),
+                const SizedBox(height: 16),
+                CandyButton(
+                  label: '收好了',
+                  size: CandyButtonSize.medium,
+                  colors: AppTheme.gradientOf(AppColors.grape),
+                  onTap: () {
+                    AudioFeedback.uiTap();
+                    Navigator.of(ctx).pop();
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -336,6 +494,143 @@ class _CollectionCard extends StatelessWidget {
               style: TextStyle(
                 color: unlocked ? AppColors.ink2 : AppColors.ink3,
                 fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Boss 攻击技能 → 展示 emoji / 中文名（徽章墙与详情抽屉共用）。
+String bossSkillIcon(BossAttackKind k) => switch (k) {
+      BossAttackKind.freeze => '🧊',
+      BossAttackKind.steal => '😈',
+      BossAttackKind.rubble => '🪨',
+      BossAttackKind.impound => '🏍️',
+      BossAttackKind.devolve => '📉',
+      BossAttackKind.taint => '☠️',
+      BossAttackKind.lock => '🔒',
+      BossAttackKind.glue => '🍯',
+      BossAttackKind.hole => '🕳️',
+      BossAttackKind.ban => '🚫',
+      BossAttackKind.fog => '🌫️',
+      BossAttackKind.shuffle => '🔀',
+      BossAttackKind.stealGoal => '🎯',
+      BossAttackKind.shield => '🛡️',
+      BossAttackKind.ice => '❄️',
+    };
+
+String bossSkillLabel(BossAttackKind k) => switch (k) {
+      BossAttackKind.freeze => '冰封',
+      BossAttackKind.steal => '拖车',
+      BossAttackKind.rubble => '塌方',
+      BossAttackKind.impound => '扣押',
+      BossAttackKind.devolve => '退化',
+      BossAttackKind.taint => '污染',
+      BossAttackKind.lock => '锁牌堆',
+      BossAttackKind.glue => '胶水',
+      BossAttackKind.hole => '黑洞',
+      BossAttackKind.ban => '禁合',
+      BossAttackKind.fog => '迷雾',
+      BossAttackKind.shuffle => '洗牌',
+      BossAttackKind.stealGoal => '抢目标',
+      BossAttackKind.shield => '护盾',
+      BossAttackKind.ice => '冰块',
+    };
+
+/// 徽章墙单格：已击败 = 主技能 + 绰号/章号；未击败 = 剪影问号。
+class _BossBadge extends StatelessWidget {
+  const _BossBadge({
+    required this.spec,
+    required this.chapterIdx,
+    required this.bossIndex,
+    required this.defeated,
+    required this.onTap,
+  });
+
+  final BossSpec spec;
+  final int chapterIdx;
+  final int bossIndex;
+  final bool defeated;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final caption = spec.epithet ?? '第 ${chapterIdx + 1} 章';
+    return Pressable(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: defeated
+              ? LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.white,
+                    Color.lerp(AppColors.grape, Colors.white, 0.78)!,
+                  ],
+                )
+              : null,
+          color: defeated ? null : AppColors.surfaceSoft,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: defeated
+                ? AppColors.grape.withValues(alpha: 0.5)
+                : AppColors.ink3.withValues(alpha: 0.20),
+            width: defeated ? 2 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: defeated
+                  ? AppColors.grape.withValues(alpha: 0.22)
+                  : AppColors.shadow.withValues(alpha: 0.5),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              height: 30,
+              // 尖峰招牌多一顶王冠角标，墙上扫一眼就能认出"这只揍过我"。
+              child: defeated
+                  ? (bossIndex == 3
+                      ? Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Text(bossSkillIcon(spec.primary),
+                                style: const TextStyle(fontSize: 22)),
+                            const Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Text('👑',
+                                  style: TextStyle(fontSize: 10)),
+                            ),
+                          ],
+                        )
+                      : Text(bossSkillIcon(spec.primary),
+                          style: const TextStyle(fontSize: 22)))
+                  : const Text('❔',
+                      style: TextStyle(fontSize: 18, color: AppColors.ink3)),
+            ),
+            const SizedBox(height: 3),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: Text(
+                defeated ? caption : '???',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: defeated
+                      ? AppTheme.deepen(AppColors.grape, 0.42)
+                      : AppColors.ink3,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
           ],

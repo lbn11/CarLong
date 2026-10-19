@@ -420,6 +420,11 @@ class LevelDefinition {
   /// 合成目标车攻击它，HP 打空即胜（详见 [BossSpec]）。
   final BossSpec? boss;
 
+  /// Boss 徽章墙的稳定 key：`「章索引.Boss序号」`（如 "3.2"）。
+  /// 生成时算好（与 [BossSpec.forLevel] 同参数），结算/徽章墙共用；
+  /// null = 非 Boss 关。不用关卡 id：重温旧关不重复解锁同一枚徽章。
+  final String? bossKey;
+
   /// 每日挑战：参与每日玩法（不推进关卡解锁、不记录星级）。
   final bool daily;
 
@@ -445,6 +450,7 @@ class LevelDefinition {
     this.endless = false,
     this.daily = false,
     this.boss,
+    this.bossKey,
     this.obstacles = const [],
   });
 

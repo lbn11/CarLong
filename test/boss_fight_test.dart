@@ -34,6 +34,7 @@ LevelDefinition _bossLevel({
   int devolveLevels = 1,
   double shieldCycle = 0,
   double shieldDuration = 3,
+  String? bossKey,
 }) {
   return LevelDefinition(
     id: id,
@@ -60,6 +61,7 @@ LevelDefinition _bossLevel({
       shieldCycle: shieldCycle,
       shieldDuration: shieldDuration,
     ),
+    bossKey: bossKey,
   );
 }
 
@@ -111,8 +113,9 @@ void main() {
   /// 固定时长 pump（Flame 持续渲染，pumpAndSettle 不收敛）。
   Future<MergeGame> pumpBossGame(
     WidgetTester tester,
-    LevelDefinition level,
-  ) async {
+    LevelDefinition level, {
+    PlayerData? data,
+  }) async {
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.reset);
@@ -120,7 +123,7 @@ void main() {
       home: GameScreen(
         key: ValueKey(level.id),
         level: level,
-        data: PlayerData(),
+        data: data ?? PlayerData(),
         repo: SaveRepository(),
       ),
     ));
@@ -215,6 +218,39 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1600));
     await tester.pump(const Duration(milliseconds: 200));
     expect(find.text('👑 Boss 击败！'), findsOneWidget);
+  });
+
+  testWidgets('Boss 胜利点亮徽章墙 key 并刷新最高连消纪录', (tester) async {
+    // 2026-10-19 成长感三件套之一：击败 Boss = 徽章墙点亮（稳定 key
+    // 「章.序号」），同局 maxCombo > 旧 bestCombo 时写档。
+    final data = PlayerData();
+    final level = _bossLevel(hp: 3, firstDelay: 9999, bossKey: '0.0');
+    final game = await pumpBossGame(tester, level, data: data);
+
+    expect(data.defeatedBosses, isEmpty);
+    expect(data.bestCombo, 0);
+
+    var guard = 0;
+    while (game.bossHp.value > 0 && guard < 60) {
+      guard++;
+      game.drawStock();
+      game.drawStock();
+      await tester.pump(const Duration(milliseconds: 100));
+      final pair = findMergePair(game);
+      if (pair == null) continue;
+      await tapCell(tester, game, pair.from.$1, pair.from.$2);
+      await tapCell(tester, game, pair.to.$1, pair.to.$2);
+    }
+    expect(game.bossHp.value, 0, reason: 'guard=$guard');
+
+    // 结算弹窗出现时写档已完成：徽章点亮 + 连消纪录 ≥ 本局值。
+    await tester.pump(const Duration(milliseconds: 1600));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('👑 Boss 击败！'), findsOneWidget);
+    expect(data.defeatedBosses, contains('0.0'));
+    expect(data.bestCombo, greaterThanOrEqualTo(game.maxCombo));
+    expect(data.bestCombo, greaterThanOrEqualTo(2),
+        reason: '连合 3 次目标车必然触发连消窗口');
   });
 
   testWidgets('Boss 会动手：技能池至少出一种（冰封/偷车/锁牌堆/扔冰）', (tester) async {
