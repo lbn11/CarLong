@@ -247,6 +247,32 @@ enum VehicleType {
         VehicleType.spaceStation => 'station',
         VehicleType.lunar => 'comet',
         VehicleType.starship => 'ufo',
+        // 以下 23 档由 tool/tint_variants.py 从上面 17 张底图派生：
+        // 同族车型复用底图，色相旋转到本档车型色（颜色即身份）。
+        VehicleType.motorcycle => 'motorcycle',
+        VehicleType.suv => 'suv',
+        VehicleType.van => 'van',
+        VehicleType.ambulance => 'ambulance',
+        VehicleType.police => 'police',
+        VehicleType.firetruck => 'firetruck',
+        VehicleType.limousine => 'limousine',
+        VehicleType.bulldozer => 'bulldozer',
+        VehicleType.crane => 'crane',
+        VehicleType.excavator => 'excavator',
+        VehicleType.dumptruck => 'dumptruck',
+        VehicleType.forklift => 'forklift',
+        VehicleType.cementmixer => 'cementmixer',
+        VehicleType.tram => 'tram',
+        VehicleType.lightrail => 'lightrail',
+        VehicleType.monorail => 'monorail',
+        VehicleType.steam => 'steam',
+        VehicleType.hyperloop => 'hyperloop',
+        VehicleType.glider => 'glider',
+        VehicleType.cargo => 'cargo',
+        VehicleType.seaplane => 'seaplane',
+        VehicleType.stealth => 'stealth',
+        VehicleType.warpShip => 'warpShip',
+        // 水上 8 档 + 直升机 / 无人机：没有底图，暂无车模（回退 emoji）
         _ => null,
       };
 

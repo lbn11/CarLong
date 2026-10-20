@@ -21,8 +21,8 @@ void main() {
       final tier = e.tier;
       cards.add(
         SizedBox(
-          width: 120,
-          height: 140,
+          width: 124,
+          height: 152,
           child: Column(
             children: [
               Container(
@@ -52,8 +52,13 @@ void main() {
                 ),
               ),
               const SizedBox(height: 6),
+              // 档位名有长有短（forklift / cementmixer），固定一行不换行，
+              // 否则 Content 撑高会把 Column 顶出溢出黄条。
               Text(
                 e.sprite,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
             ],
