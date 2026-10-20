@@ -277,9 +277,21 @@ test('步数用完且未达成判负', () => {
 });
 
 test('牌堆空且无步可走判死局', () => {
-  const s = new MergeSession(lv({ stock: 0, target: 20, count: 5 }), fakeVehicles());
+  // 开局会垫底 `cols*rows/4` 辆车，2x2 → 只垫 1 张，盘面必然无同款可合，
+  // 牌堆又是 0，建局即死局。
+  const s = new MergeSession(lv({ stock: 0, cols: 2, rows: 2, target: 20, count: 5 }), fakeVehicles());
+  assert.equal(s.board.tileCount, 1);
   assert.equal(s.status, 'lost');
   assert.equal(s.failReason, 'deadEnd');
+});
+
+test('开局垫底车辆：数量对齐 cols*rows/4（clamp 1..4）', () => {
+  const small = new MergeSession(lv({ stock: 5, cols: 2, rows: 2 }), fakeVehicles());
+  assert.equal(small.board.tileCount, 1, '2x2 垫 1 张');
+  const mid = new MergeSession(lv({ stock: 5, cols: 4, rows: 3 }), fakeVehicles());
+  assert.equal(mid.board.tileCount, 3, '4x3 垫 3 张（第 1 关就是这个）');
+  const big = new MergeSession(lv({ stock: 5, cols: 6, rows: 6 }), fakeVehicles());
+  assert.equal(big.board.tileCount, 4, '6x6 封顶 4 张');
 });
 
 test('撤销恢复棋盘与牌堆', () => {

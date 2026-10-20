@@ -209,6 +209,18 @@ export class Board {
     return cell;
   }
 
+  /**
+   * 在随机空格放入指定档位（纯随机，不做智能落点）。
+   * 对齐 Dart `BoardLogic.placeTier`：开局垫底车辆用它，保证与 App 端同序。
+   */
+  placeTier(tier: number): { col: number; row: number } | null {
+    const cell = this.randomEmptyCell();
+    if (!cell) return null;
+    this.grid[this.idx(cell.col, cell.row)] = makeStack(tier);
+    this.invalidate();
+    return cell;
+  }
+
   /** 在随机空格放一张万能卡；满盘返回 null */
   placeWildcard(): { col: number; row: number } | null {
     const cell = this.randomEmptyCell();

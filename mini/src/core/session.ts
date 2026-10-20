@@ -64,12 +64,19 @@ export class MergeSession {
     this.movesLeft = level.moves ?? null;
     this.timeLeft = level.time ?? null;
 
-    // 牌堆一次性生成（与 Dart 侧一致：开局定死整副牌，不是边玩边抽）
-    for (let i = 0; i < level.stock; i++) this.deck.push(this.board.randomTier());
+    // 开局垫底：对齐 Dart `MergeGame.onLoad` —— 先铺几张随机车，让玩家一进场
+    // 就能合成，而不是面对 12 个空格子（曾因此被当成"游戏里没有车"）。
+    const seedCount = Math.max(1, Math.min(4, Math.floor((level.cols * level.rows) / 4)));
+    for (let i = 0; i < seedCount; i++) {
+      if (!this.board.placeTier(this.board.randomTier())) break;
+    }
 
     // 开局特化卡
     for (let i = 0; i < (level.wild ?? 0); i++) this.board.placeWildcard();
     for (let i = 0; i < (level.bombs ?? 0); i++) this.board.placeBomb();
+
+    // 牌堆一次性生成（与 Dart 侧一致：开局定死整副牌，不是边玩边抽）
+    for (let i = 0; i < level.stock; i++) this.deck.push(this.board.randomTier());
 
     // 极端配置（如 stock=0）开局就该定胜负，不要等到玩家点第一下
     this.checkGoalNow();
