@@ -50,3 +50,7 @@ app.*.map.json
 # ImageGen 原始渲染中间产物 (非游戏资源, 不入库)
 generated-images/
 test/failures/
+
+# 小游戏端（mini/）：依赖与构建产物不入库，源码与关卡数据（shared/levels）入库
+mini/node_modules/
+mini/dist/

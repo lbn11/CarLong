@@ -1,0 +1,18 @@
+{
+  "name": "carlong-mini",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "CarLong 小游戏端（微信/抖音）：TS 渲染层，消费 shared/levels 关卡数据",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs --watch",
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.0"
+  }
+}
