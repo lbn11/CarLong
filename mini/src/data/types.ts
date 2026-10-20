@@ -91,7 +91,7 @@ export interface ParkingLevelDef {
   name: string;
   rows: number;
   cols: number;
-  /** 每行一个字符串：e=空 r=路 p=停车位 w=水 b=障碍 */
+  /** 每行一个字符：r=路 p=停车位 o=障碍(石墩) e=入口 x=出口 */
   grid: string[];
   vehicles: VehicleSpawnDef[];
   target: number;
@@ -107,6 +107,9 @@ export interface ChapterDef {
   title: string;
   subtitle: string;
   startId: number;
+  /** 停车关章节：章节序号（0 起）与结束关号；合成关只有 startId */
+  tier?: number;
+  endId?: number;
 }
 
 export interface MergeDataFile {

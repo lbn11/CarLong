@@ -25,18 +25,23 @@ mini/
       rng.ts           mulberry32，跨引擎结果一致
       stack.ts         棋盘卡（tier/count/万能/炸弹/冰封/胶水）
       board.ts         1:1 移植 lib/logic/board_logic.dart
-      session.ts       一局：牌堆、出牌、选中/移动、目标、限步限时、撤销、连消
+      session.ts       合成一局：牌堆、出牌、选中/移动、目标、限步限时、撤销、连消
+      parking.ts       1:1 移植 lib/game/parking_game.dart + parking_solver.dart
+                       （滑动规则 + BFS 求解器，求解器同时供「提示」用）
     art/               绘制原语与卡面（视觉参数对齐 Flutter StackSprite）
       theme.ts         色板（抄自 lib/theme/app_theme.dart）
       paint.ts         圆角/渐变/文字/药丸/箭头/背景
       card.ts          卡面、能力徽章、空槽、四种障碍
+      parking_draw.ts  停车场地面/车位/石墩/出入口、车辆（车身+车轮+高光）、可达箭头
     ui/
-      merge_scene.ts   布局 + 渲染 + 输入 + 动画 + 结算面板
-      level_select.ts  选关网格
+      merge_scene.ts   合成：布局 + 渲染 + 输入 + 动画 + 结算面板
+      parking_scene.ts 停车：同上（含目标车卡片、可达轨迹、提示）
+      level_select.ts  选关网格 + 模式 tab（合成 / 停车）
   test/
-    board.test.ts      26 条规则用例（对齐 Dart 行为）
+    board.test.ts      26 条合成规则用例（对齐 Dart 行为）
+    parking.test.ts    20 条停车规则用例 + 真关卡 minMoves 对齐
   tool/
-    shot.mjs           无头 Chrome 截图（验收用，LEVEL=/AUTO= 可指定关卡/自动打完）
+    shot.mjs           无头 Chrome 截图（MODE=/LEVEL=/AUTO= 指定模式、关卡、自动通关）
 ```
 
 **分层纪律**：`core/` 不许出现 `window` / `wx` / `document`；`art/` 与 `ui/` 不许出现
@@ -54,7 +59,8 @@ shared/levels/*.json   ← 跨端唯一真源（734KB）
 mini/dist/levels/*.json
     │  runtime.loadText()
     ▼
-merge_levels.json → MergeSession → 渲染
+merge_levels.json   → MergeSession   → 渲染
+parking_levels.json → ParkingSession → 渲染
 ```
 
 **关键决定：小游戏端不移植关卡生成器**。1500 关是生成出来的，导出成 JSON 后任何语言
@@ -69,6 +75,8 @@ merge_levels.json → MergeSession → 渲染
 |---|---|---|
 | 棋盘移动/合并/障碍/炸弹 | `lib/logic/board_logic.dart` | `src/core/board.ts` |
 | 出牌权重抽取 | `_weightedTier`（整数 roll 逐个减） | `Rng.weighted`（同算法） |
+| 停车滑动 / 车位独占 / 胜利判定 | `lib/game/parking_game.dart` | `src/core/parking.ts` |
+| 停车最短解 | `lib/logic/parking_solver.dart` | `src/core/parking.ts solveParking` |
 | 卡面视觉 | `StackSprite._ensureFace` | `art/card.ts drawCard` |
 | 色板 | `lib/theme/app_theme.dart` | `art/theme.ts` |
 
@@ -86,12 +94,23 @@ merge_levels.json → MergeSession → 渲染
 - 自适应布局（竖屏，棋盘按宽/高双约束取小，棋盘+牌堆整体居中）
 - 26 条规则单测全绿；41KB 单文件产物
 
-## 5. 待做（按优先级）
+## 5. 已完成（P1：停车模式，与 App 端规则一致）
 
-**P1 停车模式**（数据已导出，纯渲染色块 + 拖动，工作量最小、独立收益最大）
-- 布局：`parking_levels.json` 的 grid/vehicles 直接画；滑动一次 = 沿朝向推到撞墙
-- 目标车开出停车位判胜；限步/限时同合成模式
-- 移动端体验关键：拖动时的「可走距离」预览线
+停车模式的滑动语义**不是**「推到撞墙」，而是 **点哪停哪**：
+
+- 点一下车选中，再点同一行/列的任意格 → 车朝该方向滑到「不越过点击格」的最远可达位置。
+  点得越远滑得越远。长条车车头对齐点击格（右/下方向时 anchor 回退 `length-1`）。
+- 只有目标档的车能进停车位；胜利 = 目标车车身**任一格**压住车位（长条车压一格即算）。
+- 限步关：步数耗尽且无目标车停好 → 判负。限时关：倒计时归零判负。
+  死局**不判负**（与 Dart 一致）——只飘一句「没路可走了 · 撤销试试」，因为撤销还在。
+- 选中后画**可达轨迹点 + 尽头箭头**：点哪停哪的语义不直观，不画这个玩家只能靠猜。
+- 棋盘下方「目标车卡片」吃掉按宽度定尺后的剩余空白，同时给能力标签一个展示位。
+- 提示：现算 BFS 取第一步，高亮该车 + 橙色虚线圈出落点，并告知「需要 N 步」。
+- 20 条停车单测；其中两条是硬对齐：**抽样的 40 个真关卡，TS 求解步数必须等于
+  Dart 导出的 `minMoves`**，且 solver 的解要在 `ParkingSession` 上真实走通并获胜。
+  任何规则漂移（占用、车位独占、胜利条件）都会让最短步数变化，直接红。
+
+## 6. 待做（按优先级）
 
 **P2 Boss 战**（`bossSpec` 已在 JSON 里，但 56 卡组参数需要一并导出）
 - 需要先在 `tool/export_levels.dart` 补导出 `bossSpec` 全字段（当前只有 hp/interval/first）
@@ -106,25 +125,26 @@ merge_levels.json → MergeSession → 渲染
 - 资源：`python3 tool/asset_audit.py --optimize` 实测 26.2MB → 1.8MB
 - 抖音同构（`tt` 全局优先），审核资质：软著 + 类目
 
-## 6. 命令
+## 7. 命令
 
 ```bash
 cd mini
 npm install                 # 只装 esbuild + typescript + @types/node
 npm run typecheck           # tsc --noEmit
-npm test                    # 26 条规则用例
-npm run build               # → dist/bundle.js (41KB) + dist/levels (734KB)
+npm test                    # 46 条规则用例（合成 26 + 停车 20）
+npm run build               # → dist/bundle.js (70KB) + dist/levels (734KB)
 npm run dev                 # watch
 
 # 浏览器预览（每次改完必须换端口，否则旧 Service Worker/缓存看不到变化）
 cd dist && python3 -m http.server 58880 --bind 127.0.0.1
 
-# 截图验收（可指定关卡 / 自动打完）
+# 截图验收（可指定模式 / 关卡 / 自动通关）
 LEVEL=600 node tool/shot.mjs
-AUTO=1 LEVEL=1 node tool/shot.mjs
+MODE=parking LEVEL=40 node tool/shot.mjs
+AUTO=1 MODE=parking LEVEL=1 node tool/shot.mjs
 ```
 
-## 7. 已知问题 / 技术债
+## 8. 已知问题 / 技术债
 
 - 车模 PNG（17 张 3D 渲染）只在图鉴/停车用；合成棋盘用 emoji —— 与 Flutter `_drawIcon`
   一致。若要让棋盘也用 3D 车模，需要给 50 档车型补齐图（当前 17/50），否则一半图一半 emoji 更乱。
@@ -132,3 +152,10 @@ AUTO=1 LEVEL=1 node tool/shot.mjs
 - 结算面板目前只有「再来一次 / 下一关」，缺「分享战绩」「看广告续命」。
 - 没有音效与震动。
 - 横屏/平板未适配（只按竖屏算布局）。
+- **Dart 侧 `turn` 能力在停车模式实际无效**：`slideTo` 有 turn 分支（长条车四向滑），
+  但 `canMoveTo` 的轴约束不看 turn，`moveVehicle → canMoveTo` 必然拒绝。
+  TS 端**忠实移植了这个现状**（两端行为必须一致），并在测试里锁住。
+  修 Dart 时 `test/parking.test.ts` 那条用例要一起改。
+- 停车关卡 cell 在 320px 小屏 6×6 时约 46px，接近手指精度下限；再窄就不好点。
+- 合成模式的棋盘点击仍用「精确矩形判定」，点格子边缘 2-3px 缝隙会漏；
+  停车模式已改成「就近归格」（长条车几何中心必落在缝隙里，必须修）。合成侧暂未动。

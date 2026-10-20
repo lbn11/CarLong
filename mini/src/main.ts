@@ -3,26 +3,33 @@
 // web:    <script src="bundle.js"> → 直接用 DOM canvas
 // wechat: game.js（由 build 产物改名）→ wx.createCanvas()
 import { App } from './app.ts';
-import type { MergeDataFile, VehicleDataFile } from './data/types.ts';
+import { minMovesOf, solveParking } from './core/parking.ts';
+import type { MergeDataFile, ParkingDataFile, VehicleDataFile } from './data/types.ts';
 import { host } from './platform/env.ts';
 import { createRuntime } from './platform/runtime.ts';
 
 async function boot(): Promise<void> {
   const rt = createRuntime();
   try {
-    const [mergeRaw, vehicleRaw] = await Promise.all([
+    const [mergeRaw, parkingRaw, vehicleRaw] = await Promise.all([
       rt.loadText('levels/merge_levels.json'),
+      rt.loadText('levels/parking_levels.json'),
       rt.loadText('levels/vehicles.json'),
     ]);
     const mergeData = JSON.parse(mergeRaw) as MergeDataFile;
+    const parkingData = JSON.parse(parkingRaw) as ParkingDataFile;
     const vehicleData = JSON.parse(vehicleRaw) as VehicleDataFile;
     if (mergeData.count !== mergeData.levels.length) {
-      throw new Error(`关卡数不一致：${mergeData.count} vs ${mergeData.levels.length}`);
+      throw new Error(`合成关数不一致：${mergeData.count} vs ${mergeData.levels.length}`);
     }
-    const app = new App(rt, mergeData, vehicleData);
+    if (parkingData.count !== parkingData.levels.length) {
+      throw new Error(`停车关数不一致：${parkingData.count} vs ${parkingData.levels.length}`);
+    }
+    const app = new App(rt, mergeData, parkingData, vehicleData);
     app.start();
     // 挂到全局便于在控制台/开发者工具里检查（小游戏调试必备）
-    (globalThis as unknown as { __carlong?: unknown }).__carlong = { app, host };
+    // 求解器一起挂出去：截图工具要靠它自动打完停车关验收结算面板
+    (globalThis as unknown as { __carlong?: unknown }).__carlong = { app, host, solveParking, minMovesOf };
   } catch (err) {
     console.error('[carlong] 启动失败', err);
     const { ctx, width, height } = rt.surface;
