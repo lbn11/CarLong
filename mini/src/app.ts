@@ -10,6 +10,7 @@ import type {
   VehicleDef,
 } from './data/types.ts';
 import type { PointerEventLite, Runtime } from './platform/runtime.ts';
+import { HomeScene } from './ui/home_scene.ts';
 import { LevelSelectScene, type SelectEntry, type SelectMode } from './ui/level_select.ts';
 import { MergeScene } from './ui/merge_scene.ts';
 import { ParkingScene } from './ui/parking_scene.ts';
@@ -38,12 +39,14 @@ export class App {
   private readonly mergeLevels: readonly MergeLevelDef[];
   private readonly parkingLevels: readonly ParkingLevelDef[];
   private readonly vehicles: readonly VehicleDef[];
+  private readonly mergeChapters: readonly { title: string; subtitle: string; startId: number }[];
   private readonly mergeEntries: readonly SelectEntry[];
   private readonly parkingEntries: readonly SelectEntry[];
   private scene: Scene;
   private mergeScene: MergeScene | null = null;
   private parkingScene: ParkingScene | null = null;
   private progress: Progress;
+  private lastMode: SelectMode = 'merge';
   private lastT = 0;
   private running = false;
 
@@ -57,13 +60,15 @@ export class App {
     this.mergeLevels = mergeData.levels;
     this.parkingLevels = parkingData.levels;
     this.vehicles = vehicleData.vehicles;
-    this.mergeEntries = mergeData.levels.map((l) => ({ id: l.id, ch: l.ch }));
+    this.mergeChapters = mergeData.chapters;
+    this.mergeEntries = mergeData.levels.map((l) => ({ id: l.id, ch: l.ch, target: l.target }));
     this.parkingEntries = parkingData.levels.map((l) => ({
       id: l.id,
       ch: parkingData.chapters.find((c) => l.id >= c.startId && (c.endId === undefined || l.id <= c.endId))?.tier ?? 0,
+      target: l.target,
     }));
     this.progress = this.loadProgress();
-    this.scene = this.makeSelect();
+    this.scene = this.makeHome();
 
     rt.onPointer((e) => this.scene.onPointer?.(e));
     rt.onResize(() => {
@@ -100,13 +105,41 @@ export class App {
     this.rt.storage.set(PROGRESS_KEY, JSON.stringify(this.progress));
   }
 
-  private makeSelect(): LevelSelectScene {
+  private makeSelect(mode: SelectMode = 'merge'): LevelSelectScene {
     const s = new LevelSelectScene(
       this.rt,
       { entries: this.mergeEntries, unlocked: this.progress.mergeUnlocked },
       { entries: this.parkingEntries, unlocked: this.progress.parkingUnlocked },
+      this.vehicles,
+      mode,
     );
-    s.onPick = (mode, id) => this.startLevel(mode, id);
+    s.onPick = (m, id) => this.startLevel(m, id);
+    s.onBack = () => {
+      this.scene = this.makeHome();
+    };
+    return s;
+  }
+
+  private makeHome(): HomeScene {
+    const curId = Math.min(this.progress.mergeUnlocked, this.mergeLevels.length);
+    const lv = this.mergeById(curId) ?? this.mergeLevels[0];
+    const chapterTitle = lv ? (this.mergeChapters[lv.ch]?.title ?? lv.name) : '';
+    const s = new HomeScene(this.rt, this.vehicles, {
+      mergeUnlocked: curId,
+      mergeTotal: this.mergeLevels.length,
+      parkingUnlocked: Math.min(this.progress.parkingUnlocked, this.parkingLevels.length),
+      parkingTotal: this.parkingLevels.length,
+      targetTier: lv?.target,
+      chapterTitle: chapterTitle || '清晨路段',
+      levelName: lv?.name ?? '',
+    });
+    s.onPlay = (mode) => {
+      const id = mode === 'merge' ? this.progress.mergeUnlocked : this.progress.parkingUnlocked;
+      this.startLevel(mode, Math.min(id, mode === 'merge' ? this.mergeLevels.length : this.parkingLevels.length));
+    };
+    s.onOpenSelect = (mode) => {
+      this.scene = this.makeSelect(mode);
+    };
     return s;
   }
 
@@ -119,6 +152,7 @@ export class App {
   }
 
   private startLevel(mode: SelectMode, id: number): void {
+    this.lastMode = mode;
     this.mergeScene = null;
     this.parkingScene = null;
     if (mode === 'merge') this.startMergeLevel(id);
@@ -128,7 +162,7 @@ export class App {
   private backToSelect(): void {
     this.mergeScene = null;
     this.parkingScene = null;
-    this.scene = this.makeSelect();
+    this.scene = this.makeSelect(this.lastMode);
   }
 
   private startMergeLevel(id: number): void {

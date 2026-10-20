@@ -3,6 +3,7 @@
 // 只在「读状态 → 画 → 收输入」这三件事上工作，规则全部在 core/session.ts。
 // 换平台、换 UI 皮肤都不动这里以下的层。
 import { drawCard, drawObstacle, drawSlot } from '../art/card.ts';
+import { drawSpriteBox } from '../art/sprites.ts';
 import {
   chevron,
   fillRound,
@@ -427,29 +428,32 @@ export class MergeScene {
       pill(ctx, w - pad - cluesW / 2, y + 14, label, 12, 'rgba(255,255,255,0.9)', C.ink2, 10, 6);
     }
 
-    // 目标 chip：左对齐，剩余空间不够就缩字号
+    // 目标 chip：车模 + 文字，左对齐，剩余空间不够就缩字号
     const target = s.targetTier;
+    const hasSprite = !!target?.sprite;
+    const iconW = hasSprite ? 28 : 0;
     const full =
       s.level.goal === 'produce'
-        ? `${target?.icon ?? ''} ${target?.name ?? ''}  ${s.board.producedCount}/${s.level.count}`
+        ? `${hasSprite ? '' : `${target?.icon ?? ''} `}${target?.name ?? ''}  ${s.board.producedCount}/${s.level.count}`
         : `🧹 清空  剩 ${s.board.tileCount}`;
     const limit = w - pad * 2 - cluesW - 8;
     let size = 14;
     let label = full;
-    while (size > 10 && textWidth(ctx, label, size, 800) + 22 > limit) {
+    while (size > 10 && textWidth(ctx, label, size, 800) + 24 + iconW > limit) {
       size--;
       if (size <= 11 && s.level.goal === 'produce') {
         // 还是放不下就退化成 icon + 分数
-        label = `${target?.icon ?? ''} ${s.board.producedCount}/${s.level.count}`;
+        label = `${hasSprite ? '' : `${target?.icon ?? ''} `}${s.board.producedCount}/${s.level.count}`;
       }
     }
-    const chipW = Math.min(limit, textWidth(ctx, label, size, 800) + 22);
+    const chipW = Math.min(limit, textWidth(ctx, label, size, 800) + 24 + iconW);
     fillRound(ctx, pad, y, chipW, 28, 14, 'rgba(255,255,255,0.85)');
     ctx.save();
     ctx.beginPath();
     roundRect(ctx, pad, y, chipW, 28, 14);
     ctx.clip();
-    text(ctx, label, pad + chipW / 2, y + 14.5, size, C.ink1, { weight: 800 });
+    if (hasSprite) drawSpriteBox(ctx, target?.sprite, pad + 19, y + 14.5, 21);
+    text(ctx, label, pad + iconW + 10, y + 14.5, size, C.ink1, { align: 'left', weight: 800 });
     ctx.restore();
 
     // 进度条

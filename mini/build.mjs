@@ -17,6 +17,11 @@ function copyStatic() {
   fs.cpSync(path.join(ROOT, '../shared/levels'), path.join(OUT, 'levels'), {
     recursive: true,
   });
+  // 3D 车模：游戏的身份资产。App 端用的是 1024px 原图，小游戏端预缩到
+  // 256px（17 张 588KB），卡面最大只渲染到 ~180px，够用且不撑爆主包。
+  fs.cpSync(path.join(ROOT, 'assets/vehicles'), path.join(OUT, 'assets/vehicles'), {
+    recursive: true,
+  });
   fs.copyFileSync(path.join(ROOT, 'index.html'), path.join(OUT, 'index.html'));
 }
 

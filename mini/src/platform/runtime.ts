@@ -31,6 +31,11 @@ export interface Runtime {
   };
   /** 读文本文件（关卡 JSON） */
   loadText(path: string): Promise<string>;
+  /**
+   * 读图片（车模 PNG）。返回宿主原生 image 对象，可直接喂给 drawImage。
+   * 加载失败不 reject 成致命错误——车模是装饰，缺一张应该退回 emoji 而不是崩。
+   */
+  loadImage(path: string): Promise<any>;
   /** 帧回调，参数为毫秒时间戳 */
   raf(cb: (t: number) => void): void;
   /** 尺寸变化（web 旋转/缩放；小游戏仅 onWindowResize） */
@@ -136,6 +141,13 @@ function createWebRuntime(): Runtime {
       if (!res.ok) throw new Error(`加载失败 ${path}: ${res.status}`);
       return res.text();
     },
+    loadImage: (path) =>
+      new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error(`图片加载失败 ${path}`));
+        img.src = path;
+      }),
     raf: (cb) => requestAnimationFrame(cb),
     onResize: (cb) => {
       window.addEventListener('resize', cb);
@@ -232,6 +244,13 @@ function createMiniGameRuntime(): Runtime {
         } catch (err) {
           reject(err);
         }
+      }),
+    loadImage: (path) =>
+      new Promise((resolve, reject) => {
+        const img = api.createImage();
+        img.onload = () => resolve(img);
+        img.onerror = (err: unknown) => reject(err ?? new Error(`图片加载失败 ${path}`));
+        img.src = path;
       }),
     raf: (cb) => {
       // 小游戏有全局 requestAnimationFrame，部分环境挂在 canvas 上。

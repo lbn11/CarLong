@@ -17,6 +17,8 @@ export interface VehicleDef {
   id: number;
   name: string;
   icon: string;
+  /** 3D 车模 PNG 名（assets/vehicles/<sprite>.png）；无车模的档位为 null */
+  sprite?: string | null;
   /** #AARRGGBB */
   color: string;
   category: VehicleCategoryName;

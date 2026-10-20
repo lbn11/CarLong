@@ -5,6 +5,7 @@
 // 车身用更饱和的身份色 + 车轮 + 车顶高光，一眼能看出"这是辆车"，
 // 否则玩家会把停车模式当成滑块解谜的色块。
 import { fillRound, roundRect, strokeRound, text, textWidth } from './paint.ts';
+import { drawSpriteFit } from './sprites.ts';
 import { lerpColor, parseColor, rgba } from './theme.ts';
 
 const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
@@ -106,6 +107,8 @@ export function drawParkCell(
 
 export interface ParkCarOpts {
   icon: string;
+  /** 3D 车模 PNG 名；没有的档位回退 icon */
+  sprite?: string | null;
   target: boolean;
   selected: boolean;
   /** 车身沿行方向延伸 */
@@ -204,9 +207,22 @@ export function drawParkCar(
     strokeRound(ctx, x, y - lift, w, h, r, 'rgba(255,255,255,0.5)', Math.max(1, Math.min(w, h) * 0.025));
   }
 
-  // 图标：车身中央。长条车图标略小，避免顶到车轮。
+  // 图标：优先贴真实车模（竖车转 90°，车头朝下），没有则退回 emoji。
+  // 车模是侧视图，等比放进车身内不拉伸——宁可小一圈，也不要变形。
   const box = Math.min(w, h) * (along > Math.min(w, h) * 1.6 ? 0.5 : 0.6);
-  text(ctx, opts.icon, x + w / 2, y - lift + h / 2, box, '#FFFFFF', { family: EMOJI_FONT });
+  const pad = Math.min(w, h) * 0.1;
+  const placed = drawSpriteFit(
+    ctx,
+    opts.sprite,
+    x + pad,
+    y - lift + pad,
+    w - pad * 2,
+    h - pad * 2,
+    { rotateQuarter: !opts.horiz, stretch: true },
+  );
+  if (!placed) {
+    text(ctx, opts.icon, x + w / 2, y - lift + h / 2, box, '#FFFFFF', { family: EMOJI_FONT });
+  }
 
   // 选中环：外扩一圈虚线，跟"可达箭头"同一色系
   if (opts.selected) {

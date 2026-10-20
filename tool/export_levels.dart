@@ -56,6 +56,7 @@ Map<String, dynamic> vehicleToJson(VehicleType t) => {
       'id': t.id,
       'name': t.name,
       'icon': t.icon,
+      'sprite': t.sprite,
       'color': _hex(t.color.toARGB32()),
       'category': t.category.name,
       'rarity': t.stats.rarity.name,

@@ -14,6 +14,7 @@ import {
   type Ctx,
 } from './paint.ts';
 import { css, deepen, lerpColor, parseColor, rgba } from './theme.ts';
+import { drawSpriteBox } from './sprites.ts';
 
 const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 
@@ -169,7 +170,8 @@ function drawIcon(
     drawWildcardIcon(ctx, cx, cy, box);
   } else if (stack.isBomb) {
     drawBombIcon(ctx, cx, cy, box);
-  } else {
+  } else if (!drawSpriteBox(ctx, vehicle?.sprite, cx, cy, box)) {
+    // 没有车模的档位（或图片还没到）退回 emoji，永远不留空白格
     const icon = vehicle?.icon ?? '🚗';
     text(ctx, icon, cx, cy + box * 0.04, box, '#FFFFFF', { family: EMOJI_FONT });
   }

@@ -3,6 +3,7 @@
 // web:    <script src="bundle.js"> → 直接用 DOM canvas
 // wechat: game.js（由 build 产物改名）→ wx.createCanvas()
 import { App } from './app.ts';
+import { preloadSprites } from './art/sprites.ts';
 import { minMovesOf, solveParking } from './core/parking.ts';
 import type { MergeDataFile, ParkingDataFile, VehicleDataFile } from './data/types.ts';
 import { host } from './platform/env.ts';
@@ -25,6 +26,9 @@ async function boot(): Promise<void> {
     if (parkingData.count !== parkingData.levels.length) {
       throw new Error(`停车关数不一致：${parkingData.count} vs ${parkingData.levels.length}`);
     }
+    // 车模先到再开场：晚到的图会让第一屏"没有车"，宁可多等一两百毫秒。
+    // 单张失败不阻塞（preloadSprites 内部已吞掉），缺图档位回退 emoji。
+    await preloadSprites(rt, vehicleData.vehicles.map((v) => v.sprite));
     const app = new App(rt, mergeData, parkingData, vehicleData);
     app.start();
     // 挂到全局便于在控制台/开发者工具里检查（小游戏调试必备）

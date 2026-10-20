@@ -16,6 +16,7 @@ import {
 } from '../art/paint.ts';
 import { ABILITY_LABEL } from '../art/card.ts';
 import { drawGhostCar, drawParkCar, drawParkCell, drawReachHint, drawReachTrail } from '../art/parking_draw.ts';
+import { drawSpriteBox } from '../art/sprites.ts';
 import { C, css, parseColor } from '../art/theme.ts';
 import { ParkingSession, solveParking, type ParkingEvent, type PVehicle } from '../core/parking.ts';
 import type { ParkingLevelDef, VehicleDef } from '../data/types.ts';
@@ -412,19 +413,24 @@ export class ParkingScene {
       pill(ctx, w - pad - rightW / 2, l.goalY + 14, label, 12, 'rgba(255,255,255,0.9)', C.ink2, 10, 6);
     }
 
-    // 目标 chip
-    const label = `🎯 ${this.tierIcon(this.level.target)} ${this.level.targetName}`;
+    // 目标 chip：车模 + 目标名（车模比 emoji 更"像这辆要停进去的车"）
+    const tv = this.vehicles[this.level.target];
+    const hasSprite = !!tv?.sprite;
+    const iconW = hasSprite ? 28 : 0;
+    const label = `${hasSprite ? '' : `🎯 ${this.tierIcon(this.level.target)} `}${this.level.targetName}`;
     const limit = w - pad * 2 - rightW - 8;
     let size = 14;
     let shown = label;
-    while (size > 10 && textWidth(ctx, shown, size, 800) + 22 > limit) size--;
-    const chipW = Math.min(limit, textWidth(ctx, shown, size, 800) + 22);
+    while (size > 10 && textWidth(ctx, shown, size, 800) + 24 + iconW > limit) size--;
+    const chipW = Math.min(limit, textWidth(ctx, shown, size, 800) + 24 + iconW);
     fillRound(ctx, pad, l.goalY, chipW, 28, 14, 'rgba(255,255,255,0.85)');
     ctx.save();
     ctx.beginPath();
     roundRect(ctx, pad, l.goalY, chipW, 28, 14);
     ctx.clip();
-    text(ctx, shown, pad + chipW / 2, l.goalY + 14.5, size, C.ink1, { weight: 800 });
+    if (hasSprite) drawSpriteBox(ctx, tv?.sprite, pad + 19, l.goalY + 14.5, 21);
+    else text(ctx, '🎯', pad + 19, l.goalY + 14.5, 13, C.ink1);
+    text(ctx, shown, pad + iconW + 10, l.goalY + 14.5, size, C.ink1, { align: 'left', weight: 800 });
     ctx.restore();
 
     // 最优解：给玩家一把尺子，比"你走了几步"更有意义
@@ -552,6 +558,7 @@ export class ParkingScene {
 
       drawParkCar(ctx, rect.x, rect.y, rect.w, rect.h, this.tierColor(v.tier), {
         icon: this.tierIcon(v.tier),
+        sprite: this.vehicles[v.tier]?.sprite,
         target: v.tier === this.level.target,
         selected: v.index === selected,
         horiz: v.horiz,
@@ -596,7 +603,9 @@ export class ParkingScene {
     const icx = x + 22 + iconR;
     const icy = y + cardH / 2;
     fillRound(ctx, icx - iconR, icy - iconR, iconR * 2, iconR * 2, iconR, css(color, 0.16));
-    text(ctx, this.tierIcon(tier), icx, icy, iconR * 1.25, '#FFFFFF', { family: EMOJI_FONT });
+    if (!drawSpriteBox(ctx, v?.sprite, icx, icy, iconR * 1.7)) {
+      text(ctx, this.tierIcon(tier), icx, icy, iconR * 1.25, '#FFFFFF', { family: EMOJI_FONT });
+    }
 
     const textX = icx + iconR + 14;
     text(ctx, this.level.targetName, textX, icy - 10, 15, C.ink1, { align: 'left', weight: 800 });

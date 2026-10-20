@@ -3,9 +3,14 @@
 // 现在有两个模式共用一个网格：顶部 tab 切换，切过去自动滚到「当前进度」那一行
 // —— 700/800 关的列表，玩家永远不会想从第 1 关开始翻。
 //
+// 格子不是纯数字：每关显示这一关的目标车型车模。整屏 700 个数字墙是"没有车"
+// 的观感来源，玩家一眼要看得出"下一关要合成/停车的是什么"。
+//
 // 章节分组、难度心跳徽标、🎬 广告关角标还没接（等 Boss / 广告系统进 TS 端再补）。
 import { chevron, fillRound, paintBackdrop, roundRect, softBlob, strokeRound, text } from '../art/paint.ts';
+import { drawSpriteBox } from '../art/sprites.ts';
 import { C, parseColor } from '../art/theme.ts';
+import type { VehicleDef } from '../data/types.ts';
 import type { PointerEventLite, Runtime } from '../platform/runtime.ts';
 
 const COLS = 5;
@@ -19,6 +24,8 @@ export type SelectMode = 'merge' | 'parking';
 export interface SelectEntry {
   id: number;
   ch: number;
+  /** 该关目标车型 id（决定格子里的车模） */
+  target?: number;
 }
 
 export interface ModeData {
@@ -29,6 +36,7 @@ export interface ModeData {
 export class LevelSelectScene {
   private readonly rt: Runtime;
   private readonly data: Record<SelectMode, ModeData>;
+  private readonly vehicles: readonly VehicleDef[];
   private mode: SelectMode;
   private scrollY = 0;
   private dragStart: { y: number; scroll: number } | null = null;
@@ -37,10 +45,19 @@ export class LevelSelectScene {
   private tabs: { mode: SelectMode; rect: { x: number; y: number; w: number; h: number } }[] = [];
 
   onPick: ((mode: SelectMode, id: number) => void) | null = null;
+  onBack: (() => void) | null = null;
+  private backRect = { x: 0, y: 0, w: 0, h: 0 };
 
-  constructor(rt: Runtime, merge: ModeData, parking: ModeData, mode: SelectMode = 'merge') {
+  constructor(
+    rt: Runtime,
+    merge: ModeData,
+    parking: ModeData,
+    vehicles: readonly VehicleDef[],
+    mode: SelectMode = 'merge',
+  ) {
     this.rt = rt;
     this.data = { merge, parking };
+    this.vehicles = vehicles;
     this.mode = mode;
     rt.onResize(() => {
       this.scrollY = Math.max(0, Math.min(this.scrollY, this.maxScroll()));
@@ -110,6 +127,12 @@ export class LevelSelectScene {
         }
       }
 
+      const b = this.backRect;
+      if (e.x >= b.x && e.x <= b.x + b.w && e.y >= b.y && e.y <= b.y + b.h) {
+        this.onBack?.();
+        return;
+      }
+
       const col = Math.floor((e.x - this.gridX()) / (CELL + GAP));
       const row = Math.floor((e.y - this.gridTop() + this.scrollY) / ROW_H);
       if (col < 0 || col >= COLS || row < 0) return;
@@ -152,6 +175,14 @@ export class LevelSelectScene {
       { weight: 700 },
     );
 
+    // 返回首页
+    const backSize = 36;
+    const backX = Math.max(12, w * 0.04);
+    const backY = this.topInset + 18;
+    this.backRect = { x: backX, y: backY, w: backSize, h: backSize };
+    fillRound(ctx, backX, backY, backSize, backSize, backSize / 2, 'rgba(255,255,255,0.9)');
+    chevron(ctx, backX + backSize / 2 + 1, backY + backSize / 2, 8, -1, C.ink2, 2.2);
+
     this.renderTabs(ctx, w);
 
     const gx = this.gridX();
@@ -183,7 +214,13 @@ export class LevelSelectScene {
           ctx.fillStyle = hue;
           roundRect(ctx, x + 10, y + 8, CELL - 20, 3, 1.5);
           ctx.fill();
-          text(ctx, `${entry.id}`, x + CELL / 2, y + CELL / 2 + 3, 17, C.ink1, { weight: 800 });
+          // 目标车型车模：格子的主角，关卡号退到右下角
+          const vehicle = entry.target !== undefined ? this.vehicles[entry.target] : undefined;
+          const drew = drawSpriteBox(ctx, vehicle?.sprite, x + CELL / 2, y + CELL / 2 - 4, CELL * 0.5);
+          if (!drew) {
+            text(ctx, vehicle?.icon ?? '🚗', x + CELL / 2, y + CELL / 2 - 3, CELL * 0.42, '#FFFFFF');
+          }
+          text(ctx, `${entry.id}`, x + CELL - 8, y + CELL - 11, 10.5, C.ink3, { weight: 800, align: 'right' });
           if (isCurrent) {
             strokeRound(ctx, x - 2, y - 2, CELL + 4, CELL + 4, 18, C.coral, 2.5);
             // ▶ 角标：和 Flutter 选关页一致，一眼看出"我在这"

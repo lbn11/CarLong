@@ -222,6 +222,35 @@ enum VehicleType {
 
   static VehicleType fromId(int id) => VehicleType.values[id];
 
+  /// 3D 车模 PNG 的文件名（`assets/vehicles/<sprite>.png`）。
+  ///
+  /// 车模是 ImageGen 单独出图的，文件名与 enum 成员名并不一一对应
+  /// （bicycle → bike、sedan → car、subway → metro……），早期代码直接拿
+  /// 车型名拼路径，导致一张都加载不到、只剩 emoji。映射表是唯一真源，
+  /// 跨端导出（`shared/levels/vehicles.json` 的 `sprite` 字段）也读它。
+  /// 返回 null 表示该档还没有车模，调用方回退 emoji。
+  String? get sprite => switch (this) {
+        VehicleType.bicycle => 'bike',
+        VehicleType.scooter => 'scooter',
+        VehicleType.sedan => 'car',
+        VehicleType.taxi => 'taxi',
+        VehicleType.bus => 'bus',
+        VehicleType.truck => 'truck',
+        VehicleType.tanker => 'tanker',
+        VehicleType.highspeed => 'train',
+        VehicleType.subway => 'metro',
+        VehicleType.highspeed => 'train',
+        VehicleType.maglev => 'maglev',
+        VehicleType.airliner => 'plane',
+        VehicleType.fighter => 'jet',
+        VehicleType.rocket => 'rocket',
+        VehicleType.spaceShuttle => 'shuttle',
+        VehicleType.spaceStation => 'station',
+        VehicleType.lunar => 'comet',
+        VehicleType.starship => 'ufo',
+        _ => null,
+      };
+
   bool canMoveOn(TerrainType terrain) => stats.terrain.contains(terrain);
 
   String get moveDescription {
