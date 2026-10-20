@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "note": "机器生成，勿手改。源：lib/services/level_data_generator.dart + parking_generator.dart。重新生成：flutter test tool/export_levels_runner.dart",
+  "merge": {
+    "count": 700,
+    "file": "merge_levels.json"
+  },
+  "parking": {
+    "count": 800,
+    "file": "parking_levels.json",
+    "minMovesVerified": true,
+    "minMovesCorrected": [
+      "L380:生成器 3 / solver 2"
+    ]
+  },
+  "vehicles": {
+    "count": 50,
+    "file": "vehicles.json"
+  },
+  "fingerprints": {
+    "vehicles.json": "6d44c239",
+    "merge_levels.json": "2ed58745",
+    "parking_levels.json": "9fb2eb6d"
+  },
+  "bytes": {
+    "vehicles.json": 9732,
+    "merge_levels.json": 294065,
+    "parking_levels.json": 447175
+  }
+}

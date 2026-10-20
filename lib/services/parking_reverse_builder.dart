@@ -65,6 +65,20 @@ class ParkingReverseBuilder {
   /// 60k 足以展开到深度 8-10；超出即停止（已探索到的距离依然正确）。
   static const int defaultMaxStates = 60000;
 
+  /// 上一次 [reverseWalk] 消耗的工作量（累计展开的 BFS 状态数）。
+  ///
+  /// 仅用于标定 [reverseWalk] 的预算常数，以及测试里做确定性回归。
+  static int lastWork = 0;
+
+  /// 本次倒走已消耗的工作量。
+  ///
+  /// **为什么不用墙钟**：旧版预算写的是 `Stopwatch > 40ms`，于是同一关在
+  /// 不同机器/不同 CPU 负载下会生成出**不同布局** —— 玩家清缓存重进同一关
+  /// 会看到另一张图，导出 JSON 也无法复现（实测两次全量导出，指纹不同）。
+  /// 工作量只取决于搜索树本身，与机器速度无关，「超预算即放弃」于是变成
+  /// 确定性行为；同时它仍然线性对应真实耗时，卡顿该封的顶照样封得住。
+  int _work = 0;
+
   final int rows;
   final int cols;
 
@@ -436,20 +450,24 @@ class ParkingReverseBuilder {
     Random rng, {
     int maxNodes = 4000,
 
-    /// 时间预算（毫秒）。深层目标（7-8 步）的组合爆炸会让单次倒走飙到秒级，
-    /// 而选关是进一关生成一关，卡顿必须封顶。超时即放弃、返回已走到的最深局面。
-    int budgetMs = 40,
+    /// 工作量预算（累计展开的 BFS 状态数，替代原先的墙钟毫秒预算）。
+    ///
+    /// 深层目标（7-8 步）的组合爆炸会让单次倒走飙到秒级，而选关是
+    /// 进一关生成一关，卡顿必须封顶。超预算即放弃、返回已走到的最深局面。
+    ///
+    /// 取值来自 800 关全量标定：见 tool/bench_parking.dart。
+    int workBudget = 220000,
   }) {
     final visited = <Object>{keyOf(solved)};
     var best = List<int>.from(solved);
     var bestD = 0;
     var nodes = 0;
-    final clock = Stopwatch()..start();
+    _work = 0;
 
     bool dfs(List<int> cur, int d) {
       if (d >= steps) return true;
       if (nodes++ > maxNodes) return false;
-      if (clock.elapsedMilliseconds > budgetMs) return false;
+      if (_work > workBudget) return false;
       final ms = moves(cur)..shuffle(rng);
       // 启发式排序：优先「把车挪到目标车必经通道上」。
       //
@@ -483,6 +501,7 @@ class ParkingReverseBuilder {
     }
 
     dfs(solved, 0);
+    lastWork = _work;
     return (best, bestD);
   }
 
@@ -535,6 +554,9 @@ class ParkingReverseBuilder {
     var depth = 0;
     while (frontier.isNotEmpty && seen.length < maxStates) {
       if (limit != null && depth >= limit) return null;
+      // 工作量记账：只数「实际展开的状态」，与机器速度无关，
+      // 是 [reverseWalk] 预算的确定性等价物。
+      _work += frontier.length;
       depth++;
       final next = <List<int>>[];
       for (final cur in frontier) {
