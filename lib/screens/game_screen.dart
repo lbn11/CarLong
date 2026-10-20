@@ -914,7 +914,7 @@ class _GameScreenState extends State<GameScreen> {
             valueListenable: _game.stockLeft,
             builder: (_, left, _) => Text(
               left > 0
-                  ? '🂠 打完牌堆 · 剩 $left 张'
+                  ? '📦 打完牌堆 · 剩 $left 张'
                   : (v <= (widget.level.clearLimit ?? 0)
                       ? '✅ 达标！场上 $v 组'
                       : '场上 $v 组 / 目标 ≤${widget.level.clearLimit ?? 0}'),
@@ -1768,10 +1768,10 @@ class _GameScreenState extends State<GameScreen> {
                               locked
                                   ? '🔒 Boss 锁住了牌堆，等一下…'
                                   : widget.level.endless
-                                      ? '🂠 无限牌堆 · 点卡片出牌'
+                                      ? '📦 无限牌堆 · 点卡片出牌'
                                       : (left > 0
-                                          ? '🂠 牌堆剩 $left 张 · 点卡片出牌'
-                                          : '🂠 牌已用完'),
+                                          ? '📦 牌堆剩 $left 张 · 点卡片出牌'
+                                          : '📦 牌已用完'),
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: locked
@@ -1856,10 +1856,9 @@ class _GameScreenState extends State<GameScreen> {
               Center(
                 child: Opacity(
                   opacity: enabled ? 1.0 : 0.45,
-                  child: Text(
-                    vehicle.icon,
-                    style: TextStyle(fontSize: size * 0.62),
-                  ),
+                  // 车模方图里车身横卧居中，方框取 0.88 时车身宽 ≈ 卡面 72%，
+                  // 与棋盘 StackSprite 内 1.42× 的观感一致。
+                  child: VehicleImage(vehicle: vehicle, size: size * 0.88),
                 ),
               ),
             ],
@@ -2203,8 +2202,15 @@ class _ResultDialog extends StatelessWidget {
                               builder: (_, v, child) =>
                                   Transform.scale(scale: v, child: child),
                               child: Text(
-                                i < stars ? '⭐' : '☆',
-                                style: const TextStyle(fontSize: 30),
+                                // ☆(U+2606) 不在 emoji 子集里，Web 上会变豆腐；
+                                // 未点亮用同字灰化处理，视觉一致还省字体覆盖。
+                                '⭐',
+                                style: TextStyle(
+                                  fontSize: 30,
+                                  color: i < stars
+                                      ? null
+                                      : Colors.white.withValues(alpha: 0.45),
+                                ),
                               ),
                             ),
                           ),

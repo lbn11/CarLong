@@ -8,14 +8,17 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('vehicle asset contact sheet', (tester) async {
-    // 只收录已有 PNG 的档位（任务93：新档车模未生成时自动跳过，
-    // PNG 补齐后自然扩到 22 张，不会因缺图红屏/崩溃）。
-    final tiers = [
+    // 文件名唯一真源是 `VehicleType.sprite`（bicycle → bike、sedan → car…）。
+    // 早期这里用 tier.name 拼路径，路径根本不存在，过滤后列表为空、测试空跑。
+    final entries = [
       for (final t in VehicleType.values)
-        if (File('assets/vehicles/${t.name}.png').existsSync()) t,
+        if (t.sprite != null && File('assets/vehicles/${t.sprite}.png').existsSync())
+          (tier: t, sprite: t.sprite!),
     ];
+    expect(entries, isNotEmpty, reason: '一张车模都没找到，检查 VehicleType.sprite 与 assets 目录');
     final cards = <Widget>[];
-    for (final tier in tiers) {
+    for (final e in entries) {
+      final tier = e.tier;
       cards.add(
         SizedBox(
           width: 120,
@@ -42,7 +45,7 @@ void main() {
                   child: Padding(
                     padding: const EdgeInsets.all(8),
                     child: Image.asset(
-                      'assets/vehicles/${tier.name}.png',
+                      'assets/vehicles/${e.sprite}.png',
                       fit: BoxFit.contain,
                     ),
                   ),
@@ -50,7 +53,7 @@ void main() {
               ),
               const SizedBox(height: 6),
               Text(
-                tier.name,
+                e.sprite,
                 style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
             ],
@@ -82,10 +85,10 @@ void main() {
     await tester.pumpAndSettle();
 
     final ctx = tester.element(find.byType(Scaffold));
-    for (final tier in tiers) {
+    for (final e in entries) {
       await tester.runAsync(() async {
         await precacheImage(
-          AssetImage('assets/vehicles/${tier.name}.png'),
+          AssetImage('assets/vehicles/${e.sprite}.png'),
           ctx,
         );
       });

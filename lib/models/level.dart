@@ -500,7 +500,7 @@ class LevelDefinition {
     final moves = movesLimit;
     final goal = switch (goalType) {
       GoalType.produce =>
-        '目标：合成 ${targetTier!.icon} ${targetTier!.name} ×$targetCount'
+        '目标：合成 ${targetTier!.name} ×$targetCount'
             '${boss != null ? '（攻击 👑 Boss）' : ''}',
       GoalType.clearBoard =>
         '目标：用光牌堆，场上剩 ≤${clearLimit ?? 0} 组车',

@@ -12,6 +12,7 @@ import '../services/parking_generator.dart';
 import '../theme/app_theme.dart';
 import '../widgets/candy_ui.dart';
 import '../widgets/pressable.dart';
+import '../widgets/vehicle_image.dart';
 import 'parking_screen.dart';
 
 /// 停车关卡选择屏（按车型章节分组，章节解锁与合成图鉴双向联动）。
@@ -352,8 +353,7 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                   ),
                   child: Center(
                     child: accessible
-                        ? Text(chapter.tier.icon,
-                            style: const TextStyle(fontSize: 22))
+                        ? VehicleImage(vehicle: chapter.tier, size: 32)
                         : const Icon(Icons.lock_person_rounded,
                             color: AppColors.ink3, size: 20),
                   ),
@@ -551,9 +551,9 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                 const SizedBox(height: 2),
                 StarRow(stars: stars, size: 11),
                 const SizedBox(height: 1),
-                Text(
-                  ParkingChapters.tierForId(levelId).icon,
-                  style: TextStyle(fontSize: 13, color: AppColors.ink2),
+                VehicleImage(
+                  vehicle: ParkingChapters.tierForId(levelId),
+                  size: 20,
                 ),
               ],
             ),

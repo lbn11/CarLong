@@ -1,12 +1,16 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../game/vehicle_sprites.dart';
 import '../models/vehicle.dart';
 
-/// 停车模式华容道车身：俯视角矢量绘制，沿滑动轴拉伸成整条车身。
-/// 横车横躺、竖车竖立（内部统一按"竖直、车头朝上"绘制，横车整体旋转）。
-/// 结构：渐变车身 + 前挡风玻璃座舱 + 两侧外凸轮胎 + 车头灯/尾灯 + 描边。
+/// 停车模式华容道车身。
+///
+/// 有真实车模 PNG 时直接贴图（侧视图，横车原样、竖车转 90°），与 mini 端
+/// `drawSpriteFit(stretch:)` 同一套裁剪比例；缺图的档位回退原来的俯视矢量车身
+/// （渐变车身 + 座舱玻璃 + 轮胎 + 车灯）。
 class ParkingVehicleBody extends StatelessWidget {
   final VehicleType tier;
 
@@ -31,13 +35,72 @@ class ParkingVehicleBody extends StatelessWidget {
     final vertical = SizedBox(
       width: cellSize,
       height: cellSize * length,
-      child: CustomPaint(
-        painter: _TopDownBodyPainter(tier.color, cells: length),
+      child: ValueListenableBuilder<int>(
+        valueListenable: VehicleSprites.revision,
+        builder: (context, _, _) {
+          final img = VehicleSprites.of(tier);
+          if (img != null) {
+            return CustomPaint(painter: _SpriteBodyPainter(img));
+          }
+          return CustomPaint(
+            painter: _TopDownBodyPainter(tier.color, cells: length),
+          );
+        },
       ),
     );
     if (!horizontal) return vertical;
     return RotatedBox(quarterTurns: 1, child: vertical);
   }
+}
+
+/// 侧视车模贴到长条车身上。
+///
+/// 车模是 1:1 方图、车身只占中间横向一条（约 80% 宽 × 45% 高）。若按方图
+/// 等比 contain，2 格车的车身只剩三分之一长、像张贴纸；所以改为"按车身在
+/// 图中的实际占比"做 contain——等比放大 1.2~2 倍填满长条，且不会把车轮
+/// 拉成椭圆。
+class _SpriteBodyPainter extends CustomPainter {
+  _SpriteBodyPainter(this.image);
+
+  final ui.Image image;
+
+  static const double _fillW = 0.8;
+  static const double _fillH = 0.45;
+
+  /// 收缩系数：让车身与格子边框留出空气（实测 0.9 仍会压到白色描边）
+  static const double _inset = 0.83;
+
+  static final Paint _paint = Paint()
+    ..filterQuality = FilterQuality.high
+    ..isAntiAlias = true;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final iw = image.width.toDouble();
+    final ih = image.height.toDouble();
+    if (iw <= 0 || ih <= 0) return;
+
+    // 车模侧视车头朝右；竖车整体转 90°，车头朝下（与 mini 端一致）。
+    final bw = size.height;
+    final bh = size.width;
+    final s = math.min(bw / (iw * _fillW), bh / (ih * _fillH)) * _inset;
+    final dw = iw * s;
+    final dh = ih * s;
+
+    canvas.save();
+    canvas.translate(size.width / 2, size.height / 2);
+    canvas.rotate(math.pi / 2);
+    canvas.drawImageRect(
+      image,
+      Rect.fromLTWH(0, 0, iw, ih),
+      Rect.fromCenter(center: Offset.zero, width: dw, height: dh),
+      _paint,
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_SpriteBodyPainter old) => old.image != image;
 }
 
 class _TopDownBodyPainter extends CustomPainter {

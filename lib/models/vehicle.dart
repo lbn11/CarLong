@@ -239,7 +239,6 @@ enum VehicleType {
         VehicleType.tanker => 'tanker',
         VehicleType.highspeed => 'train',
         VehicleType.subway => 'metro',
-        VehicleType.highspeed => 'train',
         VehicleType.maglev => 'maglev',
         VehicleType.airliner => 'plane',
         VehicleType.fighter => 'jet',

@@ -14,11 +14,17 @@ import '../services/level_data_generator.dart';
 import '../theme/app_theme.dart';
 import 'audio_feedback.dart';
 import 'vehicle_icons.dart';
+import 'vehicle_sprites.dart';
 
 /// 在指定圆角矩形上绘制不透明的迷雾层（隐藏卡面/盖住空格）。
 /// 视觉内容与尺寸唯一对应，烘焙成 [ui.Picture] 缓存，避免每个迷雾格
 /// 每帧都重建 shader / 模糊遮罩（GPU 资源反复分配）。
 final Map<({int w, int h}), ui.Picture> _fogCache = <({int w, int h}), ui.Picture>{};
+
+/// 车模绘制：高质量缩采样，避免 384px 源缩到 90px 卡面时发糊。
+final Paint _kSpritePaint = Paint()
+  ..filterQuality = FilterQuality.high
+  ..isAntiAlias = true;
 
 void paintFog(Canvas canvas, RRect rr) {
   final w = rr.outerRect.width.round();
@@ -2557,6 +2563,8 @@ class StackSprite extends PositionComponent
   int _faceKeySize = -1;
   int _faceKeyKind = -1;
   int _faceKeyTier = -1;
+  /// 车模图片集版本：预载完成（图片从无到有）时必须重烘焙卡面。
+  int _faceKeySpriteGen = -1;
 
   /// 右下角 "x2" 徽章的缓存 Picture（按尺寸重建）。
   ui.Picture? _badgePic;
@@ -2670,15 +2678,18 @@ class StackSprite extends PositionComponent
   /// 每帧渲染只需回放一次，不再逐帧排版文字、分配 Paint 或重复模糊填充。
   void _ensureFace() {
     final keySize = (size.x * 64).round();
+    final spriteGen = VehicleSprites.revision.value;
     if (_face != null &&
         _faceKeySize == keySize &&
         _faceKeyKind == _lastKind &&
-        _faceKeyTier == _lastTier) {
+        _faceKeyTier == _lastTier &&
+        _faceKeySpriteGen == spriteGen) {
       return;
     }
     _faceKeySize = keySize;
     _faceKeyKind = _lastKind;
     _faceKeyTier = _lastTier;
+    _faceKeySpriteGen = spriteGen;
     final recorder = ui.PictureRecorder();
     final c = Canvas(recorder);
     final rr = _rr;
@@ -2907,15 +2918,32 @@ class StackSprite extends PositionComponent
     } else if (data.isWildcard) {
       paintWildcardIcon(canvas, box);
     } else {
-      // 统一用 emoji 显示车辆
-      final tp = TextPainter(
-        text: TextSpan(
-          text: data.tier.icon,
-          style: TextStyle(fontSize: box),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      tp.paint(canvas, Offset(-tp.width / 2, -tp.height / 2));
+      final img = VehicleSprites.of(data.tier);
+      if (img != null) {
+        // 与 mini 端 `drawSpriteBox` 完全一致：图是 1:1 透明方图、车身横卧
+        // 居中（约占 78% 宽），方框放大到 1.42 倍时车身宽 ≈ 卡面 72%，
+        // 与原先 emoji 的观感接近；超出部分都是透明留白，压不到邻格。
+        final s = box * 1.42;
+        canvas.drawImageRect(
+          img,
+          Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()),
+          Rect.fromCenter(center: Offset.zero, width: s, height: s),
+          _kSpritePaint,
+        );
+      } else {
+        // 该档还没有车模（50 档里 17 档有图）：回退 emoji
+        final tp = TextPainter(
+          text: TextSpan(
+            text: data.tier.icon,
+            style: TextStyle(
+              fontSize: box,
+              fontFamilyFallback: const ['NotoColorEmoji'],
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        tp.paint(canvas, Offset(-tp.width / 2, -tp.height / 2));
+      }
     }
     canvas.restore();
   }
@@ -3822,6 +3850,8 @@ class BossSprite extends PositionComponent {
   ui.Picture? _face;
   int _faceKey = -1;
   int _faceTier = -2;
+  /// 车模图片集版本：预载完成后必须重烘焙（否则 Boss 车身停在 emoji）
+  int _faceSpriteGen = -1;
   bool _auraReady = false;
   int _hpKey = -1;
 
@@ -4019,9 +4049,16 @@ class BossSprite extends PositionComponent {
   /// 狂怒时整套烘焙换成亮红（缓存 key 带 enraged 位，切换即重建）。
   void _ensureFace() {
     final key = (size.x * 32).round() * (enraged ? -1 : 1);
-    if (_face != null && _faceKey == key && _faceTier == tier.id) return;
+    final spriteGen = VehicleSprites.revision.value;
+    if (_face != null &&
+        _faceKey == key &&
+        _faceTier == tier.id &&
+        _faceSpriteGen == spriteGen) {
+      return;
+    }
     _faceKey = key;
     _faceTier = tier.id;
+    _faceSpriteGen = spriteGen;
     final s = size.x;
     final recorder = ui.PictureRecorder();
     final c = Canvas(recorder);
@@ -4085,11 +4122,30 @@ class BossSprite extends PositionComponent {
     final tp = TextPainter(
       text: TextSpan(
         text: tier.icon,
-        style: TextStyle(fontSize: s * 0.42),
+        style: TextStyle(
+          fontSize: s * 0.42,
+          fontFamilyFallback: const ['NotoColorEmoji'],
+        ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(c, Offset(-tp.width / 2, -tp.height / 2 + s * 0.14));
+    final img = VehicleSprites.of(tier);
+    if (img != null) {
+      // 车身正脸换成真实车模（王冠/怒眉仍在，Boss 一眼可辨）
+      final box = s * 0.42 * 1.42;
+      c.drawImageRect(
+        img,
+        Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()),
+        Rect.fromCenter(
+          center: Offset(0, -tp.height / 2 + s * 0.14),
+          width: box,
+          height: box,
+        ),
+        _kSpritePaint,
+      );
+    } else {
+      tp.paint(c, Offset(-tp.width / 2, -tp.height / 2 + s * 0.14));
+    }
     _face = recorder.endRecording();
   }
 

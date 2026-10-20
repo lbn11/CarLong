@@ -78,7 +78,8 @@ export function drawSpriteFit(
     // 效果是等比放大 1.2~2 倍、填满长条，且不变形。
     const FILL_W = 0.8;
     const FILL_H = 0.45;
-    const s = Math.min(bw / (img.width * FILL_W), bh / (img.height * FILL_H));
+    // 收缩系数：与 App 端 `_SpriteBodyPainter._inset` 保持一致，车身别贴边
+    const s = Math.min(bw / (img.width * FILL_W), bh / (img.height * FILL_H)) * 0.83;
     const dw = img.width * s;
     const dh = img.height * s;
     ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);

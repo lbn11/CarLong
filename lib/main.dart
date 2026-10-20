@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'game/music_player.dart';
 import 'game/vehicle_icons.dart';
+import 'game/vehicle_sprites.dart';
 import 'save/save_repository.dart';
 import 'screens/home_screen.dart';
 
@@ -14,6 +15,12 @@ Future<void> main() async {
   ]);
   await precomputeVehicleBounds().timeout(
     const Duration(seconds: 5),
+    onTimeout: () {},
+  );
+  // 真实车模预载：棋盘卡面/停车车身是 Canvas 直接画图，必须提前解码到内存，
+  // 否则首帧会先闪 emoji。失败只降级，不拦启动。
+  await VehicleSprites.preloadAll().timeout(
+    const Duration(milliseconds: 2500),
     onTimeout: () {},
   );
   final repo = SaveRepository();
@@ -51,6 +58,7 @@ class MergeGameApp extends StatelessWidget {
         useMaterial3: true,
         fontFamily: 'Baloo2',
         fontFamilyFallback: const [
+          'NotoColorEmoji',
           'Nunito',
           'Noto Sans SC',
           'PingFang SC',

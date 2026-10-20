@@ -334,7 +334,7 @@ class CollectionScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(vehicle.icon, style: const TextStyle(fontSize: 22)),
+                    VehicleImage(vehicle: vehicle, size: 26),
                     const SizedBox(width: 8),
                     Flexible(
                       child: Text(vehicle.name,

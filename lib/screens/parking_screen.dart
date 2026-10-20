@@ -20,6 +20,7 @@ import '../services/parking_generator.dart';
 import '../theme/app_theme.dart';
 import '../widgets/candy_ui.dart';
 import '../widgets/parking_vehicle_body.dart';
+import '../widgets/vehicle_image.dart';
 
 /// 车辆滑动动画时长（选车滑行 / 重置归位）。
 const Duration _kVehicleSlide = Duration(milliseconds: 170);
@@ -800,8 +801,8 @@ class _ParkingScreenState extends State<ParkingScreen>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(widget.level.targetTier.icon,
-                          style: const TextStyle(fontSize: 22)),
+                      VehicleImage(
+                          vehicle: widget.level.targetTier, size: 26),
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
@@ -1053,12 +1054,9 @@ class _ParkingScreenState extends State<ParkingScreen>
                   _buildInfoChip(
                       '🚗 ${widget.isDaily ? '每日挑战' : widget.level.name}', AppColors.accent),
                   const SizedBox(width: 6),
-                  // 常驻目标提示：把哪辆车开到车位（车型色底 + 🅿 图案，
+                  // 常驻目标提示：把哪辆车开到车位（车型色底 + 真实车模，
                   // 与棋盘上的幽灵车位同一套视觉语言）。
-                  _buildInfoChip(
-                    '🎯 ${widget.level.targetTier.icon} → 🅿',
-                    widget.level.targetTier.color,
-                  ),
+                  _buildTargetChip(widget.level.targetTier),
                   const SizedBox(width: 6),
                   // 难度心跳标记：告诉玩家这一关在本轮 6 关里的位置。
                   // 看到「尖峰」会下意识认真一点，看到「轻松」则放松点两下 ——
@@ -1142,7 +1140,47 @@ class _ParkingScreenState extends State<ParkingScreen>
     final isLight = color.computeLuminance() > 0.72;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(
+      decoration: _chipDecoration(color),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: isLight ? AppColors.ink1 : Colors.white,
+          fontWeight: FontWeight.w900,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+
+  /// 目标车 chip：把「🎯 车模 → 🅿」做成一条，车模用真实 PNG，
+  /// 和棋盘上的目标车/幽灵车位是同一张图。
+  Widget _buildTargetChip(VehicleType tier) {
+    final color = tier.color;
+    final isLight = color.computeLuminance() > 0.72;
+    final ink = isLight ? AppColors.ink1 : Colors.white;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
+      decoration: _chipDecoration(color),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('🎯', style: TextStyle(fontSize: 12)),
+          const SizedBox(width: 2),
+          VehicleImage(vehicle: tier, size: 20),
+          Text(
+            '→ 🅿',
+            style: TextStyle(
+              color: ink,
+              fontWeight: FontWeight.w900,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  BoxDecoration _chipDecoration(Color color) => BoxDecoration(
         borderRadius: BorderRadius.circular(13),
         gradient: LinearGradient(
           begin: Alignment.topCenter,
@@ -1160,17 +1198,7 @@ class _ParkingScreenState extends State<ParkingScreen>
             offset: const Offset(0, 2),
           ),
         ],
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: isLight ? AppColors.ink1 : Colors.white,
-          fontWeight: FontWeight.w900,
-          fontSize: 12,
-        ),
-      ),
-    );
-  }
+      );
 
   Widget _buildItemButton(String key, String icon, String label, Color color) {
     final count = widget.data.boosters[key] ?? 0;
