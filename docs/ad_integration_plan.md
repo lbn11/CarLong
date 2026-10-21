@@ -76,7 +76,7 @@ lib/services/ads/
 | **AdMob**（`google_mobile_ads`） | **采用** | 官方 Flutter 插件；海外填充率最高；UMP 自带 GDPR/CCPA；iOS 侧唯一成熟选择 |
 | 穿山甲 CSJ | 不用 | 海外无填充；需国内企业资质 |
 | 优量汇 GDT | 不用 | 同上，且仅国内流量 |
-| GroMore / AppLovin MAX 聚合 | 暂缓 | 单渠道还没跑出 eCPM 基线，聚合只会让问题变模糊 |
+| GroMore / AppLovin MAX 聚合 | 暂缓 | 单渠道还没跑出 eCPM 基线，聚合只会让问题变模糊（评估提纲见 [ad_mediation_eval.md](ad_mediation_eval.md)） |
 
 后续若要提 eCPM，在 `ad_provider_factory.dart` 加一个分支接聚合 SDK，
 5 个广告位的业务代码不用改。
