@@ -39,6 +39,24 @@ class ParkingChapters {
   /// （实测 L501-1000 平均最短路恒定在 4.3-4.4，700 关同一难度），
   /// 砍掉这段纯重复、把 22 个主题压紧到 36-37 关/章，反而让每章更紧凑。
   /// 注意单车章节 id 从 1 起，0 不使用。
+  ///
+  /// **22 章 = 22 款互不相同的车型**（2026-10-21 修正）。原表里
+  /// `warpShip` 用了 3 次（星际港口 / 曲速航道 / 反重力区）、`starship`
+  /// 用了 3 次（彗星轨道 / 悬浮城 / 机甲工厂），后 4 章只是换了标题文字，
+  /// 棋盘上的车、章节图标、目标车全是同一张 PNG —— 玩家把 800 关当
+  /// 「22 个新主题」期待，实际只见到 18 款车。今改为：
+  /// - L469-504 星际港口 → 运输机（星港货运）
+  /// - L616-652 曲速航道 → 超级高铁（音速管道）
+  /// - L653-689 悬浮城 → 滑翔机（浮空滑翔）
+  /// - L727-763 机甲工厂 → 起重机（巨械装配厂）
+  ///
+  /// 选型约束：**必须有车模 PNG**（`VehicleType.sprite != null`）。水上 8 档
+  /// 与直升机 / 无人机还没有图，选它们会让目标车退化成 emoji，和其他章节
+  /// 的 3D 车模断层。已知遗留：第 20 章「巡洋编队」用的军舰仍无图。
+  ///
+  /// 车型只决定**目标车外观 + 牌堆里车型的轮转**，棋盘几何由布局决定，
+  /// 因此换车型不会改变难度结构；可解性由
+  /// `test/parking_solvability_full_test.dart` 全量 1..800 把关。
   static const List<ParkingChapter> all = [
     ParkingChapter(VehicleType.bicycle, 1, 36, title: '单车街区', subtitle: '新手上路，稳稳停好'),
     ParkingChapter(VehicleType.scooter, 37, 72, title: '街头巷尾', subtitle: '小巷穿梭，见缝插针'),
@@ -53,14 +71,14 @@ class ParkingChapters {
     ParkingChapter(VehicleType.airliner, 361, 396, title: '机场跑道', subtitle: '冲向云端之前'),
     ParkingChapter(VehicleType.fighter, 397, 432, title: '空军基地', subtitle: '战机的精准停放'),
     ParkingChapter(VehicleType.spaceShuttle, 433, 468, title: '航天中心', subtitle: '通往太空的走廊'),
-    ParkingChapter(VehicleType.warpShip, 469, 504, title: '星际港口', subtitle: '外星访客的泊位'),
+    ParkingChapter(VehicleType.cargo, 469, 504, title: '星港货运', subtitle: '跨星际的快递航线'),
     ParkingChapter(VehicleType.maglev, 505, 541, title: '磁浮走廊', subtitle: '悬浮列车的停靠'),
     ParkingChapter(VehicleType.spaceStation, 542, 578, title: '空间站', subtitle: '轨道上的会合'),
     ParkingChapter(VehicleType.starship, 579, 615, title: '彗星轨道', subtitle: '追逐流星之尾'),
-    ParkingChapter(VehicleType.warpShip, 616, 652, title: '曲速航道', subtitle: '突破光速的弯道'),
-    ParkingChapter(VehicleType.starship, 653, 689, title: '悬浮城', subtitle: '浮空平台的停车'),
+    ParkingChapter(VehicleType.hyperloop, 616, 652, title: '音速管道', subtitle: '真空管道里的一千公里'),
+    ParkingChapter(VehicleType.glider, 653, 689, title: '浮空滑翔', subtitle: '没有引擎的降落'),
     ParkingChapter(VehicleType.warship, 690, 726, title: '巡洋编队', subtitle: '星际舰队的列队'),
-    ParkingChapter(VehicleType.starship, 727, 763, title: '机甲工厂', subtitle: '钢铁巨人的归位'),
+    ParkingChapter(VehicleType.crane, 727, 763, title: '巨械装配厂', subtitle: '钢铁巨臂的归位'),
     ParkingChapter(VehicleType.warpShip, 764, 800, title: '反重力区', subtitle: '终极泊车大师'),
   ];
 

@@ -981,11 +981,21 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildAchievementsSquare() {
+    // 只统计当前表里还存在的成就：成就改版后被删掉的旧 id 仍留在
+    // claimedAchievements 里，直接用 length 会算出 13/70 这种假进度。
+    final claimed = achievements
+        .where((a) => data.claimedAchievements.contains(a.id))
+        .length;
+    final claimable = achievements.any((a) =>
+        !data.claimedAchievements.contains(a.id) && a.achieved(data));
     return _buildSquareEntry(
       icon: Icons.emoji_events_rounded,
       color: AppColors.sun,
       title: '成就',
-      subtitle: '${data.claimedAchievements.length}/${achievements.length}',
+      subtitle: claimable
+          ? '可领取!'
+          : '$claimed/${achievements.length}',
+      dot: claimable,
       onTap: () {
         AudioFeedback.uiTap();
         Navigator.of(context).push(

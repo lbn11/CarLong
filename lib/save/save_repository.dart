@@ -67,7 +67,7 @@ class PlayerData {
   String? adWatchDate;
   int adWatchCount;
 
-  /// 全图鉴大奖（17/17 点亮）是否已领取。
+  /// 全图鉴大奖（点亮全部 VehicleType 款）是否已领取。
   bool collectionRewardClaimed;
 
   /// 已击败的 Boss 集合，key 为「章索引.Boss序号」（如 "3.2" = 第 4 章
