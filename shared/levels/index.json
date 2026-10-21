@@ -18,13 +18,13 @@
     "file": "vehicles.json"
   },
   "fingerprints": {
-    "vehicles.json": "7d3637e",
+    "vehicles.json": "a4fac5b5",
     "merge_levels.json": "2ed58745",
-    "parking_levels.json": "9fb2eb6d"
+    "parking_levels.json": "e9d993d2"
   },
   "bytes": {
-    "vehicles.json": 10605,
+    "vehicles.json": 10654,
     "merge_levels.json": 294065,
-    "parking_levels.json": 447175
+    "parking_levels.json": 446743
   }
 }

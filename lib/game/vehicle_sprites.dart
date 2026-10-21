@@ -14,8 +14,8 @@ import '../models/vehicle.dart';
 /// 解码后的 `ui.Image`，而不是走 `Image.asset`（Flutter 的图片缓存是异步的，
 /// 拿不到同步可画的帧）。
 ///
-/// 解码按 [targetWidth] 降到 384px：原图 1024×1024，17 张全量解码约 68MB，
-/// 降到 384 后约 10MB，而卡面实际最大也只有 90 逻辑像素 × 3 倍屏。
+/// 解码按 [targetWidth] 降到 384px：原图 1024×1024，50 张全量解码约 30MB，
+/// 降到 384 后约 12MB，而卡面实际最大也只有 90 逻辑像素 × 3 倍屏。
 class VehicleSprites {
   VehicleSprites._();
 
@@ -31,7 +31,7 @@ class VehicleSprites {
 
   static Future<void>? _loading;
 
-  /// 全部已命名的车模（去重后 17 个左右）
+  /// 全部已命名的车模（50 档各一张，无重复）
   static Set<String> get names => {
         for (final t in VehicleType.values)
           if (t.sprite != null) t.sprite!,

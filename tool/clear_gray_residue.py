@@ -75,7 +75,9 @@ def clear_residue(name):
 
 
 if __name__ == '__main__':
-    print('=== clearing gray residue (row-segment v3) ===')
-    for n in NAMES:
+    import sys
+    targets = sys.argv[1:] or NAMES   # 传名字则只清这几款（增量补图用）
+    print(f'=== clearing gray residue (row-segment v3) · {len(targets)} 款 ===')
+    for n in targets:
         clear_residue(n)
     print('=== done ===')

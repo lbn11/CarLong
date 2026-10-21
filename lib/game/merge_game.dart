@@ -2931,7 +2931,8 @@ class StackSprite extends PositionComponent
           _kSpritePaint,
         );
       } else {
-        // 该档还没有车模（50 档里 17 档有图）：回退 emoji
+        // 兜底：50 档在 2026-10-21 已全部有车模，这里只在资源加载失败
+        // （预载超时 / 新加档位忘补图）时才会走到。
         final tp = TextPainter(
           text: TextSpan(
             text: data.tier.icon,

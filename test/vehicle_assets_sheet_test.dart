@@ -16,6 +16,21 @@ void main() {
           (tier: t, sprite: t.sprite!),
     ];
     expect(entries, isNotEmpty, reason: '一张车模都没找到，检查 VehicleType.sprite 与 assets 目录');
+    // 2026-10-21 补齐最后 10 档后，50 个档位应全部有 PNG。缺一张就翻红，
+    // 避免再出现"某档悄悄回退 emoji"（Web 端 emoji 还是豆腐块）。
+    expect(
+      entries.length,
+      VehicleType.values.length,
+      reason: '有档位没有车模 PNG：'
+          '${VehicleType.values.where((t) => t.sprite == null || !File('assets/vehicles/${t.sprite}.png').existsSync()).map((t) => t.name).toList()}',
+    );
+
+    // 视口要装得下全部档位：5 张/行 × (152 高 + 10 间距) ≈ 1644。
+    // 默认 800×600 只能看到前 16 张，后面新增的档位永远拍不进 golden，
+    // 等于这张对照表长期漏检。
+    tester.view.physicalSize = const Size(720, 1760);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     final cards = <Widget>[];
     for (final e in entries) {
       final tier = e.tier;

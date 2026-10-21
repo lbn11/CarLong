@@ -272,8 +272,18 @@ enum VehicleType {
         VehicleType.seaplane => 'seaplane',
         VehicleType.stealth => 'stealth',
         VehicleType.warpShip => 'warpShip',
-        // 水上 8 档 + 直升机 / 无人机：没有底图，暂无车模（回退 emoji）
-        _ => null,
+        // 2026-10-21 补齐最后 10 档（船舶 6 / 军舰+航母 / 直升机+无人机），
+        // 至此 50 档全部有车模，`sprite` 不再返回 null。
+        VehicleType.dinghy => 'dinghy',
+        VehicleType.fishing => 'fishing',
+        VehicleType.ferry => 'ferry',
+        VehicleType.sailboat => 'sailboat',
+        VehicleType.speedboat => 'speedboat',
+        VehicleType.barge => 'barge',
+        VehicleType.warship => 'warship',
+        VehicleType.carrier => 'carrier',
+        VehicleType.helicopter => 'helicopter',
+        VehicleType.drone => 'drone',
       };
 
   bool canMoveOn(TerrainType terrain) => stats.terrain.contains(terrain);

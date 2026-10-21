@@ -27,6 +27,19 @@ MAP = [
     ("MAGLEV_SIDE2_", "maglev"),
     ("STATION_SIDE2_", "station"),
     ("COMET_SIDE2_", "comet"),
+    # 2026-10-21 补齐最后 10 档（船舶 6 + 军舰/航母 2 + 直升机/无人机 2）。
+    # 这 10 档原先 sprite 为 null，牌堆刷到 / 图鉴未点亮时只能显示 emoji，
+    # Web 端更是豆腐块。补图后 VehicleType 50 档全部有 PNG。
+    ("DINGHY_SIDE2_", "dinghy"),
+    ("FISHING_SIDE2_", "fishing"),
+    ("FERRY_SIDE2_", "ferry"),
+    ("SAILBOAT_SIDE2_", "sailboat"),
+    ("SPEEDBOAT_SIDE2_", "speedboat"),
+    ("BARGE_SIDE2_", "barge"),
+    ("WARSHIP_SIDE2_", "warship"),
+    ("CARRIER_SIDE2_", "carrier"),
+    ("HELICOPTER_SIDE2_", "helicopter"),
+    ("DRONE_SIDE2_", "drone"),
 ]
 
 # 较宽的羽化带：让边缘过渡更平滑，减少锯齿感。
@@ -230,60 +243,73 @@ def smooth_alpha(img, radius=0.6):
     return Image.merge("RGBA", (r, g, b, a))
 
 
-# ---------- 主抠图：仅对存在源图的车型重抠 ----------
-for frag, name in MAP:
-    matches = glob.glob(os.path.join(SRC, frag + "*.png"))
-    if not matches:
-        continue  # 无源图：保留现存的已去背 PNG，稍后统一做边缘修边
-    src = matches[0]
-    im = Image.open(src).convert("RGBA")
-    w, h = im.size
-    bg = sample_bg(im)
-    px = im.load()
-    trans = 0
-    for y in range(h):
-        for x in range(w):
-            r, g, b, a = px[x, y]
-            d = dist((r, g, b), bg)
-            if d < T1:
-                px[x, y] = (r, g, b, 0)
-                trans += 1
-            elif d < T2:
-                px[x, y] = (r, g, b, int(255 * (d - T1) / (T2 - T1)))
-                trans += 1
-    # 1) 色距之后清掉 ImageGen 右下角水印:深色水印文字离白底很远,会被色距当成车身
-    #    强行保留,所以必须后置清;RGB 直接涂成 0,这样后续 clean_edges 即使把
-    #    临近车身色"涂"进来,min(0, 车身色) 也仍是 0,水印区彻底变透明黑。
-    for y in range(max(0, h - WMARK_H), h):
-        for x in range(max(0, w - WMARK_W), w):
-            px[x, y] = (0, 0, 0, 0)
+def main(only=None):
+    """only: 只处理这些车型名(集合),None = MAP 全量。
 
-    im = keep_significant_blobs(im)
-    im = smooth_alpha(im, radius=0.6)
-    im = trim_corner_residues(im)
-    im = remove_gray_floor(im)
+    2026-10-21 加参数:补 10 档新车模时不能连带把已交付的 40 张
+    重跑 clean_edges/brighten(会叠加两次亮度校正),必须能只处理增量。
+    """
+    todo = [m for m in MAP if only is None or m[1] in only]
 
-    # 裁剪到非透明包围盒
-    bbox = im.getbbox()
-    if bbox:
-        pw, ph = w * PAD, h * PAD
-        x0 = max(0, bbox[0] - int(pw))
-        y0 = max(0, bbox[1] - int(ph))
-        x1 = min(w, bbox[2] + int(pw))
-        y1 = min(h, bbox[3] + int(ph))
-        im = im.crop((x0, y0, x1, y1))
+    # ---------- 主抠图：仅对存在源图的车型重抠 ----------
+    for frag, name in todo:
+        matches = glob.glob(os.path.join(SRC, frag + "*.png"))
+        if not matches:
+            continue  # 无源图：保留现存的已去背 PNG，稍后统一做边缘修边
+        src = matches[0]
+        im = Image.open(src).convert("RGBA")
+        w, h = im.size
+        bg = sample_bg(im)
+        px = im.load()
+        trans = 0
+        for y in range(h):
+            for x in range(w):
+                r, g, b, a = px[x, y]
+                d = dist((r, g, b), bg)
+                if d < T1:
+                    px[x, y] = (r, g, b, 0)
+                    trans += 1
+                elif d < T2:
+                    px[x, y] = (r, g, b, int(255 * (d - T1) / (T2 - T1)))
+                    trans += 1
+        # 1) 色距之后清掉 ImageGen 右下角水印:深色水印文字离白底很远,会被色距当成车身
+        #    强行保留,所以必须后置清;RGB 直接涂成 0,这样后续 clean_edges 即使把
+        #    临近车身色"涂"进来,min(0, 车身色) 也仍是 0,水印区彻底变透明黑。
+        for y in range(max(0, h - WMARK_H), h):
+            for x in range(max(0, w - WMARK_W), w):
+                px[x, y] = (0, 0, 0, 0)
 
-    out = os.path.join(DST, name + ".png")
-    im.save(out)
-    print(f"REGEN {name:8} <- {os.path.basename(src)[:36]}  transparent={trans * 100 // (w * h)}% size={im.size}")
+        im = keep_significant_blobs(im)
+        im = smooth_alpha(im, radius=0.6)
+        im = trim_corner_residues(im)
+        im = remove_gray_floor(im)
 
-# ---------- 统一边缘修边：覆盖全部 17 款（含缺源图的前 10 款二次修边） ----------
-for frag, name in MAP:
-    path = os.path.join(DST, name + ".png")
-    if not os.path.exists(path):
-        continue
-    im = Image.open(path).convert("RGBA")
-    im = clean_edges(im)
-    im = brighten(im)
-    im.save(path)
-    print(f"EDGE  {name:8}")
+        # 裁剪到非透明包围盒
+        bbox = im.getbbox()
+        if bbox:
+            pw, ph = w * PAD, h * PAD
+            x0 = max(0, bbox[0] - int(pw))
+            y0 = max(0, bbox[1] - int(ph))
+            x1 = min(w, bbox[2] + int(pw))
+            y1 = min(h, bbox[3] + int(ph))
+            im = im.crop((x0, y0, x1, y1))
+
+        out = os.path.join(DST, name + ".png")
+        im.save(out)
+        print(f"REGEN {name:8} <- {os.path.basename(src)[:36]}  transparent={trans * 100 // (w * h)}% size={im.size}")
+
+    # ---------- 统一边缘修边：覆盖全部 17 款（含缺源图的前 10 款二次修边） ----------
+    for frag, name in todo:
+        path = os.path.join(DST, name + ".png")
+        if not os.path.exists(path):
+            continue
+        im = Image.open(path).convert("RGBA")
+        im = clean_edges(im)
+        im = brighten(im)
+        im.save(path)
+        print(f"EDGE  {name:8}")
+
+if __name__ == '__main__':
+    import sys
+    args = sys.argv[1:]
+    main(set(args) if args else None)

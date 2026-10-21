@@ -50,9 +50,14 @@ class ParkingChapters {
   /// - L653-689 悬浮城 → 滑翔机（浮空滑翔）
   /// - L727-763 机甲工厂 → 起重机（巨械装配厂）
   ///
-  /// 选型约束：**必须有车模 PNG**（`VehicleType.sprite != null`）。水上 8 档
-  /// 与直升机 / 无人机还没有图，选它们会让目标车退化成 emoji，和其他章节
-  /// 的 3D 车模断层。已知遗留：第 20 章「巡洋编队」用的军舰仍无图。
+  /// 选型约束：**必须有车模 PNG**（`VehicleType.sprite != null`）。
+  /// 2026-10-21 补齐船舶 6 档 + 军舰 / 航母 + 直升机 / 无人机后，
+  /// 50 档全部有图，这条约束已不再限制任何车型；第 20 章「巡洋编队」
+  /// 的军舰也有了真车模（原先只能显示 🚢 emoji）。
+  ///
+  /// 同时修掉一处名不副实：第 9 章标题叫「油港码头」，棋盘目标车却是
+  /// 陆地的油罐车 tanker。现在换成真正的水上车型 ferry（渡轮），
+  /// 标题改为「轮渡码头」，让「码头」这个主题第一次名副其实。
   ///
   /// 车型只决定**目标车外观 + 牌堆里车型的轮转**，棋盘几何由布局决定，
   /// 因此换车型不会改变难度结构；可解性由
@@ -66,7 +71,7 @@ class ParkingChapters {
     ParkingChapter(VehicleType.truck, 181, 216, title: '货运干线', subtitle: '重卡物流的考验'),
     ParkingChapter(VehicleType.highspeed, 217, 252, title: '铁轨编组', subtitle: '列车进站的节奏'),
     ParkingChapter(VehicleType.rocket, 253, 288, title: '发射台', subtitle: '倒计时前的最后停车'),
-    ParkingChapter(VehicleType.tanker, 289, 324, title: '油港码头', subtitle: '小心驾驶，稳中求进'),
+    ParkingChapter(VehicleType.ferry, 289, 324, title: '轮渡码头', subtitle: '码头边的来回穿梭'),
     ParkingChapter(VehicleType.subway, 325, 360, title: '地铁网络', subtitle: '地下世界的调度'),
     ParkingChapter(VehicleType.airliner, 361, 396, title: '机场跑道', subtitle: '冲向云端之前'),
     ParkingChapter(VehicleType.fighter, 397, 432, title: '空军基地', subtitle: '战机的精准停放'),

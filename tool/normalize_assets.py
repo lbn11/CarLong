@@ -53,12 +53,14 @@ def decide_flip(img):
     return (ra - la) > FLIP_THRESHOLD
 
 
-def normalize(name):
+def normalize(name, allow_flip=True):
     path = os.path.join(VEHICLE_DIR, f'{name}.png')
     im = Image.open(path).convert('RGBA')
 
     # 1) 翻转
-    flip = decide_flip(im)
+    #    历史教训：按左右亮度猜朝向会打散已统一的朝向（用户 2026-08-18 否决）。
+    #    现资产全部「车头朝左」，新增批次用 --no-flip 只做尺寸归一。
+    flip = decide_flip(im) if allow_flip else False
     if flip:
         im = im.transpose(Image.FLIP_LEFT_RIGHT)
 
@@ -98,7 +100,14 @@ def normalize(name):
 
 
 if __name__ == '__main__':
-    print('=== normalizing 17 vehicles (diagonal) ===')
-    for n in NAMES:
-        normalize(n)
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument('names', nargs='*', help='只归一这些车型（默认 NAMES 全量）')
+    ap.add_argument('--no-flip', action='store_true',
+                    help='跳过按亮度猜测的翻转，只做尺寸归一（新批次统一朝左时用）')
+    a = ap.parse_args()
+    targets = a.names or NAMES
+    print(f'=== normalizing {len(targets)} vehicles (diagonal, flip={not a.no_flip}) ===')
+    for n in targets:
+        normalize(n, allow_flip=not a.no_flip)
     print('=== done ===')
