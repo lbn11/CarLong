@@ -64,8 +64,19 @@ class PlayerData {
   int? lastSeenAt;
 
   /// 激励广告：今日已观看次数与日期（yyyy-MM-dd）。
+  ///
+  /// 旧字段，只保留给「商店每日福利」做降级兼容；**新代码请走
+  /// [adDailyCounts] + `AdService`**（同一个日期字段管所有广告位）。
   String? adWatchDate;
   int adWatchCount;
+
+  /// 广告观看计数的日期（yyyy-MM-dd，跨日清零）。
+  String? adDailyDate;
+
+  /// 今日各广告位已观看次数，key 为 `AdPlacement.key`（shop / merge_revive /
+  /// parking_hint …）。用 map 而不是每加一个广告位就加一个字段：广告位是
+  /// 运营手段，会频繁增删，字段爆炸不可接受。
+  Map<String, int> adDailyCounts;
 
   /// 全图鉴大奖（点亮全部 VehicleType 款）是否已领取。
   bool collectionRewardClaimed;
@@ -103,6 +114,8 @@ class PlayerData {
     this.lastSeenAt,
     this.adWatchDate,
     this.adWatchCount = 0,
+    this.adDailyDate,
+    Map<String, int>? adDailyCounts,
     this.collectionRewardClaimed = false,
     Set<String>? defeatedBosses,
     this.bestCombo = 0,
@@ -114,6 +127,7 @@ class PlayerData {
         boosters = boosters ?? {},
         analyticsEvents = analyticsEvents ?? [],
         parkingBestStars = parkingBestStars ?? {},
+        adDailyCounts = adDailyCounts ?? {},
         defeatedBosses = defeatedBosses ?? {};
 
   Map<String, dynamic> toJson() => {
@@ -141,10 +155,27 @@ class PlayerData {
         'lastSeenAt': lastSeenAt,
         'adWatchDate': adWatchDate,
         'adWatchCount': adWatchCount,
+        'adDailyDate': adDailyDate,
+        'adDailyCounts': adDailyCounts,
         'collectionRewardClaimed': collectionRewardClaimed,
         'defeatedBosses': defeatedBosses.toList(),
         'bestCombo': bestCombo,
       };
+
+  /// 解析各广告位的今日次数，并把旧版 `adWatchCount`（只有商店福利这一档）
+  /// 迁移进新结构 —— 否则升级当天老玩家能再看 3 次。
+  static Map<String, int> _parseAdCounts(Map<String, dynamic> json) {
+    final raw = json['adDailyCounts'] as Map?;
+    if (raw != null && raw.isNotEmpty) {
+      return raw.map(
+          (k, v) => MapEntry(k.toString(), (v as num?)?.toInt() ?? 0));
+    }
+    final legacy = (json['adWatchCount'] as num?)?.toInt() ?? 0;
+    if (legacy > 0 && json['adWatchDate'] != null) {
+      return {'shop': legacy};
+    }
+    return {};
+  }
 
   factory PlayerData.fromJson(Map<String, dynamic> json) => PlayerData(
         coins: (json['coins'] as num?)?.toInt() ?? 0,
@@ -193,6 +224,8 @@ class PlayerData {
         lastSeenAt: (json['lastSeenAt'] as num?)?.toInt(),
         adWatchDate: json['adWatchDate'] as String?,
         adWatchCount: (json['adWatchCount'] as num?)?.toInt() ?? 0,
+        adDailyDate: json['adDailyDate'] as String? ?? json['adWatchDate'] as String?,
+        adDailyCounts: _parseAdCounts(json),
         collectionRewardClaimed:
             json['collectionRewardClaimed'] as bool? ?? false,
         defeatedBosses:

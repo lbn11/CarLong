@@ -13,6 +13,8 @@ import '../game/parking_game.dart';
 import '../models/parking_level.dart';
 import '../models/vehicle.dart';
 import '../save/save_repository.dart';
+import '../services/ads/ad_service.dart';
+import '../services/ads/ad_types.dart';
 import '../services/level_progression.dart';
 import '../services/level_rhythm.dart';
 import '../services/parking_chapters.dart';
@@ -104,6 +106,19 @@ class _ParkingScreenState extends State<ParkingScreen>
     _toastTimer = Timer(const Duration(milliseconds: 2000), () {
       if (mounted) setState(() => _toast = null);
     });
+  }
+
+  /// 播放一条激励广告，看完返回 true；没看成用本地 toast 说清原因。
+  Future<bool> _runRewardedAd(AdPlacement placement) async {
+    final result = await AdService.show(
+      placement,
+      data: widget.data,
+      repo: widget.repo,
+      analytics: _analytics,
+    );
+    if (result.isRewarded) return true;
+    if (mounted) _showToast('🎬 ${result.userMessage}');
+    return false;
   }
 
   @override
@@ -458,9 +473,11 @@ class _ParkingScreenState extends State<ParkingScreen>
             child: const Text('取消'),
           ),
           FilledButton.icon(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
               if (!_game.canUndo) return;
+              if (!await _runRewardedAd(AdPlacement.parkingUndo)) return;
+              if (!mounted || _game.hasWon || _game.hasLost) return;
               _analytics.toolUse('ad_undo', 0, widget.data.coins);
               final n = _game.undoMoves(3);
               _audio.play(Sfx.undo);
@@ -498,8 +515,10 @@ class _ParkingScreenState extends State<ParkingScreen>
             child: const Text('取消'),
           ),
           FilledButton.icon(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
+              if (!await _runRewardedAd(AdPlacement.parkingHint)) return;
+              if (!mounted || _game.hasWon || _game.hasLost) return;
               _analytics.toolUse('ad_hint', 0, widget.data.coins);
               _applyHint();
             },

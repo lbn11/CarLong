@@ -85,6 +85,27 @@ class AnalyticsService {
     _log('ad_watch', {'reward': reward});
   }
 
+  /// 广告展示结果（**每次请求都记**，含 skipped / failed / capped）。
+  ///
+  /// 与 [adWatch] 的分工：adWatch 只在发奖时记（算钱），ad_impression 记
+  /// 每一次请求（算漏斗）。两个一起看才能算出「填充率 / 完播率 / 人均请求」，
+  /// 只看 adWatch 会把「广告没加载出来」误判成「玩家不想看」。
+  void adImpression({
+    required String placement,
+    required String label,
+    required String outcome,
+    required bool rewarded,
+    String? detail,
+  }) {
+    _log('ad_impression', {
+      'placement': placement,
+      'label': label,
+      'outcome': outcome,
+      'rewarded': rewarded,
+      'detail': ?detail,
+    });
+  }
+
   /// 金币宝箱开启。
   void chestOpen(int cost, String result) {
     _log('chest_open', {'cost': cost, 'result': result});

@@ -14,6 +14,8 @@ import '../theme/app_theme.dart';
 import '../models/level.dart';
 import '../models/vehicle.dart';
 import '../save/save_repository.dart';
+import '../services/ads/ad_service.dart';
+import '../services/ads/ad_types.dart';
 import '../services/level_data_generator.dart';
 import '../services/level_progression.dart';
 import '../widgets/candy_ui.dart';
@@ -346,17 +348,24 @@ class _GameScreenState extends State<GameScreen> {
           reviveLabel: reviveLabel,
           onRevive: reviveLabel == null
               ? null
-              : () {
+              : () async {
+                  // 先播广告，看完才续命：关掉广告不该拿到续命。
+                  final ok = await _runRewardedAd(AdPlacement.mergeRevive);
+                  if (!ok || !mounted) return;
                   Navigator.of(context).pop();
                   _analytics.toolUse('ad_revive', 0, widget.data.coins);
+                  _analytics.adWatch(0);
                   setState(() => _finished = false);
                   _game.revive();
                 },
           onDoubleReward: canDouble && won
-              ? () {
+              ? () async {
+                  final ok = await _runRewardedAd(AdPlacement.mergeDouble);
+                  if (!ok || !mounted) return;
                   widget.data.addCoins(shownReward);
                   widget.repo.save(widget.data);
                   _analytics.toolUse('ad_double', 0, widget.data.coins);
+                  _analytics.adWatch(shownReward);
                   Navigator.of(context).pop();
                   showResultDialog(shownReward * 2, false);
                 }
@@ -407,6 +416,31 @@ class _GameScreenState extends State<GameScreen> {
     }
 
     showResultDialog(reward, won);
+  }
+
+  /// 播放一条激励广告，看完返回 true。
+  ///
+  /// 失败只给 SnackBar 轻提示（结算弹窗还开着，不能再压一层对话框）：
+  /// 广告没加载出来是平台侧的事，不该让玩家以为自己的操作失败了。
+  Future<bool> _runRewardedAd(AdPlacement placement) async {
+    final result = await AdService.show(
+      placement,
+      data: widget.data,
+      repo: widget.repo,
+      analytics: _analytics,
+    );
+    if (result.isRewarded) return true;
+    if (!mounted) return false;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('🎬 ${result.userMessage}'),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    return false;
   }
 
   String _dateString([DateTime? date]) {

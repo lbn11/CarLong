@@ -6,6 +6,7 @@ import 'game/vehicle_icons.dart';
 import 'game/vehicle_sprites.dart';
 import 'save/save_repository.dart';
 import 'screens/home_screen.dart';
+import 'services/ads/ad_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,6 +26,16 @@ Future<void> main() async {
   );
   final repo = SaveRepository();
   final data = await repo.load();
+  // ── 广告层 ──────────────────────────────────────────────────────────
+  // 当前是 MockAdProvider（模拟播放 0.7s 后发奖），用于无 SDK 环境跑通全链路。
+  // 接真实 SDK 时**只改下面这一行**（外加 pubspec/manifest 的配置）：
+  //   AdService.provider = PangleAdProvider(appId: '...', rewardId: '...');
+  // 业务侧 5 个广告位全部走 AdService.show()，不需要任何改动。
+  // 初始化失败只降级（广告位提示「暂时无法播放」），不拦启动。
+  await AdService.initialize().timeout(
+    const Duration(seconds: 2),
+    onTimeout: () => false,
+  );
   runApp(MergeGameApp(data: data, repo: repo));
 }
 

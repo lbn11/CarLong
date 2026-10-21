@@ -6,6 +6,8 @@ import '../analytics/analytics.dart';
 import '../game/audio_feedback.dart';
 import '../game/game_config.dart';
 import '../save/save_repository.dart';
+import '../services/ads/ad_service.dart';
+import '../services/ads/ad_types.dart';
 import '../theme/app_theme.dart';
 import '../widgets/candy_ui.dart';
 
@@ -28,8 +30,7 @@ class ShopScreen extends StatefulWidget {
 
 class _ShopScreenState extends State<ShopScreen> {
   static final int _chestCost = GameConfig.chestCost;
-  /// 激励广告：每日免费观看次数与单次奖励（模拟，待接真实广告 SDK）。
-  static final int _dailyAdLimit = GameConfig.dailyAdLimit;
+  /// 单次广告奖励（每日次数与上限由 AdService 按广告位管理）。
   static final int _adReward = GameConfig.adReward;
 
   /// 金币礼包（模拟 IAP）：600 金币档。
@@ -39,6 +40,9 @@ class _ShopScreenState extends State<ShopScreen> {
   late final AnalyticsService _analytics =
       AnalyticsService(widget.data, widget.repo);
   final _rng = Random();
+
+  /// 广告请求进行中（防连点重复请求 SDK）。
+  bool _adLoading = false;
 
   /// 道具身份色统一走 AppColors 糖果色板（替换原先零散的 Material 500/600 色）。
   static const _boosterMeta = <String, ({String name, IconData icon, Color color, bool parkingOnly})>{
@@ -106,26 +110,30 @@ class _ShopScreenState extends State<ShopScreen> {
     ),
   };
 
-  String _today() {
-    final d = DateTime.now();
-    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-  }
+  /// 今日剩余广告次数（跨日重置，计数与上限都归 AdService 管）。
+  int get _adLeftToday =>
+      AdService.remainingToday(AdPlacement.shopDaily, data) ?? 0;
 
-  /// 今日剩余广告次数（跨日重置）。
-  int get _adLeftToday {
-    if (data.adWatchDate != _today()) return _dailyAdLimit;
-    return (_dailyAdLimit - data.adWatchCount).clamp(0, _dailyAdLimit);
-  }
-
-  /// 激励广告（模拟）：点击后模拟"观看完成"立即发奖。
-  void _watchAd() {
+  /// 激励广告：必须等到 AdService 返回「看完」才发奖。
+  ///
+  /// 真实 SDK 的失败路径（无填充 / 玩家中途关闭 / 青少年模式）在这里统一
+  /// 弹提示，**绝不在点击时就加金币**。
+  Future<void> _watchAd() async {
     AudioFeedback.uiTap();
-    final left = _adLeftToday;
-    if (left <= 0) return;
-    final today = _today();
-    final count = data.adWatchDate == today ? data.adWatchCount : 0;
-    data.adWatchDate = today;
-    data.adWatchCount = count + 1;
+    if (_adLeftToday <= 0) return;
+    setState(() => _adLoading = true);
+    final result = await AdService.show(
+      AdPlacement.shopDaily,
+      data: data,
+      repo: widget.repo,
+      analytics: _analytics,
+    );
+    if (!mounted) return;
+    setState(() => _adLoading = false);
+    if (!result.isRewarded) {
+      _showAdNotice(result);
+      return;
+    }
     data.addCoins(_adReward);
     widget.repo.save(data);
     _analytics.adWatch(_adReward);
@@ -135,8 +143,22 @@ class _ShopScreenState extends State<ShopScreen> {
       icon: Icons.smart_display,
       color: AppColors.sky,
       title: '广告看完 +$_adReward 🪙',
-      message: '今天还可以看 $_adLeftToday 次（演示版，接入 SDK 后替换真实广告）',
+      message: _adLeftToday > 0
+          ? '今天还可以看 $_adLeftToday 次'
+          : '今天的次数用完啦，明天再来',
       confirmLabel: '收下啦',
+    );
+  }
+
+  /// 广告没看成：说清原因，别让玩家以为按钮坏了。
+  void _showAdNotice(AdResult result) {
+    CandyDialog.show(
+      context,
+      icon: Icons.info_outline,
+      color: AppColors.ink3,
+      title: '这条广告没看成',
+      message: result.userMessage,
+      confirmLabel: '知道了',
     );
   }
 
@@ -363,13 +385,17 @@ class _ShopScreenState extends State<ShopScreen> {
                               ),
                               const SizedBox(width: 10),
                               CandyButton(
-                                label: '领 +$_adReward',
+                                label: _adLoading
+                                    ? '加载中…'
+                                    : '领 +$_adReward',
                                 size: CandyButtonSize.small,
                                 dense: true,
-                                colors: _adLeftToday > 0
+                                colors: _adLeftToday > 0 && !_adLoading
                                     ? AppTheme.gradientOf(AppColors.sky)
                                     : AppTheme.softGradient,
-                                onTap: _adLeftToday > 0 ? _watchAd : null,
+                                onTap: _adLeftToday > 0 && !_adLoading
+                                    ? _watchAd
+                                    : null,
                               ),
                             ],
                           ),
@@ -393,11 +419,13 @@ class _ShopScreenState extends State<ShopScreen> {
                             ],
                           ),
                           const SizedBox(height: 4),
-                          const Text(
-                            '演示版：广告与内购均为模拟发放，上架后接入真实 SDK 与平台合规。',
-                            style:
-                                TextStyle(color: AppColors.ink3, fontSize: 10.5),
-                          ),
+                          // 只在模拟 provider 下说破：接真实 SDK 后这行自动消失。
+                          if (AdService.usingMock)
+                            const Text(
+                              '演示版：广告为模拟播放（秒过即发奖），内购未接入。',
+                              style: TextStyle(
+                                  color: AppColors.ink3, fontSize: 10.5),
+                            ),
                         ],
                       ),
                     ),
