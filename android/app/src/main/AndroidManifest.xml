@@ -1,8 +1,28 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- AdMob 需要网络；广告 ID 权限（Android 13+ 系统设置里可被用户重置）。
+         缺 AD_ID 时 Google Play 数据安全表单与实际行为不一致，会被判违规。 -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID"/>
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher">
+        <!-- AdMob App ID。**当前是 Google 官方测试 App ID**：
+             换成正式 ID 时两个平台都要换，且必须与 Info.plist 的
+             GADApplicationIdentifier 对应同一个 AdMob 应用。
+             缺这一项 → SDK 启动即崩（Crashlytics 里是 "The Google Mobile Ads
+             SDK crashed the app because the Android application ID is missing"）。 -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3940256099942544~3347511713"/>
+        <!-- 延迟初始化 / 延迟广告加载：SDK 内部把初始化推迟到首次请求，
+             配合 main.dart 的首帧后 AdService.initialize()，冷启动更轻。 -->
+        <meta-data
+            android:name="com.google.android.gms.ads.flag.OPTIMIZE_INITIALIZATION"
+            android:value="true"/>
+        <meta-data
+            android:name="com.google.android.gms.ads.flag.OPTIMIZE_AD_LOADING"
+            android:value="true"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"

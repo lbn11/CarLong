@@ -1,11 +1,13 @@
 # 广告系统接入方案
 
-> 状态：**骨架已落地**（`lib/services/ads/`），5 个广告位全部改由 `AdService` 统一发奖，
-> 当前 provider = `MockAdProvider`（模拟播放 0.7s 后发奖）。
-> 真实 SDK 接入 = 换一行 provider + 平台配置 + 合规材料，业务代码零改动。
+> 状态：**AdMob 已接入**（发行目标：海外 iOS App Store + Google Play）。
+> 服务层 + 真实 provider + 双端平台配置全部落地；平台配置里当前是 **Google 官方
+> 测试 App ID / 测试 unit**，上线前替换 5 个值即可（见 §4.2）。
+> Web / 桌面自动回落 `MockAdProvider`（条件导入隔离，不影响 web 预览构建）。
 >
-> 关联文档：[monetization_design.md](monetization_design.md)（变现总览）、
-> [mobile_build_checklist.md](mobile_build_checklist.md)（上架清单）。
+> 关联文档：[store_launch_overseas.md](store_launch_overseas.md)（上架与合规清单）、
+> [monetization_design.md](monetization_design.md)（变现总览）、
+> [mobile_build_checklist.md](mobile_build_checklist.md)（编译与签名）。
 
 ## 1. 现有广告位（全部已接入 AdService）
 
@@ -24,10 +26,16 @@
 
 ```
 lib/services/ads/
-├── ad_types.dart        AdPlacement（5 个广告位 + 元数据）、AdOutcome、AdResult
-├── ad_provider.dart     AdProvider 抽象：initialize / preload / showRewarded / dispose
-├── mock_ad_provider.dart 模拟实现（可配 failRate / skipRate / nextOutcome）
-└── ad_service.dart      AdService：发奖闸门 + 每日上限 + 跨日清零 + 埋点 + 降级
+├── ad_types.dart          AdPlacement（5 个广告位 + 元数据）、AdOutcome、AdResult
+├── ad_provider.dart       AdProvider 抽象：initialize / preload / showRewarded / dispose
+├── ad_provider_factory.dart 按平台选 provider（唯一分支点）
+├── mock_ad_provider.dart  模拟实现（Web / MOCK_ADS / 测试）
+├── ad_service.dart        发奖闸门 + 每日上限 + 跨日清零 + 埋点 + 降级
+└── admob/
+    ├── admob_config.dart              unit ID / 合规开关 / 官方测试 ID
+    ├── admob_ad_provider.dart         唯一入口（条件导入）
+    ├── admob_ad_provider_io.dart      Android/iOS 真实实现（ATT → UMP → SDK）
+    └── admob_ad_provider_stub.dart    Web/桌面占位（永远 unavailable）
 ```
 
 ### 2.1 发奖闸门（最重要的一条）
@@ -59,67 +67,58 @@ lib/services/ads/
 `ad_watch`（reward）。**两个一起看才能算漏斗**：只看 `ad_watch` 会把「广告没加载出来」
 误判成「玩家不想看」。上线前建议把这两个事件接到第三方（Firebase / 神策 / TalkingData）。
 
-## 3. 待决策：SDK 与平台
+## 3. 渠道决策：AdMob（已定，2026-10-22）
 
-### 3.1 渠道对比
+发行目标确定是**海外 iOS App Store + Google Play**，渠道随之锁定 AdMob：
 
-| 方案 | 适用 | 优点 | 代价 |
-|---|---|---|---|
-| **穿山甲 CSJ** | 国内 Android 为主 | 国内填充率最高、eCPM 好、Flutter 插件社区方案多（`pangolin_ad_flutter` 等） | 需企业资质；审核严格；隐私合规文档要齐 |
-| **优量汇 GDT** | 国内（腾讯系） | 与微信/QQ 流量协同，激励视频成熟 | 填充略低于穿山甲 |
-| **GroMore / TopOn 聚合** | 国内多渠 | 瀑布流比价，eCPM 最高 | 接入复杂度高，调试链路长 |
-| **AdMob** | 海外 / iOS 海外 | 官方 Flutter 插件（`google_mobile_ads`）质量最高 | **国内基本不可用**（无 Google 服务） |
-
-**建议**：如果首发是国内 Android → 穿山甲单渠道先跑通；iOS 国内可先用 AdMob 兜底
-或直接不开广告位；海外版本走 AdMob。**不建议一上来就聚合**：单渠道跑通 &
-数据能看，再上聚合比价。
-
-### 3.2 需要确认的三件事
-
-1. **首发平台**（国内 Android / iOS / 双端）—— 决定先接哪个 SDK、走哪套合规材料。
-2. **是否有企业资质**（穿山甲/优量汇开户要营业执照 + 软著/版号材料）。
-3. **是否接受无后端**：当前没有服务端，激励发奖只能靠客户端回调 + 本地上限。
-   风险见 §5.3。
-
-## 4. 接入清单（以穿山甲 + Android 为例）
-
-| 步骤 | 内容 | 注意 |
+| 方案 | 结论 | 原因 |
 |---|---|---|
-| 1 | `pubspec.yaml` 加 SDK 依赖 | 先用测试广告位 ID 跑通 |
-| 2 | `AndroidManifest.xml` 加 `APPID` meta-data + 权限（网络、粗略位置可选） | 缺 APPID 会静默不加载 |
-| 3 | **隐私政策弹窗同意后**再初始化 SDK | 国内合规硬红线：不同意前不得初始化、不得预加载 |
-| 4 | 实现 `PangleAdProvider extends AdProvider` | `showRewarded` 必须 await 到 `onRewardVerify`/`onAdClose` |
-| 5 | `main.dart` 换一行：`AdService.provider = PangleAdProvider(...)` | 其余代码不动 |
-| 6 | 真机验证 5 个广告位 + 4 条失败路径 | 用 `MockAdProvider(failRate: 1)` 可本地复现无填充 |
-| 7 | iOS 额外：`Info.plist` 加 `SKAdNetworkItems`、ATT 弹窗、`PrivacyInfo.xcprivacy` | iOS 17+ 隐私清单缺项会被拒 |
+| **AdMob**（`google_mobile_ads`） | **采用** | 官方 Flutter 插件；海外填充率最高；UMP 自带 GDPR/CCPA；iOS 侧唯一成熟选择 |
+| 穿山甲 CSJ | 不用 | 海外无填充；需国内企业资质 |
+| 优量汇 GDT | 不用 | 同上，且仅国内流量 |
+| GroMore / AppLovin MAX 聚合 | 暂缓 | 单渠道还没跑出 eCPM 基线，聚合只会让问题变模糊 |
 
-### 4.1 provider 实现骨架
+后续若要提 eCPM，在 `ad_provider_factory.dart` 加一个分支接聚合 SDK，
+5 个广告位的业务代码不用改。
 
-```dart
-class PangleAdProvider extends AdProvider {
-  final String appId;
-  final Map<AdPlacement, String> slotIds;
+## 4. 接入清单
 
-  @override String get name => 'pangle';
-  @override bool get isMock => false;
+### 4.1 已落地（本轮完成）
 
-  @override
-  Future<bool> initialize() async { /* TTAdSdk.init(...) */ }
+| 项 | 位置 | 说明 |
+|---|---|---|
+| SDK 依赖 | `pubspec.yaml` | `google_mobile_ads ^5.1.0`、`app_tracking_transparency ^2.0.7` |
+| 真实 provider | `admob/admob_ad_provider_io.dart` | 拉取 / 展示 / 补拉 / 超时回收 / 异常降级 |
+| 合规顺序 | 同上 `initialize()` | iOS 先 ATT 再 UMP；`canRequestAds == false` 时整个 provider 拒绝请求 |
+| 平台隔离 | `admob/admob_ad_provider.dart` | 条件导入，Web 构建不会拖入 SDK（已验证 `flutter build web` 通过） |
+| provider 选择 | `ad_provider_factory.dart` | Web/桌面 → Mock；`MOCK_ADS=true` → Mock；移动端 → AdMob |
+| 启动时机 | `main.dart` | 首帧后 `postFrameCallback` 初始化（UMP 表单需已挂载 Activity；不再阻塞冷启动） |
+| 初始化去重 | `ad_service.dart` | 缓存 `Future<bool>`（并发点击只初始化一次） |
+| Android | `AndroidManifest.xml` | `INTERNET` + `AD_ID` 权限、`APPLICATION_ID` meta-data、延迟初始化开关 |
+| iOS | `Info.plist` / `Podfile` | `GADApplicationIdentifier`、ATT 文案、`SKAdNetworkItems`、iOS 13.0 |
+| 测试 | `test/admob_config_test.dart` | 10 条：unit 合法性、平台区分、生产/回落、合规开关默认值、并发初始化只跑一次 |
 
-  @override
-  Future<AdResult> showRewarded(AdPlacement placement) {
-    final done = Completer<AdResult>();
-    // loadRewardVideoAd → show → 回调映射：
-    //   onRewardVerify/onRewardArrived → AdResult.granted（先完成，等 onAdClose 再 resolve 也可以）
-    //   onAdClose 未触发奖励          → AdResult.skipped
-    //   onError / 超时（10s）         → AdResult.failed
-    return done.future;
-  }
-}
-```
+### 4.2 上线前必须做的（代码之外）
 
-三条硬要求（写进 provider 注释了）：只在奖励回调里返回 `granted`；`showRewarded`
-必须 await 到广告关闭；`initialize` 幂等。
+| # | 事项 | 位置 | 不做会怎样 |
+|---|---|---|---|
+| 1 | 换 Android 正式 App ID | `AndroidManifest.xml` | 用测试 ID 无收入；改错 ID 启动即崩 |
+| 2 | 换 iOS 正式 App ID | `Info.plist` | 同上 |
+| 3 | 换 unit ID | `--dart-define=ADMOB_ANDROID_UNIT` / `ADMOB_IOS_UNIT` | 测试 unit 永远不计费 |
+| 4 | AdMob 后台发 UMP 消息（GDPR + IDFA） | AdMob → Privacy & messaging | 欧盟不弹同意表单 = 违规 |
+| 5 | 部署 `app-ads.txt` | 开发者域名根目录 | 广告库存被劫持，收入流失 |
+| 6 | 补全 `SKAdNetworkItems` | `Info.plist` | 目前只有 Google 自家一条，中介渠道归因缺失 |
+| 7 | 隐私清单 `PrivacyInfo.xcprivacy` | `ios/Runner/` | iOS 17+ 缺项会被拒 |
+| 8 | 隐私政策 URL | 商店列表 + App 内入口 | 双端都拒 |
+
+完整步骤见 [store_launch_overseas.md](store_launch_overseas.md)。
+
+### 4.3 provider 的三条硬约束（已写进实现）
+
+1. **只在 SDK 奖励回调里返回 `granted`**，`onAdDismissed` 但没触发奖励 = `skipped`；
+2. `showRewarded` 必须 await 到广告关闭（本项目用 `Completer` + 关闭回调，
+   并有 3 分钟兜底超时，防止 SDK 不回调导致 UI 永远转圈）；
+3. `initialize` 幂等，且同意未通过时**不发任何广告请求**。
 
 ## 5. 经济与风险
 
@@ -144,24 +143,28 @@ eCPM 好看但玩家体验会崩（每一步都在看广告），也容易被渠
 
 | 风险 | 现状缓解 | 后续 |
 |---|---|---|
-| 本地改存档刷金币 | 金币只能买 booster/开宝箱，不可提现；单机游戏作弊收益有限 | 接 SSV（AdMob）或穿山甲服务端奖励回调 |
-| 重装重置每日次数 | 无 | 需账号体系 |
-| 无法远程关广告 / AB 奖励 | `GameConfig.overrides` 已预留，但没有下发通道 | 加轻量配置接口 |
+| 本地改存档刷金币 | 金币只能买 booster/开宝箱，不可提现；单机游戏作弊收益有限 | 接 AdMob SSV（服务端奖励验证，需后端） |
+| 重装重置每日次数 | 无 | 需账号体系（Game Center / Play Games 或自建账号） |
+| 无法远程关广告 / AB 奖励 | `GameConfig.overrides` 已预留，但没有下发通道 | Firebase Remote Config（免费，海外首选） |
 
 ## 6. 落地顺序
 
-| 阶段 | 内容 | 产出 |
+| 阶段 | 内容 | 状态 |
 |---|---|---|
-| **P0（已完成）** | 广告骨架 + 5 个广告位改造 + 15 条测试 + 埋点 | `lib/services/ads/`、`test/ad_service_test.dart` |
-| **P1** | 定渠道 → 接 SDK → 换 provider → 真机跑 5 个位 + 4 条失败路径 | 能真实播广告、能发奖 |
-| **P2** | 隐私政策/ATT/隐私清单/SDK 初始化时机 + 商店数据安全表单 | 可提审 |
-| **P3** | 接第三方埋点，做 eCPM / 填充率 / 完播率 / 人均请求看板 | 能调优 |
-| **P4** | 加停车提示/撤销软上限、考虑聚合比价、A/B 奖励 | 收入优化 |
+| **P0** | 广告服务层 + 5 个广告位改造 + 15 条测试 + 埋点 | ✅ 已完成 |
+| **P1** | AdMob provider + 双端平台配置 + 条件导入隔离 + 10 条测试 | ✅ 本轮完成 |
+| **P2** | 替换正式 App ID / unit、AdMob 后台配 UMP、app-ads.txt | ⏳ 需账号与后台操作 |
+| **P3** | 隐私政策、PrivacyInfo.xcprivacy、商店素材、Data safety / App Privacy | ⏳ 见 store_launch_overseas.md |
+| **P4** | 真机跑 5 个位 + 4 条失败路径、提审 | ⏳ 需真机与商店账号 |
+| **P5** | 第三方埋点看板、停车提示/撤销软上限、聚合比价、IAP | 待排 |
 
 ## 7. 待办（本轮未做）
 
-- [ ] 停车提示 / 撤销加每日软上限（需要产品确认数值）
-- [ ] `MockAdProvider` 的 release 守卫：建议 `assert` + 启动日志告警，防止误发无广告版本
+- [ ] 停车提示 / 撤销加每日软上限（建议各 10 次/日，改 `dailyCap` 一处）
+- [ ] `MockAdProvider` 的 release 守卫：release 包若是 mock 应打警告日志
+- [ ] 补全 `SKAdNetworkItems`（当前只有 Google 自家一条，需从 AdMob 后台复制）
+- [ ] `PrivacyInfo.xcprivacy` 主工程声明（tracking + 访问 API 类型）
+- [ ] App 内「广告隐私设置」入口（`ConsentForm.showPrivacyOptionsForm`，仅 required 时显示）
 - [ ] 插屏广告位（是否要在关卡间插入，需产品决策）
 - [ ] 未成年人模式：`AdProvider` 层直接返回 `unavailable`（需要先有年龄/家长开关）
 - [ ] IAP（金币礼包仍是模拟实现，见 monetization_design.md §2）

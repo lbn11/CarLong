@@ -18,9 +18,9 @@ import 'mock_ad_provider.dart';
 /// 不管的事：奖励发多少（`GameConfig`）、每局几次（玩法自己管）、
 /// 未成年人模式（接入时在 provider 层按年龄段直接返回 `unavailable`）。
 ///
-/// 换真实 SDK 只改一行：
+/// 换真实 SDK 只改一行（或直接用 `createAdProvider()` 让工厂按平台选）：
 /// ```dart
-/// AdService.provider = PangleAdProvider(appId: '...');
+/// AdService.provider = createAdMobProvider();
 /// ```
 class AdService {
   AdService._();
@@ -35,20 +35,31 @@ class AdService {
   static bool _initialized = false;
   static bool _supported = true;
 
+  /// 初始化只跑一次的凭据。
+  ///
+  /// 必须缓存 **Future** 而不是 bool：真实 SDK 初始化要 1-3 秒，
+  /// 这期间玩家点了广告位会再触发一次 initialize（重复初始化 AdMob
+  /// 会重复注册回调）。缓存 future 让后来者直接等同一次的结果。
+  static Future<bool>? _initFuture;
+
   /// 是否处于模拟模式（UI 可据此显示「演示」字样）。
   static bool get usingMock => provider.isMock;
 
   static String get providerName => provider.name;
 
   /// 冷启动初始化：幂等，失败只降级不拦启动。
-  static Future<bool> initialize() async {
-    if (_initialized) return _supported;
-    _initialized = true;
+  static Future<bool> initialize() {
+    if (_initialized) return Future<bool>.value(_supported);
+    return _initFuture ??= _doInitialize();
+  }
+
+  static Future<bool> _doInitialize() async {
     try {
       _supported = await provider.initialize();
     } catch (_) {
       _supported = false;
     }
+    _initialized = true;
     return _supported;
   }
 
@@ -160,5 +171,6 @@ class AdService {
   static void resetForTest() {
     _initialized = false;
     _supported = true;
+    _initFuture = null;
   }
 }

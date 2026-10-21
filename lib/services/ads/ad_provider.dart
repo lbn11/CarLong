@@ -2,15 +2,15 @@ import 'ad_types.dart';
 
 /// 广告 SDK 适配层。
 ///
-/// 真实实现（穿山甲 / 优量汇 / GroMore / AdMob）只需实现本接口，**业务代码
-/// 一行都不用改**。参考实现要点：
+/// **本项目采用 AdMob**（发行目标是海外 iOS / Google Play），实现见
+/// `admob/admob_ad_provider_io.dart`。其余渠道仅作对比记录：
 ///
 /// | 平台 | 激励视频 | appId 配置 |
 /// |---|---|---|
-/// | 穿山甲 CSJ（国内） | `TTAdNative.loadRewardVideoAd` + `TTRewardVideoAd` | `AndroidManifest` 的 `com.bytedance.sdk.openadsdk.APPID` / Info.plist `BUAdSDKAppID` |
+/// | **AdMob（海外，已采用）** | `RewardedAd.load` + `show()` | `MobileAds.initialize` + AndroidManifest / Info.plist 的 App ID |
+/// | 穿山甲 CSJ（国内） | `TTAdNative.loadRewardVideoAd` | `AndroidManifest` 的 `com.bytedance.sdk.openadsdk.APPID` |
 /// | 优量汇 GDT（国内） | `GDTRewardVideoAd` | `GDTSDKConfig.registerAppId` |
-/// | AdMob（海外） | `RewardedAd.load` + `show()` | `MobileAds.initialize` + AndroidManifest `APPLICATION_ID` |
-/// | GroMore / TopOn（聚合） | 聚合 SDK 的 reward 广告对象 | 后台配置各渠道 + 瀑布流 |
+/// | GroMore / MAX（聚合） | 聚合 SDK 的 reward 广告对象 | 后台配置各渠道 + 瀑布流 |
 ///
 /// 实现时必须遵守的三条（否则线上会丢钱或违规）：
 /// 1. **只在 SDK 的「奖励回调」里返回 [AdResult.granted]**，`onAdClosed` 但

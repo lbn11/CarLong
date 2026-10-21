@@ -1,5 +1,6 @@
-# Uncomment this line to define a global platform for your project
-# platform :ios, '13.0'
+# AdMob（google_mobile_ads 5.x / GMA iOS 11.x）要求 iOS 12+；
+# 项目本身最低 iOS 13，这里显式钉住，避免 Xcode 默认值变化导致 pod 解析漂移。
+platform :ios, '13.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'

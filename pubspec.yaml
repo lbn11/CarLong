@@ -12,6 +12,15 @@ dependencies:
   flame: ^1.38.0
   flame_audio: ^2.1.1
   shared_preferences: ^2.5.5
+  # ── 海外发行（App Store / Google Play）的广告与归因 ──────────────────
+  # google_mobile_ads = AdMob 官方 Flutter 插件（激励视频）。
+  # 只声明了 android/ios 两个平台，Web/桌面构建由
+  # lib/services/ads/admob/admob_ad_provider.dart 的条件导入隔离，
+  # 不会把 SDK 拖进 web 预览包。
+  google_mobile_ads: ^5.1.0
+  # iOS 14.5+ 的 ATT 授权弹窗。没有它 IDFA 全零，个性化广告失效、
+  # eCPM 掉一半，属于海外发行的必选项。
+  app_tracking_transparency: ^2.0.7
 
 dev_dependencies:
   flutter_test:

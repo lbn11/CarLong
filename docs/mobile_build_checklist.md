@@ -101,7 +101,29 @@ flutter build ipa --release
 ```
 产物：`build/ios/iphoneos/Runner.app`；`flutter build ipa` 产出 `build/ios/ipa/Runner.ipa`。
 
-### 2.3 签名
+### 2.3 AdMob 原生依赖（本轮新增）
+
+`pubspec.yaml` 已加 `google_mobile_ads ^5.1.0` 与 `app_tracking_transparency ^2.0.7`，
+双端都会多出原生依赖：
+
+| 端 | 依赖 | 首次构建注意 |
+|---|---|---|
+| Android | `com.google.android.gms:play-services-ads`（约 5MB） | 需 `maven.google.com` 可访问；Gradle 会自动处理 |
+| iOS | `Google-Mobile-Ads-SDK`（约 40MB） | `pod install` 首次较慢；CocoaPods 需能访问 trunk |
+
+构建后核对两处配置（缺了会**启动即崩**或**零收入**）：
+
+```bash
+# Android：必须有 APPLICATION_ID
+grep -A2 "ads.APPLICATION_ID" android/app/src/main/AndroidManifest.xml
+# iOS：必须有 GADApplicationIdentifier
+plutil -p ios/Runner/Info.plist | grep -i "GADApplicationIdentifier\|NSUserTracking"
+```
+
+> 当前写入的是 **Google 官方测试 ID**，真机可看到测试广告。
+> 上线前替换正式 ID 的清单见 [store_launch_overseas.md](store_launch_overseas.md) §2.2。
+
+### 2.4 签名
 - 用 Xcode 打开 `ios/Runner.xcworkspace` → Signing & Capabilities 选择 Team（需 Apple Developer 账号）。
 - 或命令行：在 `ios/Runner.xcodeproj/project.pbxproj` 设 `DEVELOPMENT_TEAM = <teamId>`（bundle id 已为 `com.carlong.mergefleet`，无需再改）。
 
@@ -158,4 +180,7 @@ jobs:
 - [ ] `flutter build ios --no-codesign` 成功（macOS）
 - [ ] 真机 / 模拟器安装运行，车模渲染与两模式（合成 / 停车）均可玩
 - [ ] 设置中应用名 = **车水马龙**，包名 = `com.carlong.mergefleet`
+- [ ] 广告：真机看到测试激励视频（provider 日志为 `admob`，不是 `mock`）
+- [ ] 广告：飞行模式下 5 个广告位都提示「广告暂时没加载出来」，不崩不卡
 - [ ] （上架）已配置签名并可产出 aab / ipa
+- [ ] （上架）AdMob 正式 App ID / unit ID 已替换（`AdMobConfig.usesTestUnits == false`）
