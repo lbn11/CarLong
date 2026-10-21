@@ -2,7 +2,7 @@
 """
 统一 17 款车模:
   1) 方向 — 把"右侧亮"(R > L)的车水平翻转,统一为"车头朝右 + 左侧来光"
-  2) 大小 — bbox 对角线缩放到 TARGET_DIAG px(画布内),居中 paste 到 1024x1024 透明画布
+  2) 大小 — bbox 对角线缩放到 TARGET_DIAG px(画布内),居中 paste 到 512x512 透明画布
            用「对角线」而非「最长边」:让细长/矮宽车型的视觉体量(外接圆)基本一致,
            避免细长车显得格外大、矮宽车显得格外小。
 
@@ -15,8 +15,11 @@ from PIL import Image
 VEHICLE_DIR = '/Users/apple/Downloads/CarLong/assets/vehicles'
 NAMES = ['bike','scooter','car','taxi','bus','truck','train','rocket',
          'tanker','metro','plane','jet','shuttle','ufo','maglev','station','comet']
-CANVAS = 1024          # 输出画布尺寸
-TARGET_DIAG = 920      # bbox 对角线目标像素(画布内,留边距)
+CANVAS = 512           # 输出画布尺寸（2026-10-21 从 1024 降下来：游戏里最大
+                       # 用到图鉴 ~180px / 棋盘格 96px，1024 是纯浪费体积）
+TARGET_DIAG = 460      # bbox 对角线目标像素(画布内,留边距)
+                       # 保持与旧版同一比例 920/1024 = 460/512 = 0.898，
+                       # 换画布不会改变各车型之间的视觉体量关系。
 FLIP_THRESHOLD = 5     # |R - L| 超过此值才翻转
 MIN_SAMPLES = 100      # 左右样本数下限(防窄物体误判)
 

@@ -360,4 +360,38 @@ speedboat / barge / carrier / glider / helicopter / drone / cargo / seaplane / s
   新增档位永远进不了对照表，等于长期漏检。
 - `flutter analyze` 0 issue；`flutter test` **279 全绿**；
   `shared/levels/*.json` 重新导出，`vehicles.json` 的 `sprite` 字段 50/50 有值。
-- 资产体积：`assets/vehicles` 18MB（50 张 1024 PNG）；小游戏端 256px 副本 1.6MB。
+- 资产体积：`assets/vehicles` **5.1MB（50 张 512 PNG）**；小游戏端 256px 副本 1.4MB。
+
+## 9. 车模降采样 1024 → 512（2026-10-21）
+
+### 9.1 为什么 1024 是纯浪费
+
+游戏里车模的最大显示尺寸：
+
+| 位置 | 逻辑尺寸 | 3x 屏实际像素 |
+|---|---|---|
+| 图鉴详情大图 | ~180 | 540 |
+| 图鉴格子 | ~90 | 270 |
+| 棋盘卡面内部 | 格子 96 × 1.42 ≈ 136 | 408 |
+| 停车车身（长边） | ~200 | 600 |
+| `VehicleSprites` 解码宽 | `targetWidth = 384` | — |
+
+最大需求约 600px，且 `VehicleSprites` 本来就按 384 解码。1024 原图对运行时**零收益**，
+只多占包体和安装体积（iOS/Android 都计入）。
+
+### 9.2 结果
+
+50 张统一 LANCZOS 降到 512×512 RGBA（保留 alpha 与 `optimize=True`）：
+
+- `assets/vehicles` **18.4MB → 5.1MB（-72%）**，单张均值 368KB → 102KB。
+- 内容占比不变：旧版 bbox 对角线 920/1024 = 0.898，新版 460/512 = 0.898，
+  各车型之间的视觉体量关系完全保持（不需要重新调 `_fillW / _fillH / 1.42` 等参数）。
+- 512 在 44px 棋盘格 / 90px 图鉴格下与 1024 无可辨差异（已按实际尺寸 2 倍放大目视比对）。
+
+### 9.3 防回退
+
+`tool/normalize_assets.py` 的 `CANVAS` 改成 512、`TARGET_DIAG` 改成 460 ——
+**否则下次补车型重跑归一化，会把 512 重新拉回 1024**（放大后还是糊的，且体积翻四倍）。
+
+原始 1024 处理产物备份在 `/tmp/vehicles_1024/`（临时目录，非仓库）；
+`generated-images/` 里的白底源图仍是 1024，需要更大分辨率时可从源图重跑处理链。
