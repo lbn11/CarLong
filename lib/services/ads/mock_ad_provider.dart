@@ -27,6 +27,12 @@ class MockAdProvider extends AdProvider {
   /// 累计展示次数（测试断言用）。
   int showCount = 0;
 
+  /// 模拟「隐私设置入口是否必须展示」。默认 true，方便在预览里看到入口。
+  bool privacyRequired = true;
+
+  /// 模拟隐私表单被打开的次数。
+  int privacyShowCount = 0;
+
   final Random _rng;
 
   MockAdProvider({
@@ -63,5 +69,18 @@ class MockAdProvider extends AdProvider {
       return const AdResult(AdOutcome.skipped, detail: 'mock skipped');
     }
     return AdResult.granted;
+  }
+
+  @override
+  Future<bool> privacyOptionsRequired() async => privacyRequired;
+
+  /// 演示实现：不弹真实表单，只计数（UI 据此提示「演示环境」）。
+  @override
+  Future<bool> showPrivacyOptions() async {
+    privacyShowCount++;
+    if (playback > Duration.zero) {
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    return privacyRequired;
   }
 }

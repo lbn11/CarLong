@@ -81,15 +81,54 @@ class AdMobConfig {
   }
 
   /// 从编译期 `--dart-define` 读配置；没配就回落测试 unit。
+  ///
+  /// 支持两级覆盖（**逐位优先**）：
+  /// 1. `ADMOB_ANDROID_UNIT_SHOP` / `ADMOB_IOS_UNIT_SHOP` … 每个广告位独立 unit；
+  /// 2. `ADMOB_ANDROID_UNIT` / `ADMOB_IOS_UNIT` 所有位共用一个 unit。
+  ///
+  /// 为什么要拆：AdMob 报表按 unit 维度出数。商店福利、停车提示、续命的
+  /// eCPM 能差 3-5 倍，共用一个 unit 后面想调优先级只能重发版。
   factory AdMobConfig.fromEnvironment() {
-    const android = String.fromEnvironment('ADMOB_ANDROID_UNIT');
-    const ios = String.fromEnvironment('ADMOB_IOS_UNIT');
-    if (android.isEmpty && ios.isEmpty) return test;
-    return AdMobConfig.production(
-      androidUnitId: android.isEmpty ? kAdMobTestAndroidRewarded : android,
-      iosUnitId: ios.isEmpty ? kAdMobTestIosRewarded : ios,
+    const sharedAndroid = String.fromEnvironment('ADMOB_ANDROID_UNIT');
+    const sharedIos = String.fromEnvironment('ADMOB_IOS_UNIT');
+
+    final android = <AdPlacement, String>{};
+    final ios = <AdPlacement, String>{};
+    for (final placement in AdPlacement.values) {
+      final a = _androidUnits[placement]!;
+      final i = _iosUnits[placement]!;
+      android[placement] = a.isNotEmpty ? a : sharedAndroid;
+      ios[placement] = i.isNotEmpty ? i : sharedIos;
+    }
+
+    // 全空 = 没配过任何真实 unit，返回测试配置（真机可见广告、不计费）。
+    if (android.values.every((v) => v.isEmpty) &&
+        ios.values.every((v) => v.isEmpty)) {
+      return test;
+    }
+    return AdMobConfig(
+      androidUnitIds: android,
+      iosUnitIds: ios,
     );
   }
+
+  /// 逐广告位的 dart-define（`String.fromEnvironment` 只认字面量 key，
+  /// 所以这里必须逐个写死，不能用循环拼 key）。
+  static const Map<AdPlacement, String> _androidUnits = {
+    AdPlacement.shopDaily: String.fromEnvironment('ADMOB_ANDROID_UNIT_SHOP'),
+    AdPlacement.mergeRevive: String.fromEnvironment('ADMOB_ANDROID_UNIT_REVIVE'),
+    AdPlacement.mergeDouble: String.fromEnvironment('ADMOB_ANDROID_UNIT_DOUBLE'),
+    AdPlacement.parkingUndo: String.fromEnvironment('ADMOB_ANDROID_UNIT_UNDO'),
+    AdPlacement.parkingHint: String.fromEnvironment('ADMOB_ANDROID_UNIT_HINT'),
+  };
+
+  static const Map<AdPlacement, String> _iosUnits = {
+    AdPlacement.shopDaily: String.fromEnvironment('ADMOB_IOS_UNIT_SHOP'),
+    AdPlacement.mergeRevive: String.fromEnvironment('ADMOB_IOS_UNIT_REVIVE'),
+    AdPlacement.mergeDouble: String.fromEnvironment('ADMOB_IOS_UNIT_DOUBLE'),
+    AdPlacement.parkingUndo: String.fromEnvironment('ADMOB_IOS_UNIT_UNDO'),
+    AdPlacement.parkingHint: String.fromEnvironment('ADMOB_IOS_UNIT_HINT'),
+  };
 
   /// 取某广告位在指定平台的 unit ID，未配置时回落官方测试 unit。
   String unitIdFor(AdPlacement placement, {required bool isIOS}) {

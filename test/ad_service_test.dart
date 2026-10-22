@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:merge_fleet/save/save_repository.dart';
+import 'package:merge_fleet/services/ads/ad_policy.dart';
 import 'package:merge_fleet/services/ads/ad_provider.dart';
 import 'package:merge_fleet/services/ads/ad_service.dart';
 import 'package:merge_fleet/services/ads/ad_types.dart';
@@ -28,6 +29,8 @@ class _ScriptedProvider extends AdProvider {
   final List<AdResult> queue;
   final bool supported;
   int showCount = 0;
+  int privacyShowCount = 0;
+  bool privacyRequired = false;
 
   _ScriptedProvider(this.queue, {this.supported = true});
 
@@ -45,23 +48,43 @@ class _ScriptedProvider extends AdProvider {
     showCount++;
     return queue.isEmpty ? AdResult.granted : queue.removeAt(0);
   }
+
+  @override
+  Future<bool> privacyOptionsRequired() async => privacyRequired;
+
+  @override
+  Future<bool> showPrivacyOptions() async {
+    privacyShowCount++;
+    return privacyRequired;
+  }
 }
 
 void main() {
   final repo = _MemoryRepo();
   late PlayerData data;
 
+  /// 可推进的时钟：冷却和跨日都靠它验证（不能用真实时钟，否则测试变慢）。
+  late DateTime clock;
+
+  void tick([int seconds = 60]) {
+    clock = clock.add(Duration(seconds: seconds));
+  }
+
   setUp(() {
     data = PlayerData();
     repo.stored = data;
+    repo.saveCount = 0;
     AdService.resetForTest();
+    AdService.policy = AdPolicy.standard;
     AdService.provider = MockAdProvider(playback: Duration.zero);
     // 固定时钟，避免测试跑在午夜前后时跨日逻辑随机翻红。
-    AdService.now = () => DateTime(2026, 10, 22, 10);
+    clock = DateTime(2026, 10, 22, 10);
+    AdService.now = () => clock;
   });
 
   tearDown(() {
     AdService.provider = MockAdProvider(playback: Duration.zero);
+    AdService.policy = AdPolicy.standard;
     AdService.now = DateTime.now;
   });
 
@@ -70,9 +93,22 @@ void main() {
       final keys = AdPlacement.values.map((p) => p.key).toList();
       expect(keys.toSet().length, keys.length, reason: '广告位 key 必须唯一（存档按 key 计数）');
       expect(AdPlacement.shopDaily.dailyCap, 3);
-      // 玩法层自己限制次数的广告位（每局一次）不设每日上限。
+      // 玩法层自己限制次数的广告位（每局一次）不设单点上限，由全局上限兜底。
       expect(AdPlacement.mergeRevive.dailyCap, isNull);
       expect(AdPlacement.mergeDouble.dailyCap, isNull);
+    });
+
+    test('停车两位置每日 10 次并带冷却（防连点刷次数）', () {
+      for (final p in [AdPlacement.parkingUndo, AdPlacement.parkingHint]) {
+        expect(p.dailyCap, 10, reason: '$p');
+        expect(p.cooldown.inSeconds, greaterThanOrEqualTo(8), reason: '$p');
+      }
+    });
+
+    test('每个广告位有独立 unit 环境变量后缀（收益分位统计）', () {
+      final envKeys = AdPlacement.values.map((p) => p.envKey).toList();
+      expect(envKeys.toSet().length, envKeys.length);
+      expect(AdPlacement.shopDaily.envKey, 'SHOP');
     });
   });
 
@@ -126,6 +162,7 @@ void main() {
       for (var i = 0; i < 3; i++) {
         final r = await AdService.show(AdPlacement.shopDaily, data: data, repo: repo);
         expect(r.isRewarded, isTrue, reason: '第 ${i + 1} 次应该成功');
+        tick();
       }
       expect(p.showCount, 3);
       final capped = await AdService.show(AdPlacement.shopDaily, data: data, repo: repo);
@@ -134,28 +171,145 @@ void main() {
       expect(AdService.remainingToday(AdPlacement.shopDaily, data), 0);
     });
 
-    test('不设上限的广告位可以一直看', () async {
+    test('停车位 10 次/日：第 11 次 capped，且不烧 SDK 请求', () async {
+      final p = _ScriptedProvider([]);
+      AdService.provider = p;
       for (var i = 0; i < 10; i++) {
-        final r = await AdService.show(AdPlacement.parkingUndo, data: data, repo: repo);
-        expect(r.isRewarded, isTrue);
+        final r = await AdService.show(AdPlacement.parkingHint, data: data, repo: repo);
+        expect(r.isRewarded, isTrue, reason: '第 ${i + 1} 次应该成功');
+        tick();
       }
-      expect(AdService.remainingToday(AdPlacement.parkingUndo, data), isNull);
-      expect(AdService.usedToday(AdPlacement.parkingUndo, data), 10);
+      final capped = await AdService.show(AdPlacement.parkingHint, data: data, repo: repo);
+      expect(capped.outcome, AdOutcome.capped);
+      expect(p.showCount, 10);
+      expect(capped.detail, contains('placement daily cap'));
+    });
+
+    test('全局总量到顶后所有广告位都 capped（跨位兜底）', () async {
+      AdService.policy = const AdPolicy(globalDailyCap: 2);
+      final p = _ScriptedProvider([]);
+      AdService.provider = p;
+
+      await AdService.show(AdPlacement.shopDaily, data: data, repo: repo);
+      tick();
+      await AdService.show(AdPlacement.mergeRevive, data: data, repo: repo);
+      tick();
+
+      expect(AdService.usedTodayTotal(data), 2);
+      expect(AdService.remainingGlobalToday(data), 0);
+
+      final r = await AdService.show(AdPlacement.parkingHint, data: data, repo: repo);
+      expect(r.outcome, AdOutcome.capped);
+      expect(r.detail, contains('global'));
+      expect(p.showCount, 2, reason: '全局上限也必须本地拦截');
+    });
+
+    test('总开关关闭时一律 unavailable（审核/活动期可远程停广告）', () async {
+      AdService.policy = const AdPolicy(adsEnabled: false);
+      final p = _ScriptedProvider([]);
+      AdService.provider = p;
+      final r = await AdService.show(AdPlacement.shopDaily, data: data, repo: repo);
+      expect(r.outcome, AdOutcome.unavailable);
+      expect(p.showCount, 0);
     });
 
     test('跨日后次数清零，不需要额外写盘', () async {
       for (var i = 0; i < 3; i++) {
         await AdService.show(AdPlacement.shopDaily, data: data, repo: repo);
+        tick();
       }
       expect(AdService.remainingToday(AdPlacement.shopDaily, data), 0);
 
-      AdService.now = () => DateTime(2026, 10, 23, 0, 5);
+      clock = DateTime(2026, 10, 23, 0, 5);
       expect(AdService.usedToday(AdPlacement.shopDaily, data), 0);
       expect(AdService.remainingToday(AdPlacement.shopDaily, data), 3);
 
       final r = await AdService.show(AdPlacement.shopDaily, data: data, repo: repo);
       expect(r.isRewarded, isTrue);
       expect(data.adDailyCounts, {'shop': 1}, reason: '新的一天应清掉旧计数');
+    });
+  });
+
+  group('冷却（防连点 / 防被判诱导观看）', () {
+    test('冷却期内再点返回 cooldown，且不消耗 SDK 请求与次数', () async {
+      final p = _ScriptedProvider([]);
+      AdService.provider = p;
+      final first = await AdService.show(
+        AdPlacement.parkingHint,
+        data: data,
+        repo: repo,
+      );
+      expect(first.isRewarded, isTrue);
+      expect(p.showCount, 1);
+
+      // 冷却期内立刻再点（真实玩家不会这么快，但连点/脚本会）。
+      final second = await AdService.show(
+        AdPlacement.parkingHint,
+        data: data,
+        repo: repo,
+      );
+      expect(second.outcome, AdOutcome.cooldown);
+      expect(second.userMessage, contains('等几秒'));
+      expect(p.showCount, 1, reason: '冷却必须本地拦截');
+      expect(AdService.usedToday(AdPlacement.parkingHint, data), 1);
+
+      // 冷却结束后恢复。
+      tick(AdPlacement.parkingHint.cooldown.inSeconds + 1);
+      final third = await AdService.show(
+        AdPlacement.parkingHint,
+        data: data,
+        repo: repo,
+      );
+      expect(third.isRewarded, isTrue);
+      expect(p.showCount, 2);
+    });
+
+    test('中途关闭也计入冷却（秒关再点不刷次数）', () async {
+      AdService.provider = _ScriptedProvider([AdResult.skipped]);
+      await AdService.show(AdPlacement.shopDaily, data: data, repo: repo);
+      expect(AdService.cooldownRemaining(AdPlacement.shopDaily), greaterThan(Duration.zero));
+
+      final again = await AdService.show(AdPlacement.shopDaily, data: data, repo: repo);
+      expect(again.outcome, AdOutcome.cooldown);
+    });
+
+    test('不同广告位互不影响（各自的冷却独立）', () async {
+      await AdService.show(AdPlacement.shopDaily, data: data, repo: repo);
+      final other = await AdService.show(
+        AdPlacement.mergeRevive,
+        data: data,
+        repo: repo,
+      );
+      expect(other.isRewarded, isTrue);
+    });
+  });
+
+  group('隐私设置（UMP）', () {
+    test('入口需求状态可读，并且结果缓存不重复打原生', () async {
+      final p = _ScriptedProvider([])..privacyRequired = true;
+      AdService.provider = p;
+
+      expect(await AdService.privacyOptionsRequired(), isTrue);
+      expect(await AdService.privacyOptionsRequired(), isTrue);
+      // 刷新才会重新问。
+      expect(await AdService.privacyOptionsRequired(refresh: true), isTrue);
+    });
+
+    test('地区不要求时返回 false（UI 不弹空表单）', () async {
+      AdService.provider = _ScriptedProvider([]);
+      expect(await AdService.privacyOptionsRequired(refresh: true), isFalse);
+    });
+
+    test('showPrivacyOptions 转发到 provider 并统计调用', () async {
+      final p = _ScriptedProvider([])..privacyRequired = true;
+      AdService.provider = p;
+      expect(await AdService.showPrivacyOptions(), isTrue);
+      expect(p.privacyShowCount, 1);
+    });
+
+    test('provider 抛异常时降级为 false，不冒泡', () async {
+      AdService.provider = _ThrowingProvider();
+      expect(await AdService.showPrivacyOptions(), isFalse);
     });
   });
 
@@ -192,6 +346,7 @@ void main() {
     test('每次请求都记 ad_impression，包含广告位与结果', () async {
       AdService.provider = _ScriptedProvider([AdResult.skipped, AdResult.granted]);
       await AdService.show(AdPlacement.shopDaily, data: data, repo: repo);
+      tick();
       await AdService.show(AdPlacement.shopDaily, data: data, repo: repo);
 
       final events = data.analyticsEvents
@@ -203,6 +358,19 @@ void main() {
       expect(events.first['rewarded'], isFalse);
       expect(events.last['outcome'], 'rewarded');
       expect(events.last['rewarded'], isTrue);
+    });
+
+    test('被本地闸门拦下的请求也记一条（能算出真实需求与上限）', () async {
+      AdService.policy = const AdPolicy(globalDailyCap: 1);
+      await AdService.show(AdPlacement.shopDaily, data: data, repo: repo);
+      tick();
+      await AdService.show(AdPlacement.shopDaily, data: data, repo: repo);
+
+      final outcomes = data.analyticsEvents
+          .where((e) => e['e'] == 'ad_impression')
+          .map((e) => e['outcome'])
+          .toList();
+      expect(outcomes, ['rewarded', 'capped']);
     });
   });
 
@@ -220,6 +388,13 @@ void main() {
       final r = await mock.showRewarded(AdPlacement.shopDaily);
       expect(r.outcome, AdOutcome.failed);
     });
+
+    test('模拟隐私入口：需求标记可读，展示计数可断言', () async {
+      final mock = MockAdProvider(playback: Duration.zero);
+      expect(await mock.privacyOptionsRequired(), isTrue);
+      expect(await mock.showPrivacyOptions(), isTrue);
+      expect(mock.privacyShowCount, 1);
+    });
   });
 }
 
@@ -236,4 +411,11 @@ class _ThrowingProvider extends AdProvider {
   @override
   Future<AdResult> showRewarded(AdPlacement placement) async =>
       throw StateError('boom');
+
+  @override
+  Future<bool> privacyOptionsRequired() async =>
+      throw StateError('boom-privacy');
+
+  @override
+  Future<bool> showPrivacyOptions() async => throw StateError('boom-privacy');
 }

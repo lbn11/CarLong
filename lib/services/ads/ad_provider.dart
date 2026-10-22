@@ -35,5 +35,18 @@ abstract class AdProvider {
   /// 展示激励视频，**等到广告关闭/失败后才返回**。
   Future<AdResult> showRewarded(AdPlacement placement);
 
+  /// 应用内是否**必须**提供「隐私设置」入口。
+  ///
+  /// UMP 的 `PrivacyOptionsRequirementStatus.required` 表示用户必须能随时
+  /// 撤回/修改广告同意，否则欧盟区不合规（可被下架）。为 true 时 UI 的
+  /// 设置里要展示入口；为 false 时入口可以隐藏或显示「当前无需设置」。
+  Future<bool> privacyOptionsRequired() async => false;
+
+  /// 打开隐私设置表单（撤回同意 / 改个性化广告）。返回是否真的弹出过。
+  ///
+  /// 只在 [privacyOptionsRequired] 为 true 时保证有效；UMP 未发消息时
+  /// 会返回 false，调用方据此提示「当前地区无需设置」。
+  Future<bool> showPrivacyOptions() async => false;
+
   Future<void> dispose() async {}
 }

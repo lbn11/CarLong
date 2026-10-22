@@ -8,6 +8,7 @@ import 'game/vehicle_icons.dart';
 import 'game/vehicle_sprites.dart';
 import 'save/save_repository.dart';
 import 'screens/home_screen.dart';
+import 'services/ads/ad_policy.dart';
 import 'services/ads/ad_provider_factory.dart';
 import 'services/ads/ad_service.dart';
 
@@ -36,6 +37,9 @@ Future<void> main() async {
   //   --dart-define=MOCK_ADS=true → 强制 Mock（演示/失败路径回归）
   // 业务侧 5 个广告位全部走 AdService.show()，不需要任何改动。
   AdService.provider = createAdProvider();
+  // 频次策略（单点上限在 AdPlacementMeta，全局总量/总开关在这里）：
+  // --dart-define=AD_GLOBAL_DAILY_CAP=20 收紧总量；=0 或 ADS_DISABLED=true 全关。
+  AdService.policy = AdPolicy.fromEnvironment();
   // 初始化放到首帧之后：
   // 1. AdMob 的 UMP 同意表单（GDPR）需要已挂载的 Activity / ViewController；
   // 2. 冷启动不该被 SDK 的网络请求拖住（原来 await 2s 超时会直接卡白屏）。

@@ -14,6 +14,7 @@ import '../models/vehicle.dart';
 import '../theme/app_theme.dart';
 import '../models/level.dart';
 import '../save/save_repository.dart';
+import '../services/ads/ad_service.dart';
 import '../services/level_data_generator.dart';
 import '../widgets/candy_ui.dart';
 import '../widgets/vehicle_image.dart';
@@ -262,6 +263,46 @@ class _HomeScreenState extends State<HomeScreen>
                     setState(() {});
                   },
                 ),
+                const SizedBox(height: 4),
+                // 隐私设置入口：UMP 的 PrivacyOptionsRequirementStatus.required
+                // 时这里是**必须存在**的（欧盟用户要能随时撤回广告同意）。
+                // 放在设置里而不是首页第 5 个方块：不占首屏权重，但永远可达。
+                InkWell(
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    _openAdPrivacy();
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 4, vertical: 12),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.privacy_tip_rounded,
+                            size: 19, color: AppColors.grape),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('隐私设置与广告偏好',
+                                  style: TextStyle(
+                                      color: AppColors.ink1,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700)),
+                              SizedBox(height: 2),
+                              Text('随时修改或撤回广告同意',
+                                  style: TextStyle(
+                                      color: AppColors.ink3, fontSize: 11.5)),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right_rounded,
+                            color: AppColors.ink3, size: 20),
+                      ],
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 8),
                 CandyButton(
                   label: '完成',
@@ -275,6 +316,42 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ),
       ),
+    );
+  }
+
+  /// 打开隐私设置（UMP）：撤回/修改广告同意。
+  ///
+  /// 三种结果都要说清，别让玩家以为按钮坏了：
+  /// 1. 地区不要求 → 告知「当前地区无需设置」（不弹空表单）；
+  /// 2. 弹出成功 → 静默（表单本身就是反馈）；
+  /// 3. 打不开 → 演示环境说明 / 网络重试提示。
+  Future<void> _openAdPrivacy() async {
+    final required = await AdService.privacyOptionsRequired();
+    if (!mounted) return;
+    if (!required) {
+      CandyDialog.show(
+        context,
+        icon: Icons.privacy_tip_rounded,
+        color: AppColors.sky,
+        title: '当前地区无需设置',
+        message: AdService.usingMock
+            ? '演示环境没有真实广告 SDK，因此这里不会弹表单。上线后该地区要求同意管理时会自动出现。'
+            : '你所在地区不要求广告同意管理，我们目前只请求非个性化广告。',
+        confirmLabel: '知道了',
+      );
+      return;
+    }
+    final shown = await AdService.showPrivacyOptions();
+    if (!mounted || shown) return;
+    CandyDialog.show(
+      context,
+      icon: Icons.info_outline,
+      color: AppColors.ink3,
+      title: '隐私设置暂时打不开',
+      message: AdService.usingMock
+          ? '演示环境：真实 SDK 下这里会打开系统的同意管理表单。'
+          : '请检查网络后重试。广告同意状态没有变化，你的现有设置仍然有效。',
+      confirmLabel: '知道了',
     );
   }
 

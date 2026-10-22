@@ -1,23 +1,29 @@
 # 广告系统接入方案
 
-> 状态：**AdMob 已接入**（发行目标：海外 iOS App Store + Google Play）。
+> 状态：**AdMob 已接入 + 已按海外双端定制**（发行目标：海外 iOS App Store + Google Play）。
 > 服务层 + 真实 provider + 双端平台配置全部落地；平台配置里当前是 **Google 官方
 > 测试 App ID / 测试 unit**，上线前替换 5 个值即可（见 §4.2）。
 > Web / 桌面自动回落 `MockAdProvider`（条件导入隔离，不影响 web 预览构建）。
 >
+> 本轮定制（2026-10-22 晚）：频次治理三道闸（单点上限 + 单点冷却 + 全局日总量）、
+> UMP 隐私设置入口、按广告位拆 unit、预加载接线、无填充静默重试、release mock 守卫。
+>
 > 关联文档：[store_launch_overseas.md](store_launch_overseas.md)（上架与合规清单）、
 > [monetization_design.md](monetization_design.md)（变现总览）、
-> [mobile_build_checklist.md](mobile_build_checklist.md)（编译与签名）。
+> [ad_mediation_eval.md](ad_mediation_eval.md)（聚合评估）、
+> [ad_benchmark_jcross.md](ad_benchmark_jcross.md)（逆向样本拆解）。
 
 ## 1. 现有广告位（全部已接入 AdService）
 
-| 广告位 | `AdPlacement` | 触发点 | 奖励 | 每日上限 |
-|---|---|---|---|---|
-| 商店每日福利 | `shopDaily` | 商店「看广告赚金币」 | +100 🪙 | **3 次**（`GameConfig.dailyAdLimit`） |
-| 合成续命 | `mergeRevive` | 失败结算「看广告续命」 | +30s / +10 步 / 牌堆+2 / 清 3 组 | 每局 1 次（`MergeGame.revivesLeft`） |
-| 合成金币翻倍 | `mergeDouble` | 胜利结算「金币 ×2」 | 本关奖励再发一遍 | 每局 1 次 |
-| 停车广告撤销 | `parkingUndo` | 撤销卡不足时 | 回退 3 步 | 无（见 §6 风险） |
-| 停车广告提示 | `parkingHint` | HUD 提示按钮 | 下一步最优走法 | 无（见 §6 风险） |
+| 广告位 | `AdPlacement` | 触发点 | 奖励 | 每日上限 | 冷却 |
+|---|---|---|---|---|---|
+| 商店每日福利 | `shopDaily` | 商店「看广告赚金币」 | +100 🪙 | **3 次**（`GameConfig.dailyAdLimit`） | 8s |
+| 合成续命 | `mergeRevive` | 失败结算「看广告续命」 | +30s / +10 步 / 牌堆+2 / 清 3 组 | 每局 1 次（`MergeGame.revivesLeft`） | 3s |
+| 合成金币翻倍 | `mergeDouble` | 胜利结算「金币 ×2」 | 本关奖励再发一遍 | 每局 1 次 | 3s |
+| 停车广告撤销 | `parkingUndo` | 撤销卡不足时 | 回退 3 步 | **10 次/日** | 12s |
+| 停车广告提示 | `parkingHint` | HUD 提示按钮 | 下一步最优走法 | **10 次/日** | 12s |
+
+另有**全局 30 条/日**的总量闸门（跨广告位，见 §2.4）。
 
 **设计红线（沿用既有产品决定）**：广告只做「降难支援」和「增益」，不做通行证 ——
 广告挑战关不看不影响通关，失败续命是官方后路而不是收费墙。
@@ -26,13 +32,15 @@
 
 ```
 lib/services/ads/
-├── ad_types.dart          AdPlacement（5 个广告位 + 元数据）、AdOutcome、AdResult
-├── ad_provider.dart       AdProvider 抽象：initialize / preload / showRewarded / dispose
-├── ad_provider_factory.dart 按平台选 provider（唯一分支点）
-├── mock_ad_provider.dart  模拟实现（Web / MOCK_ADS / 测试）
-├── ad_service.dart        发奖闸门 + 每日上限 + 跨日清零 + 埋点 + 降级
+├── ad_types.dart          AdPlacement（5 个位 + 元数据：上限/冷却/unit 后缀）、AdOutcome、AdResult
+├── ad_policy.dart         全局策略：跨位日总量、总开关、--dart-define 覆盖
+├── ad_provider.dart       AdProvider 抽象：initialize / preload / showRewarded /
+│                          privacyOptionsRequired / showPrivacyOptions / dispose
+├── ad_provider_factory.dart 按平台选 provider（唯一分支点）+ release mock 守卫
+├── mock_ad_provider.dart  模拟实现（Web / MOCK_ADS / 测试），含模拟隐私表单
+├── ad_service.dart        发奖闸门 + 三道频次闸 + 隐私入口 + 埋点 + 降级
 └── admob/
-    ├── admob_config.dart              unit ID / 合规开关 / 官方测试 ID
+    ├── admob_config.dart              unit ID（可逐位配）/ 合规开关 / 官方测试 ID
     ├── admob_ad_provider.dart         唯一入口（条件导入）
     ├── admob_ad_provider_io.dart      Android/iOS 真实实现（ATT → UMP → SDK）
     └── admob_ad_provider_stub.dart    Web/桌面占位（永远 unavailable）
@@ -50,9 +58,10 @@ lib/services/ads/
 | `failed` | 拉取失败 / 超时 / 无填充 | 「广告暂时没加载出来，稍后再试」 |
 | `unavailable` | SDK 未初始化 / 家长控制 / 青少年模式 | 「当前环境暂时无法播放广告」 |
 | `capped` | 本地每日上限拦截（不烧 SDK 请求） | 「今天的次数已经用完啦」 |
+| `cooldown` | 距上次展示太近（同样本地拦截） | 「刚看过一条广告，等几秒再来」 |
 
-`test/ad_service_test.dart` 用 15 条用例锁死这些路径，其中最关键的是
-「skipped/failed 计数不增加」「capped 不再调用 SDK」「provider 抛异常只降级成 failed」。
+`test/ad_service_test.dart` 用 24 条用例锁死这些路径，其中最关键的是
+「skipped/failed 计数不增加」「capped/cooldown 不再调用 SDK」「provider 抛异常只降级成 failed」。
 
 ### 2.2 计数与存档
 
@@ -65,7 +74,53 @@ lib/services/ads/
 
 每次请求都记 `ad_impression`（placement / outcome / rewarded / detail），发奖额外记
 `ad_watch`（reward）。**两个一起看才能算漏斗**：只看 `ad_watch` 会把「广告没加载出来」
-误判成「玩家不想看」。上线前建议把这两个事件接到第三方（Firebase / 神策 / TalkingData）。
+误判成「玩家不想看」。被本地闸门拦下的请求（`capped` / `cooldown`）同样会记一条——
+这才能看出「想看的量」和「被上限挡住的比例」。
+
+### 2.4 频次治理：三道闸（本轮定制核心）
+
+一个玩家一天最多能看到多少条广告，由三层共同决定，**全部本地拦截、不烧 SDK 请求**：
+
+| 闸门 | 位置 | 默认 | 作用 |
+|---|---|---|---|
+| 单点每日上限 | `AdPlacementMeta.dailyCap` | 商店 3 / 停车各 10 / 续命翻倍 null | 防单点刷 |
+| 单点冷却 | `AdPlacementMeta.cooldown` | 3-12s | 防连点，也避免「秒关再点」把展示次数刷成无效流量 |
+| 全局日总量 | `AdPolicy.globalDailyCap` | **30 条** | 跨位兜底。五道单点上限相加约 33，接近渠道「诱导观看」的风控线 |
+
+为什么之前单点上限不够：5 个位各自封顶后，理论上一天仍是 3+5+5+10+10 ≈ 33 条。
+真实广告 15-30 秒一条，33 条 ≈ 每天 10-15 分钟纯广告，这个量级在新账号上很容易
+被 AdMob 判定异常。加上全局 30 条后，最坏情况也可控。
+
+`AdPolicy.adsEnabled = false`（或 `--dart-define=ADS_DISABLED=true`）可整体停广告，
+审核期/活动期不需要发版。
+
+### 2.5 隐私设置入口（合规硬门槛）
+
+UMP 的 `PrivacyOptionsRequirementStatus.required` 表示**必须**在 App 内提供
+随时可撤回广告同意的入口。缺失在欧盟区属于明确不合规（可被拒审/下架）。
+
+- `AdProvider.privacyOptionsRequired()` / `showPrivacyOptions()` 收在 provider 层，
+  UI 不认识 SDK；
+- AdMob 实现走 `ConsentInformation.getPrivacyOptionsRequirementStatus()` +
+  `ConsentForm.showPrivacyOptionsForm()`，表单关闭后重读 `canRequestAds()`
+  （玩家撤回同意后，`show()` 会自然降级成 `unavailable`）；
+- 入口位置：**首页右上角设置弹窗**里的「隐私设置与广告偏好」。不占首屏权重，但永远可达；
+- 不要求时给一句「当前地区无需设置」，不留点了没反应的按钮。
+
+> 坑：**不要**在表单关闭回调里判断 `required` 然后递归再弹一次——`required`
+> 的意思是「需要一个入口」，不是「需要再弹一次表单」，那样会死循环。
+
+入口实拍：`docs/preview/ad_settings.png`（首页右上角设置 → 隐私设置与广告偏好）。
+
+### 2.6 加载体验（预加载 + 静默重试）
+
+| 手段 | 位置 | 效果 |
+|---|---|---|
+| 进页预加载 | 商店 / 合成 / 停车 三屏 `initState` | 把「点广告 → 起播」的 2-5 秒等待压到 0 |
+| 展示后补拉 | `AdMobAdProvider.preload` | 连看两条不用重新等 |
+| 无填充静默重试 | `AdMobAdProvider._take` | 600ms 后重拉一次，吃掉 adapter 刚 init / 网络切换导致的瞬时 no-fill |
+
+预加载失败不提示、不阻塞：真的点了会再拉一次。
 
 ## 3. 渠道决策：AdMob（已定，2026-10-22）
 
@@ -94,9 +149,15 @@ lib/services/ads/
 | provider 选择 | `ad_provider_factory.dart` | Web/桌面 → Mock；`MOCK_ADS=true` → Mock；移动端 → AdMob |
 | 启动时机 | `main.dart` | 首帧后 `postFrameCallback` 初始化（UMP 表单需已挂载 Activity；不再阻塞冷启动） |
 | 初始化去重 | `ad_service.dart` | 缓存 `Future<bool>`（并发点击只初始化一次） |
+| 频次治理 | `ad_types.dart` / `ad_policy.dart` | 单点上限 + 单点冷却 + 全局 30 条/日，全部本地拦截 |
+| 隐私设置入口 | `home_screen.dart` + `admob_ad_provider_io.dart` | 设置弹窗入口；provider 转发 UMP 表单，撤回后自动降级 |
+| 预加载 | `shop_screen` / `game_screen` / `parking_screen` | 进页即拉，点下去直接起播 |
+| 逐位 unit | `admob_config.dart` | `ADMOB_{ANDROID,IOS}_UNIT_<SHOP\|REVIVE\|DOUBLE\|UNDO\|HINT>` |
+| mock 守卫 | `ad_provider_factory.dart` | release 包里若仍是 mock，启动横幅式告警日志 |
 | Android | `AndroidManifest.xml` | `INTERNET` + `AD_ID` 权限、`APPLICATION_ID` meta-data、延迟初始化开关 |
 | iOS | `Info.plist` / `Podfile` | `GADApplicationIdentifier`、ATT 文案、`SKAdNetworkItems`、iOS 13.0 |
 | 测试 | `test/admob_config_test.dart` | 10 条：unit 合法性、平台区分、生产/回落、合规开关默认值、并发初始化只跑一次 |
+| 测试 | `test/ad_service_test.dart` / `test/ad_privacy_ui_test.dart` | 24 条：发奖闸门 / 三道频次闸 / 隐私入口 / 埋点；2 条 widget 级入口验证 |
 
 ### 4.2 上线前必须做的（代码之外）
 
@@ -104,7 +165,7 @@ lib/services/ads/
 |---|---|---|---|
 | 1 | 换 Android 正式 App ID | `AndroidManifest.xml` | 用测试 ID 无收入；改错 ID 启动即崩 |
 | 2 | 换 iOS 正式 App ID | `Info.plist` | 同上 |
-| 3 | 换 unit ID | `--dart-define=ADMOB_ANDROID_UNIT` / `ADMOB_IOS_UNIT` | 测试 unit 永远不计费 |
+| 3 | 换 unit ID | 逐位 `--dart-define=ADMOB_ANDROID_UNIT_SHOP=...`（也可用 `ADMOB_ANDROID_UNIT` 一位通吃） | 测试 unit 永远不计费 |
 | 4 | AdMob 后台发 UMP 消息（GDPR + IDFA） | AdMob → Privacy & messaging | 欧盟不弹同意表单 = 违规 |
 | 5 | 部署 `app-ads.txt` | 开发者域名根目录 | 广告库存被劫持，收入流失 |
 | 6 | 补全 `SKAdNetworkItems` | `Info.plist` | 目前只有 Google 自家一条，中介渠道归因缺失 |
@@ -128,9 +189,10 @@ lib/services/ads/
 每日挑战 150、停车每关 20+10×星）。接真实广告后**不建议提高**这个数：广告收入按
 展示计费，金币是成本，300/日已经足够让玩家每天回来一次，再多会让宝箱（150）失去意义。
 
-停车提示/撤销目前**不限次数**，属于放量口子：单个玩家理论上一天能看几十条，
+停车提示/撤销原本**不限次数**，属于放量口子：单个玩家理论上一天能看几十条，
 eCPM 好看但玩家体验会崩（每一步都在看广告），也容易被渠道判定「诱导观看」。
-建议接入时加软上限：提示 10 次/日、撤销 10 次/日（改 `AdPlacement.meta.dailyCap` 一处即可）。
+**本轮已收口**：各 10 次/日 + 12 秒冷却 + 全局 30 条/日；弹窗里直接显示
+「今日还剩 N 次」，次数用完按钮置灰（比点下去才被拒更体面）。
 
 ### 5.2 体验红线
 
@@ -156,15 +218,18 @@ eCPM 好看但玩家体验会崩（每一步都在看广告），也容易被渠
 | **P2** | 替换正式 App ID / unit、AdMob 后台配 UMP、app-ads.txt | ⏳ 需账号与后台操作 |
 | **P3** | 隐私政策、PrivacyInfo.xcprivacy、商店素材、Data safety / App Privacy | ⏳ 见 store_launch_overseas.md |
 | **P4** | 真机跑 5 个位 + 4 条失败路径、提审 | ⏳ 需真机与商店账号 |
-| **P5** | 第三方埋点看板、停车提示/撤销软上限、聚合比价、IAP | 待排 |
+| **P5** | 频次治理（三道闸）+ 隐私设置入口 + 预加载 + 逐位 unit + mock 守卫 | ✅ 本轮完成 |
+| **P6** | 第三方埋点看板、聚合比价、IAP | 待排 |
 
-## 7. 待办（本轮未做）
+## 7. 待办
 
-- [ ] 停车提示 / 撤销加每日软上限（建议各 10 次/日，改 `dailyCap` 一处）
-- [ ] `MockAdProvider` 的 release 守卫：release 包若是 mock 应打警告日志
+- [x] 停车提示 / 撤销每日 10 次 + 12s 冷却（`AdPlacementMeta` 一处配置）
+- [x] `MockAdProvider` 的 release 守卫（release 包打横幅告警日志）
+- [x] App 内「隐私设置」入口（`showPrivacyOptionsForm`，仅 required 时显示）
+- [x] 全局日总量闸门（30 条/日，`AdPolicy` 可 `--dart-define` 覆盖）
+- [x] 进页预加载 + 无填充静默重试
 - [ ] 补全 `SKAdNetworkItems`（当前只有 Google 自家一条，需从 AdMob 后台复制）
 - [ ] `PrivacyInfo.xcprivacy` 主工程声明（tracking + 访问 API 类型）
-- [ ] App 内「广告隐私设置」入口（`ConsentForm.showPrivacyOptionsForm`，仅 required 时显示）
 - [ ] 插屏广告位（是否要在关卡间插入，需产品决策）
 - [ ] 未成年人模式：`AdProvider` 层直接返回 `unavailable`（需要先有年龄/家长开关）
 - [ ] IAP（金币礼包仍是模拟实现，见 monetization_design.md §2）

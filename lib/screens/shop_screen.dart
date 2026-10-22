@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -43,6 +44,14 @@ class _ShopScreenState extends State<ShopScreen> {
 
   /// 广告请求进行中（防连点重复请求 SDK）。
   bool _adLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 商店福利是唯一「进页面就打算点」的广告位：进页先拉好，
+    // 点下去直接起播，不用等 2-5 秒加载。
+    unawaited(AdService.preload(AdPlacement.shopDaily));
+  }
 
   /// 道具身份色统一走 AppColors 糖果色板（替换原先零散的 Material 500/600 色）。
   static const _boosterMeta = <String, ({String name, IconData icon, Color color, bool parkingOnly})>{
@@ -110,9 +119,16 @@ class _ShopScreenState extends State<ShopScreen> {
     ),
   };
 
-  /// 今日剩余广告次数（跨日重置，计数与上限都归 AdService 管）。
-  int get _adLeftToday =>
-      AdService.remainingToday(AdPlacement.shopDaily, data) ?? 0;
+  /// 今日剩余广告次数。
+  ///
+  /// 取「本位剩余」与「全局剩余」的较小值：单点 3 次还没用完、但全站
+  /// 30 条已经看满时，按钮必须同步变灰，否则点下去才弹上限提示。
+  int get _adLeftToday {
+    final placementLeft =
+        AdService.remainingToday(AdPlacement.shopDaily, data) ?? 0;
+    final globalLeft = AdService.remainingGlobalToday(data);
+    return placementLeft < globalLeft ? placementLeft : globalLeft;
+  }
 
   /// 激励广告：必须等到 AdService 返回「看完」才发奖。
   ///

@@ -118,6 +118,11 @@ class _GameScreenState extends State<GameScreen> {
     AudioFeedback.globalVibrateOn = widget.data.vibrateOn;
     _analytics = AnalyticsService(widget.data, widget.repo);
     _analytics.levelStart(widget.level);
+    // 广告预加载：结算页的「续命 / 金币×2」是玩家最可能点的两个位。
+    // 一进关就拉，等到真的失败时广告已经在内存里，点下去直接起播。
+    unawaited(AdService.preloadAll(
+      const [AdPlacement.mergeRevive, AdPlacement.mergeDouble],
+    ));
     _applyBoosters();
     // 清道夫关开局教学：胜利条件与"顶级车升空"机制一句话讲清。
     if (widget.level.goalType == GoalType.clearBoard) {

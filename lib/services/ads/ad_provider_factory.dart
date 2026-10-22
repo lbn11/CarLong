@@ -22,11 +22,22 @@ const bool kForceMockAds = bool.fromEnvironment('MOCK_ADS');
 /// 接其他渠道（AppLovin MAX / ironSource 聚合）时在这里加一个分支即可，
 /// 5 个广告位的业务代码一行都不用改。
 AdProvider createAdProvider({AdMobConfig? config}) {
-  if (kIsWeb || kForceMockAds) {
-    // Web 预览不真播，直接返回发奖，截图/自动化测试不用等 0.7 秒。
+  if (kForceMockAds) {
+    // 发布包里出现 mock = 这个包一条广告收入都没有。
+    // 不直接抛异常（会把演示包砸掉），但要在日志里喊出来，别静默发出去。
+    if (kReleaseMode) {
+      debugPrint('================ ADS: MOCK PROVIDER IN RELEASE BUILD ================');
+      debugPrint('构建时带了 --dart-define=MOCK_ADS=true，全部广告位都在模拟播放。');
+      debugPrint('这是给渠道/审核演示用的包，**不能用于上架**。');
+      debugPrint('==================================================================');
+    }
     return MockAdProvider(
       playback: kIsWeb ? Duration.zero : const Duration(milliseconds: 700),
     );
+  }
+  if (kIsWeb) {
+    // Web 预览不真播，直接返回发奖，截图/自动化测试不用等 0.7 秒。
+    return MockAdProvider(playback: Duration.zero);
   }
   return createAdMobProvider(config: config);
 }

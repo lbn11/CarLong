@@ -121,6 +121,17 @@ class _ParkingScreenState extends State<ParkingScreen>
     return false;
   }
 
+  /// 广告位剩余次数说明（不设上限的位只返回原文案）。
+  ///
+  /// 玩家看得见「今天还剩几次」，才不会觉得看广告是无限抽税；
+  /// 次数用完时按钮直接置灰，比点下去再弹「今天没了」更体面。
+  String _adNote(AdPlacement placement, String base) {
+    final left = AdService.remainingToday(placement, widget.data);
+    if (left == null) return base;
+    if (left <= 0) return '今天的广告次数已经用完啦，明天再来～';
+    return '$base\n今日还剩 $left 次';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -135,6 +146,11 @@ class _ParkingScreenState extends State<ParkingScreen>
     // 同步全局振动开关，供 Pressable 等 UI 层触感入口使用。
     AudioFeedback.globalVibrateOn = widget.data.vibrateOn;
     unawaited(_audio.load());
+    // 广告预加载：撤销/提示都是「卡住了才点」的救急位，等点了再拉会有
+    // 2-5 秒空转，玩家会以为按钮没反应。一进关就先把两条拉好。
+    unawaited(AdService.preloadAll(
+      const [AdPlacement.parkingUndo, AdPlacement.parkingHint],
+    ));
     // 目标车位幽灵车呼吸脉冲。
     _ghostTimer = Timer.periodic(const Duration(milliseconds: 900), (_) {
       if (mounted) setState(() => _ghostPulse = !_ghostPulse);
@@ -456,16 +472,18 @@ class _ParkingScreenState extends State<ParkingScreen>
       return;
     }
     // 无撤销卡：看广告回退 3 步（模拟广告，接 SDK 后替换为真实播放）。
+    final adLeft = AdService.remainingToday(AdPlacement.parkingUndo, widget.data);
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surfaceLight,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('🧯 撤销卡不足', textAlign: TextAlign.center),
-        content: const Text(
-          '看一条广告，立即回退 3 步。',
+        content: Text(
+          _adNote(AdPlacement.parkingUndo, '看一条广告，立即回退 3 步。'),
           textAlign: TextAlign.center,
-          style: TextStyle(color: AppColors.ink2, fontSize: 14),
+          style: const TextStyle(
+              color: AppColors.ink2, fontSize: 14, height: 1.4),
         ),
         actions: [
           TextButton(
@@ -473,16 +491,18 @@ class _ParkingScreenState extends State<ParkingScreen>
             child: const Text('取消'),
           ),
           FilledButton.icon(
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              if (!_game.canUndo) return;
-              if (!await _runRewardedAd(AdPlacement.parkingUndo)) return;
-              if (!mounted || _game.hasWon || _game.hasLost) return;
-              _analytics.toolUse('ad_undo', 0, widget.data.coins);
-              final n = _game.undoMoves(3);
-              _audio.play(Sfx.undo);
-              _showToast('🎬 广告撤销 · 回退 $n 步');
-            },
+            onPressed: adLeft != null && adLeft <= 0
+                ? null
+                : () async {
+                    Navigator.of(ctx).pop();
+                    if (!_game.canUndo) return;
+                    if (!await _runRewardedAd(AdPlacement.parkingUndo)) return;
+                    if (!mounted || _game.hasWon || _game.hasLost) return;
+                    _analytics.toolUse('ad_undo', 0, widget.data.coins);
+                    final n = _game.undoMoves(3);
+                    _audio.play(Sfx.undo);
+                    _showToast('🎬 广告撤销 · 回退 $n 步');
+                  },
             icon: const Icon(Icons.play_circle_fill),
             label: const Text('🎬 看广告'),
             style: FilledButton.styleFrom(
@@ -498,16 +518,18 @@ class _ParkingScreenState extends State<ParkingScreen>
   /// 提示：每次都需看广告解锁。
   void _requestHint() {
     if (_game.hasWon || _game.hasLost) return;
+    final adLeft = AdService.remainingToday(AdPlacement.parkingHint, widget.data);
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surfaceLight,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('💡 获取提示', textAlign: TextAlign.center),
-        content: const Text(
-          '看一条广告，解锁下一步最优走法。',
+        content: Text(
+          _adNote(AdPlacement.parkingHint, '看一条广告，解锁下一步最优走法。'),
           textAlign: TextAlign.center,
-          style: TextStyle(color: AppColors.ink2, fontSize: 14),
+          style: const TextStyle(
+              color: AppColors.ink2, fontSize: 14, height: 1.4),
         ),
         actions: [
           TextButton(
@@ -515,13 +537,15 @@ class _ParkingScreenState extends State<ParkingScreen>
             child: const Text('取消'),
           ),
           FilledButton.icon(
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              if (!await _runRewardedAd(AdPlacement.parkingHint)) return;
-              if (!mounted || _game.hasWon || _game.hasLost) return;
-              _analytics.toolUse('ad_hint', 0, widget.data.coins);
-              _applyHint();
-            },
+            onPressed: adLeft != null && adLeft <= 0
+                ? null
+                : () async {
+                    Navigator.of(ctx).pop();
+                    if (!await _runRewardedAd(AdPlacement.parkingHint)) return;
+                    if (!mounted || _game.hasWon || _game.hasLost) return;
+                    _analytics.toolUse('ad_hint', 0, widget.data.coins);
+                    _applyHint();
+                  },
             icon: const Icon(Icons.play_circle_fill),
             label: const Text('🎬 看广告'),
             style: FilledButton.styleFrom(
