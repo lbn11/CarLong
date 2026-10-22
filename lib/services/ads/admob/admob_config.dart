@@ -139,11 +139,23 @@ class AdMobConfig {
   }
 
   /// 是否仍在用测试 unit（用来在 UI / 日志里提示「演示广告」）。
+  ///
+  /// 判据是**生效值**，不是「填没填」：只要有一个广告位在某平台上最终落到
+  /// 官方测试 unit（包括「Android 填了真 ID、iOS 留空」这种半配置），就认为
+  /// 整个包处于测试库存状态。之前用 `every()` 判会漏掉这种半配置——那种包
+  /// 看起来是「正式广告」，实际半个平台的收入是 0。
   bool get usesTestUnits {
-    final ids = [...androidUnitIds.values, ...iosUnitIds.values];
-    if (ids.isEmpty) return true;
-    return ids.every((id) => id.startsWith('ca-app-pub-3940256099942544/'));
+    for (final placement in AdPlacement.values) {
+      for (final isIOS in const [false, true]) {
+        if (unitIdFor(placement, isIOS: isIOS).startsWith(_testUnitPrefix)) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
+
+  static const String _testUnitPrefix = 'ca-app-pub-3940256099942544/';
 
   /// App ID 是否仍是测试值（写进平台配置后由 CI/脚本核对）。
   static bool isTestAppId(String appId) =>

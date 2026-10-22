@@ -8,6 +8,7 @@ import 'game/vehicle_icons.dart';
 import 'game/vehicle_sprites.dart';
 import 'save/save_repository.dart';
 import 'screens/home_screen.dart';
+import 'services/ads/ad_diagnostics.dart';
 import 'services/ads/ad_policy.dart';
 import 'services/ads/ad_provider_factory.dart';
 import 'services/ads/ad_service.dart';
@@ -46,7 +47,17 @@ Future<void> main() async {
   // 玩家在 SDK 就绪前点了广告位也没关系——AdService.show() 会 await 同一个
   // 初始化 future，UI 侧本来就有加载态。
   WidgetsBinding.instance.addPostFrameCallback((_) {
-    unawaited(AdService.initialize());
+    unawaited(() async {
+      final ok = await AdService.initialize();
+      // 启动日志一行，回答「这个包里放的到底是不是真广告」。
+      // 三个状态：演示通道 / 测试广告（真 SDK·零收入）/ 正式广告。
+      debugPrint(AdDiagnostics.logLine(
+        provider: AdService.providerName,
+        isMock: AdService.usingMock,
+        testInventory: AdService.usingTestInventory,
+        initialized: ok,
+      ));
+    }());
   });
   runApp(MergeGameApp(data: data, repo: repo));
 }

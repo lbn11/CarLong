@@ -14,6 +14,7 @@ import '../models/vehicle.dart';
 import '../theme/app_theme.dart';
 import '../models/level.dart';
 import '../save/save_repository.dart';
+import '../services/ads/ad_diagnostics.dart';
 import '../services/ads/ad_service.dart';
 import '../services/level_data_generator.dart';
 import '../widgets/candy_ui.dart';
@@ -303,6 +304,10 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                   ),
                 ),
+                if (AdDiagnostics.enabled) ...[
+                  const SizedBox(height: 10),
+                  _buildAdDiagBlock(data),
+                ],
                 const SizedBox(height: 8),
                 CandyButton(
                   label: '完成',
@@ -315,6 +320,79 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// 广告自检块（debug / profile 默认显示，release 隐藏）。
+  ///
+  /// 唯一用途是回答「现在这条广告到底是不是真的」：真机上打开设置就能确认，
+  /// 不用连调试器、也不用猜日志。三种状态用一句话说清（见 [AdDiagnostics]）。
+  Widget _buildAdDiagBlock(PlayerData data) {
+    final rows = AdService.diagnose(data);
+    final warn = rows.any((r) => r.level == AdDiagLevel.warn);
+    final tone = warn ? AppColors.coral : AppColors.mint;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 9),
+      decoration: BoxDecoration(
+        color: tone.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: tone.withValues(alpha: 0.26)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.science_rounded, size: 13, color: tone),
+              const SizedBox(width: 5),
+              Text(
+                '广告自检（开发版可见）',
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                  color: tone,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          for (final row in rows)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 46,
+                    child: Text(
+                      row.label,
+                      style: const TextStyle(
+                        fontSize: 10.5,
+                        color: AppColors.ink3,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      row.value,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        height: 1.25,
+                        fontWeight: row.level == AdDiagLevel.warn
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        color: row.level == AdDiagLevel.warn
+                            ? tone
+                            : AppColors.ink2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }

@@ -122,6 +122,46 @@ UMP 的 `PrivacyOptionsRequirementStatus.required` 表示**必须**在 App 内�
 
 预加载失败不提示、不阻塞：真的点了会再拉一次。
 
+### 2.7 广告真实性：三态与上架闸门
+
+「接了广告」不等于「在赚钱」。这块最容易出的问题不是崩溃，而是**以为在放真广告、
+其实在放测试广告**——画面正常、日志正常、收入恒为 0。所以把「真实性」做成了一等公民：
+
+| 状态 | `isMock` | `usesTestInventory` | 有画面 | 有收入 | 可上架 |
+|---|---|---|---|---|---|
+| 演示通道 | true | — | 否 | 否 | **否** |
+| 测试广告 | false | true | **是** | 否 | **否** |
+| 正式广告 | false | false | 是 | 是 | 是 |
+
+三处可见：
+
+1. **App 内自检**（`ad_diagnostics.dart`）：首页设置弹窗底部一块「广告自检」，
+   显示通道状态 / SDK 状态 / 今日总量 / 各广告位剩余。debug·profile 默认显示，
+   release 隐藏（`--dart-define=ADS_DIAGNOSTICS=true` 可给 QA 包打开）。
+2. **启动日志**：`[ads] 测试广告 · 真 SDK，测试 unit，零收入（admob） · 初始化成功`。
+3. **提审前静态闸门**：`python3 tool/check_ads_release.py`
+
+```
+AdMob 上架自检
+────────────────────────────────────────────
+❌ Android APPLICATION_ID        仍是 Google 测试 App ID（ca-app-pub-3940256…）
+✅ Android AD_ID 权限            已声明
+❌ iOS GADApplicationIdentifier  仍是 Google 测试 App ID（ca-app-pub-3940256…）
+✅ ATT 文案                      允许跟踪可帮助我们…
+⚠️  SKAdNetworkItems            只有 1 条，需从 AdMob 后台补全完整 partner 列表
+✅ iPhone 方向                   仅竖屏
+✅ 隐私清单 · 跟踪声明            NSPrivacyTracking = true
+────────────────────────────────────────────
+通过 7 · 警告 2 · 失败 2
+```
+
+**为什么必须是静态检查**：这三种错误单元测试都发现不了（测试里 mock 永远成功），
+只能靠发版前读平台配置文件。加 `--strict` 时 WARN 也算失败，提审前跑这一档。
+
+`usesTestUnits` 判的是**生效值**：5 个位 × 双端共 10 个 unit，只要有一个落到
+官方测试 unit（含「Android 填了、iOS 留空」这种半配置）就整体判成测试库存。
+用 `every()` 判会漏掉半配置——那种包看着配好了，实际半个平台收入是 0。
+
 ## 3. 渠道决策：AdMob（已定，2026-10-22）
 
 发行目标确定是**海外 iOS App Store + Google Play**，渠道随之锁定 AdMob：
@@ -144,7 +184,7 @@ UMP 的 `PrivacyOptionsRequirementStatus.required` 表示**必须**在 App 内�
 |---|---|---|
 | SDK 依赖 | `pubspec.yaml` | `google_mobile_ads ^5.1.0`、`app_tracking_transparency ^2.0.7` |
 | 真实 provider | `admob/admob_ad_provider_io.dart` | 拉取 / 展示 / 补拉 / 超时回收 / 异常降级 |
-| 合规顺序 | 同上 `initialize()` | iOS 先 ATT 再 UMP；`canRequestAds == false` 时整个 provider 拒绝请求 |
+| 合规顺序 | 同上 `initialize()` | **先 UMP 同意、再 iOS ATT**；`canRequestAds == false` 时整个 provider 拒绝请求（ATT 也不弹） |
 | 平台隔离 | `admob/admob_ad_provider.dart` | 条件导入，Web 构建不会拖入 SDK（已验证 `flutter build web` 通过） |
 | provider 选择 | `ad_provider_factory.dart` | Web/桌面 → Mock；`MOCK_ADS=true` → Mock；移动端 → AdMob |
 | 启动时机 | `main.dart` | 首帧后 `postFrameCallback` 初始化（UMP 表单需已挂载 Activity；不再阻塞冷启动） |
@@ -154,10 +194,15 @@ UMP 的 `PrivacyOptionsRequirementStatus.required` 表示**必须**在 App 内�
 | 预加载 | `shop_screen` / `game_screen` / `parking_screen` | 进页即拉，点下去直接起播 |
 | 逐位 unit | `admob_config.dart` | `ADMOB_{ANDROID,IOS}_UNIT_<SHOP\|REVIVE\|DOUBLE\|UNDO\|HINT>` |
 | mock 守卫 | `ad_provider_factory.dart` | release 包里若仍是 mock，启动横幅式告警日志 |
+| 真实性三态 | `ad_diagnostics.dart` | 演示 / 测试库存 / 正式三态；App 内自检面板 + 启动日志 |
+| 上架闸门 | `tool/check_ads_release.py` | 测试 App ID / 测试 unit / 隐私清单 / SKAdNetwork 一次查完，FAIL 退出码 1 |
+| iOS 隐私清单 | `ios/Runner/PrivacyInfo.xcprivacy` | NSPrivacyTracking + 3 类采集 + 4 类必需原因 API，已加进 Runner target |
+| iOS 竖屏 | `Info.plist` | 只声明 portrait（配合代码里的 `setPreferredOrientations`），iPad 走 `UIRequiresFullScreen` |
 | Android | `AndroidManifest.xml` | `INTERNET` + `AD_ID` 权限、`APPLICATION_ID` meta-data、延迟初始化开关 |
 | iOS | `Info.plist` / `Podfile` | `GADApplicationIdentifier`、ATT 文案、`SKAdNetworkItems`、iOS 13.0 |
-| 测试 | `test/admob_config_test.dart` | 10 条：unit 合法性、平台区分、生产/回落、合规开关默认值、并发初始化只跑一次 |
+| 测试 | `test/admob_config_test.dart` | 16 条：unit 合法性、平台区分、生产/回落、半配置判定、并发初始化只跑一次 |
 | 测试 | `test/ad_service_test.dart` / `test/ad_privacy_ui_test.dart` | 24 条：发奖闸门 / 三道频次闸 / 隐私入口 / 埋点；2 条 widget 级入口验证 |
+| 测试 | `test/ad_diagnostics_test.dart` | 12 条：三态文案 / 额度文案 / 诊断只读 / 与 mock 区分 |
 
 ### 4.2 上线前必须做的（代码之外）
 
@@ -169,8 +214,11 @@ UMP 的 `PrivacyOptionsRequirementStatus.required` 表示**必须**在 App 内�
 | 4 | AdMob 后台发 UMP 消息（GDPR + IDFA） | AdMob → Privacy & messaging | 欧盟不弹同意表单 = 违规 |
 | 5 | 部署 `app-ads.txt` | 开发者域名根目录 | 广告库存被劫持，收入流失 |
 | 6 | 补全 `SKAdNetworkItems` | `Info.plist` | 目前只有 Google 自家一条，中介渠道归因缺失 |
-| 7 | 隐私清单 `PrivacyInfo.xcprivacy` | `ios/Runner/` | iOS 17+ 缺项会被拒 |
-| 8 | 隐私政策 URL | 商店列表 + App 内入口 | 双端都拒 |
+| 7 | 隐私政策 URL | 商店列表 + App 内入口 | 双端都拒 |
+| 8 | 跑一遍 `python3 tool/check_ads_release.py --strict` | 仓库根目录 | 测试 App ID / 测试 unit 会被打进包，收入恒为 0 且查不出来 |
+
+> 隐私清单 `ios/Runner/PrivacyInfo.xcprivacy` 已落地并加入 Runner target，
+> iPhone/iPad 竖屏也已与代码对齐，这两项不用再手动做，闸门会一起校验。
 
 完整步骤见 [store_launch_overseas.md](store_launch_overseas.md)。
 
@@ -228,8 +276,12 @@ eCPM 好看但玩家体验会崩（每一步都在看广告），也容易被渠
 - [x] App 内「隐私设置」入口（`showPrivacyOptionsForm`，仅 required 时显示）
 - [x] 全局日总量闸门（30 条/日，`AdPolicy` 可 `--dart-define` 覆盖）
 - [x] 进页预加载 + 无填充静默重试
+- [x] `PrivacyInfo.xcprivacy` 主工程声明（tracking + 3 类采集 + 4 类访问 API，已进 Runner target）
+- [x] 广告真实性三态 + App 内自检面板 + 启动日志
+- [x] 上架静态闸门 `tool/check_ads_release.py`
+- [x] 同意顺序修正为「UMP → ATT」（原来是 ATT 先弹）
+- [x] iPhone/iPad 只声明竖屏（与代码的 `setPreferredOrientations` 一致）
 - [ ] 补全 `SKAdNetworkItems`（当前只有 Google 自家一条，需从 AdMob 后台复制）
-- [ ] `PrivacyInfo.xcprivacy` 主工程声明（tracking + 访问 API 类型）
 - [ ] 插屏广告位（是否要在关卡间插入，需产品决策）
 - [ ] 未成年人模式：`AdProvider` 层直接返回 `unavailable`（需要先有年龄/家长开关）
 - [ ] IAP（金币礼包仍是模拟实现，见 monetization_design.md §2）

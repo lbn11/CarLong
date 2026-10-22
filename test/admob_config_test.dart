@@ -142,4 +142,58 @@ void main() {
       expect(second.initCount, 1);
     });
   });
+
+  group('测试库存判定（决定「这个包能不能上架」）', () {
+    test('全测试配置 → usesTestUnits 为 true', () {
+      expect(AdMobConfig.test.usesTestUnits, isTrue);
+    });
+
+    test('生产配置（5 位双端全真 ID）→ false', () {
+      final config = AdMobConfig.production(
+        androidUnitId: 'ca-app-pub-9999999999999999/1111111111',
+        iosUnitId: 'ca-app-pub-9999999999999999/2222222222',
+      );
+      expect(config.usesTestUnits, isFalse);
+    });
+
+    test('半配置（只填 Android，iOS 回落测试 unit）也必须判成测试库存', () {
+      // 这是最容易被漏掉的一种：报表里 Android 有收入、iOS 恒为 0，
+      // 但界面上看起来「已经配好了」。
+      final config = AdMobConfig(
+        androidUnitIds: {
+          for (final p in AdPlacement.values)
+            p: 'ca-app-pub-9999999999999999/1111111111',
+        },
+      );
+      expect(config.usesTestUnits, isTrue);
+    });
+
+    test('5 个位里只有 1 个是测试 unit → 也要判成测试库存', () {
+      final config = AdMobConfig(
+        androidUnitIds: {
+          for (final p in AdPlacement.values)
+            p: p == AdPlacement.parkingHint
+                ? 'ca-app-pub-3940256099942544/5224354917'
+                : 'ca-app-pub-9999999999999999/1111111111',
+        },
+        iosUnitIds: {
+          for (final p in AdPlacement.values)
+            p: 'ca-app-pub-9999999999999999/2222222222',
+        },
+      );
+      expect(config.usesTestUnits, isTrue);
+    });
+
+    test('测试 App ID 判定（平台配置文件用）', () {
+      expect(AdMobConfig.isTestAppId(kAdMobTestAndroidAppId), isTrue);
+      expect(AdMobConfig.isTestAppId('ca-app-pub-9999999999999999~1234567890'), isFalse);
+    });
+
+    test('provider 把测试库存暴露给诊断层', () {
+      // 非移动端占位实现：没有 SDK，当然也不算真实库存。
+      final provider = AdMobUnsupportedProvider(config: AdMobConfig.test);
+      expect(provider.isMock, isTrue);
+      expect(provider.usesTestInventory, isTrue);
+    });
+  });
 }

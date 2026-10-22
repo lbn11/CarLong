@@ -1,5 +1,6 @@
 import '../../analytics/analytics.dart';
 import '../../save/save_repository.dart';
+import 'ad_diagnostics.dart';
 import 'ad_policy.dart';
 import 'ad_provider.dart';
 import 'ad_types.dart';
@@ -54,6 +55,14 @@ class AdService {
   static bool get usingMock => provider.isMock;
 
   static String get providerName => provider.name;
+
+  /// 当前是否还在用官方测试库存（真 SDK、测试 unit、零收入）。
+  static bool get usingTestInventory => provider.usesTestInventory;
+
+  static bool get isInitialized => _initialized;
+
+  /// 初始化是否成功（未初始化时无意义，用 [isInitialized] 判断前置）。
+  static bool get isSupported => _supported;
 
   /// 冷启动初始化：幂等，失败只降级不拦启动。
   static Future<bool> initialize() {
@@ -234,6 +243,50 @@ class AdService {
   /// 批量预加载（进关卡时把可能用到的位一起拉）。
   static Future<void> preloadAll(Iterable<AdPlacement> placements) async {
     await Future.wait(placements.map(preload));
+  }
+
+  // ===== 自检（诊断面板 / 启动日志共用）=====
+
+  /// 生成诊断信息：通道真实性 + SDK 状态 + 今日额度。
+  ///
+  /// 只读、不触发任何网络请求，可以随时在设置里打开。
+  static List<AdDiagRow> diagnose(PlayerData data) {
+    final mock = usingMock;
+    final test = usingTestInventory;
+    final rows = <AdDiagRow>[
+      AdDiagRow(
+        '通道',
+        AdDiagnostics.channelText(
+          provider: providerName,
+          isMock: mock,
+          testInventory: test,
+        ),
+        level: AdDiagnostics.levelOf(isMock: mock, testInventory: test),
+      ),
+      AdDiagRow(
+        'SDK',
+        !_initialized
+            ? '未初始化（首次点击时再试）'
+            : (_supported ? '已就绪' : '初始化失败，广告位会静默降级'),
+        level: !_initialized
+            ? AdDiagLevel.info
+            : (_supported ? AdDiagLevel.info : AdDiagLevel.warn),
+      ),
+      AdDiagRow(
+        '今日总量',
+        '${usedTodayTotal(data)} / ${policy.globalDailyCap} 条'
+        '${policy.adsEnabled ? '' : '（广告已全局关闭）'}',
+        level: policy.adsEnabled ? AdDiagLevel.info : AdDiagLevel.warn,
+      ),
+      AdDiagRow(
+        '单点剩余',
+        AdPlacement.values
+            .where((p) => p.dailyCap != null)
+            .map((p) => AdDiagnostics.slotText(p, usedToday(p, data)))
+            .join(' · '),
+      ),
+    ];
+    return rows;
   }
 
   // ===== 隐私设置（UMP）=====

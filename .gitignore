@@ -54,3 +54,6 @@ test/failures/
 # 小游戏端（mini/）：依赖与构建产物不入库，源码与关卡数据（shared/levels）入库
 mini/node_modules/
 mini/dist/
+
+# 真实 AdMob unit ID（每人一套，不入库；模板见 ads.env.example.json）
+ads.env.json

@@ -80,4 +80,19 @@ void main() {
     // 弹出成功不再叠一个「打不开」的提示。
     expect(find.text('隐私设置暂时打不开'), findsNothing);
   });
+
+  testWidgets('广告自检块在开发版可见，320px 小屏不溢出', (tester) async {
+    // 320 宽是本作的最小支持宽度，诊断块有 4 行文字，最容易在这挤爆。
+    tester.view.physicalSize = const Size(960, 1920);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    AdService.provider = MockAdProvider(playback: Duration.zero);
+
+    await openSettings(tester);
+    expect(find.text('广告自检（开发版可见）'), findsOneWidget);
+    expect(find.textContaining('演示通道'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

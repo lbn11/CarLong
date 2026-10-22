@@ -25,6 +25,17 @@ abstract class AdProvider {
   /// 是否为模拟实现（决定 UI 是否显示「演示」提示、是否允许跳过初始化）。
   bool get isMock;
 
+  /// 当前是否在用**官方测试库存**：SDK 是真的、广告画面是真的，但计费为 0。
+  ///
+  /// 这一位是「能不能上架」之外的独立维度，不要和 [isMock] 混为一谈：
+  /// - `isMock == true` → 根本没有广告 SDK，点了立刻发奖（Web / 演示包）
+  /// - `isMock == false && usesTestInventory == true` → 真 SDK + 测试 unit
+  ///   （真机可验证全链路，但一条收入都没有，**不能上架**）
+  /// - 两者都 false → 真实广告，可上架
+  ///
+  /// 只用于诊断与发布前自检，不参与任何展示逻辑。
+  bool get usesTestInventory => true;
+
   /// 冷启动初始化（幂等）。返回 false 表示环境不支持，后续展示全部走
   /// [AdResult.unavailable]，调用方应静默降级而不是报错弹窗。
   Future<bool> initialize();

@@ -19,6 +19,9 @@ class AdMobUnsupportedProvider extends AdProvider {
   bool get isMock => true;
 
   @override
+  bool get usesTestInventory => true;
+
+  @override
   Future<bool> initialize() async => false;
 
   @override

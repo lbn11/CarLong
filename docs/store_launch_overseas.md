@@ -219,6 +219,9 @@
 
 ## 8. 提交前 Checklist
 
+> 机械化那部分不用背：`python3 tool/check_ads_release.py --strict` 会把
+> App ID / unit / 隐私清单 / SKAdNetwork / 竖屏声明一次查完，全绿再提审。
+
 - [ ] AdMob 两个 App ID + 两个 unit ID 全部替换为正式值（测试 ID 应为 0 处）
 - [ ] Android `AD_ID` 权限与 Play Data safety 声明一致
 - [ ] iOS `NSUserTrackingUsageDescription` 已本地化（英文必填）
@@ -226,7 +229,7 @@
 - [ ] UMP 的 GDPR 消息 + IDFA 消息已在 AdMob 后台发布
 - [ ] app-ads.txt 可访问，商店列表填了同域名
 - [ ] 隐私政策 URL 公网可开，且 App 内有入口
-- [ ] `PrivacyInfo.xcprivacy` 含 tracking 声明与 API 使用说明
+- [x] `PrivacyInfo.xcprivacy` 含 tracking 声明与 API 使用说明（已落地并加入 Runner target）
 - [ ] 关闭所有调试入口（Boss 调试 FAB 已删；确认 release 包无调试按钮）
-- [ ] release 包确认 `AdService.usingMock == false`（日志里 provider 应为 `admob`）
+- [ ] release 包确认 `AdService.usingMock == false` 且 `usingTestInventory == false`
 - [ ] 真机各跑一遍：看广告成功 / 中途关闭 / 飞行模式无填充 / 每日上限

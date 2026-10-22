@@ -15,9 +15,10 @@ import 'admob_config.dart';
 /// **发奖判定完全交给 [AdService]**，这里不碰存档、不碰金币。
 ///
 /// 合规顺序（顺序错了会被拒审或收不到钱）：
-/// 1. iOS：先 ATT 授权（IDFA），再走 UMP 同意表单；
+/// 1. 先走 UMP 同意表单（GDPR / CCPA / DMA），**再**请求 iOS ATT；
+///    先弹 ATT 再弹同意表单，等于在 EEA 未经同意就索取跟踪权限。
 /// 2. UMP 返回 `canRequestAds == false` → 整个 provider 返回
-///    [AdOutcome.unavailable]，**不允许再发广告请求**；
+///    [AdOutcome.unavailable]，**不允许再发广告请求**（ATT 也不再弹）；
 /// 3. SDK 初始化放在首帧之后（`main.dart` 里用 postFrameCallback），
 ///    因为同意表单需要已挂载的 Activity / ViewController。
 class AdMobAdProvider extends AdProvider {
@@ -42,16 +43,25 @@ class AdMobAdProvider extends AdProvider {
   bool get isMock => false;
 
   @override
+  bool get usesTestInventory => config.usesTestUnits;
+
+  @override
   Future<bool> initialize() async {
     if (_initialized) return true;
     try {
+      // 顺序：UMP 同意 → iOS ATT → SDK 初始化。
+      //
+      // 为什么同意必须排在 ATT 前面：ATT 弹窗本质就是「请求跟踪授权」，
+      // 在 GDPR 地区的用户还没被问过、也没有拒绝的通道之前就弹，属于
+      // 先采集后征询。Google 的 UMP 流程也是「先拿同意，再请求 ATT」，
+      // 顺序反了在 EEA 重审时会被要求整改。
+      if (config.requestConsent) {
+        await _gatherConsent();
+        if (!_consentAllowsAds) return false;
+      }
       if (Platform.isIOS && config.requestAtt) {
         await _requestAtt();
       }
-      if (config.requestConsent) {
-        await _gatherConsent();
-      }
-      if (!_consentAllowsAds) return false;
 
       final status = await MobileAds.instance.initialize();
       // 接中介网络（FAN / Unity / AppLovin）后，这里能直接看到每个 adapter

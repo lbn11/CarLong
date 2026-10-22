@@ -114,14 +114,24 @@ flutter build ipa --release
 构建后核对两处配置（缺了会**启动即崩**或**零收入**）：
 
 ```bash
+# 一次性查完全部（App ID / unit / 隐私清单 / SKAdNetwork / 竖屏）
+python3 tool/check_ads_release.py --strict
+```
+
+闸门会逐项打勾，出现 ❌ 就是提审硬门槛（退出码 1，可直接接进 CI）。
+手动核对等价命令：
+
+```bash
 # Android：必须有 APPLICATION_ID
 grep -A2 "ads.APPLICATION_ID" android/app/src/main/AndroidManifest.xml
 # iOS：必须有 GADApplicationIdentifier
 plutil -p ios/Runner/Info.plist | grep -i "GADApplicationIdentifier\|NSUserTracking"
 ```
 
-> 当前写入的是 **Google 官方测试 ID**，真机可看到测试广告。
+> 当前写入的是 **Google 官方测试 ID**，真机可看到测试广告（有画面、无收入）。
 > 上线前替换正式 ID 的清单见 [store_launch_overseas.md](store_launch_overseas.md) §2.2。
+> 想确认某个包的真实性：App 内「设置 → 广告自检」，或看启动日志
+> `[ads] 测试广告 · 真 SDK，测试 unit，零收入（admob） · 初始化成功`。
 
 ### 2.4 签名
 - 用 Xcode 打开 `ios/Runner.xcworkspace` → Signing & Capabilities 选择 Team（需 Apple Developer 账号）。
