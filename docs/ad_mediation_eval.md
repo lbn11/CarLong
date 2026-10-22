@@ -85,7 +85,17 @@
 
 ## 5. 我们的落地路径（代码已就绪）
 
-`AdProvider` 抽象 + `ad_provider_factory.dart` 单点分叉，意味着：
+先区分两种「聚合」，成本差一个数量级：
+
+| 方式 | 代码改动 | 说明 |
+|---|---|---|
+| **AdMob Mediation 加网络**（FAN / Unity / AppLovin adapter） | **Dart 零改动**，只加原生依赖 + 后台中介组 | 广告仍由 `RewardedAd.load` 发起，中介组在后端决定谁出价 |
+| 换成 AppLovin MAX / LevelPlay 整套 SDK | 新写一个 `AdProvider` + factory 分支 | MAX 有自己的一套 API 与同意管理 |
+
+第一种才是推荐路径（JCross 就是这个形态，实测见
+[ad_benchmark_jcross.md](ad_benchmark_jcross.md)）。
+
+`AdProvider` 抽象 + `ad_provider_factory.dart` 单点分叉，意味着换整套 SDK 时：
 
 1. 新写一个 `MaxAdProvider`（或 `LevelPlayAdProvider`）实现 `initialize /
    preload / showRewarded / dispose`；
@@ -102,10 +112,16 @@
 
 ## 6. 决策表（调研后填）
 
+> **JCross 实测样本**（`com.ucdevs.jcross`，2026-10-22 静态逆向）：
+> 它是 AdMob Mediation + **Meta FAN 一家**，AdColony/AppLovin/Chartboost 的 SDK
+> 在 dex 里 0 次出现（只是聚合核心的注册表字符串）。详见
+> [ad_benchmark_jcross.md](ad_benchmark_jcross.md)。
+> 也就是说「很多游戏用聚合」的真实形态 ≈ 本表 B + 1-2 家 adapter。
+
 | 选项 | 适用 | 决策 |
 |---|---|---|
 | A. 维持 AdMob 单渠道 | 上线前 3 个月，先拿基线 | 当前状态 |
-| B. AdMob Mediation | 想留在 Google 生态、不换主 SDK | 待评估 |
+| B. AdMob Mediation + 1-2 家 adapter | 想补填充、不想换主 SDK | **推荐下一步（JCross 同款）** |
 | C. AppLovin MAX | 追求 eCPM、能接受包体 + 调试成本 | 待评估 |
 | D. ironSource LevelPlay | 已有 Unity 生态 | 不适用（本项目 Flutter） |
 | E. TopOn / TradPlus | 国内团队、需要中文支持 | 待评估 |

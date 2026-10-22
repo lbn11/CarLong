@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:app_tracking_transparency/app_tracking_transparency.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import '../ad_provider.dart';
@@ -52,7 +53,14 @@ class AdMobAdProvider extends AdProvider {
       }
       if (!_consentAllowsAds) return false;
 
-      await MobileAds.instance.initialize();
+      final status = await MobileAds.instance.initialize();
+      // 接中介网络（FAN / Unity / AppLovin）后，这里能直接看到每个 adapter
+      // 是否 READY——"广告没填充"最常见的原因是 adapter 没初始化成功。
+      if (kDebugMode) {
+        for (final entry in status.adapterStatuses.entries) {
+          debugPrint('[ads] adapter ${entry.key} -> ${entry.value.state}');
+        }
+      }
       if (config.testDeviceIds.isNotEmpty) {
         await MobileAds.instance.updateRequestConfiguration(
           RequestConfiguration(testDeviceIds: config.testDeviceIds),
