@@ -133,7 +133,13 @@ def check_ios_plist() -> dict:
     if count == 0:
         add("FAIL", "SKAdNetworkItems", "为空 → 安装归因全丢")
     elif count < 5:
-        add("WARN", "SKAdNetworkItems", f"只有 {count} 条，需从 AdMob 后台补全完整 partner 列表")
+        # 单渠道 AdMob 只需要 Google 自家这一条，别让人去追那份上百条的清单：
+        # 那份是「接入中介网络（Meta/AppLovin/Unity…）」时才按每家逐条补的。
+        add(
+            "OK",
+            "SKAdNetworkItems",
+            f"{count} 条（单渠道够用；接中介网络后按各 provider 文档逐家补）",
+        )
     else:
         add("OK", "SKAdNetworkItems", f"{count} 条")
 

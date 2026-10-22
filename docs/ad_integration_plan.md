@@ -8,7 +8,8 @@
 > 本轮定制（2026-10-22 晚）：频次治理三道闸（单点上限 + 单点冷却 + 全局日总量）、
 > UMP 隐私设置入口、按广告位拆 unit、预加载接线、无填充静默重试、release mock 守卫。
 >
-> 关联文档：[store_launch_overseas.md](store_launch_overseas.md)（上架与合规清单）、
+> 关联文档：[admob_setup_guide.md](admob_setup_guide.md)（**建 AdMob 应用与填值手把手**）、
+> [store_launch_overseas.md](store_launch_overseas.md)（上架与合规清单）、
 > [monetization_design.md](monetization_design.md)（变现总览）、
 > [ad_mediation_eval.md](ad_mediation_eval.md)（聚合评估）、
 > [ad_benchmark_jcross.md](ad_benchmark_jcross.md)（逆向样本拆解）。
