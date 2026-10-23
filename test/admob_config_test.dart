@@ -195,5 +195,28 @@ void main() {
       expect(provider.isMock, isTrue);
       expect(provider.usesTestInventory, isTrue);
     });
+
+    test('ADMOB_TEST_DEVICE_IDS 解析：逗号分隔、去空格、丢空项', () {
+      expect(AdMobConfig.parseTestDeviceIds(''), isEmpty);
+      expect(AdMobConfig.parseTestDeviceIds('   '), isEmpty);
+      expect(AdMobConfig.parseTestDeviceIds(' , , '), isEmpty);
+      expect(AdMobConfig.parseTestDeviceIds('ABC123'), ['ABC123']);
+      expect(
+        AdMobConfig.parseTestDeviceIds(' ABC , DEF ,,GHI '),
+        ['ABC', 'DEF', 'GHI'],
+      );
+      // 换正式 unit 后调试机必须被识别，否则自点就是无效流量
+      final config = AdMobConfig(
+        androidUnitIds: {
+          for (final p in AdPlacement.values) p: 'ca-app-pub-3751874625509987/8398411833',
+        },
+        iosUnitIds: {
+          for (final p in AdPlacement.values) p: 'ca-app-pub-3751874625509987/6497550533',
+        },
+        testDeviceIds: AdMobConfig.parseTestDeviceIds('ABC123'),
+      );
+      expect(config.usesTestUnits, isFalse);
+      expect(config.testDeviceIds, ['ABC123']);
+    });
   });
 }

@@ -101,14 +101,31 @@ class AdMobConfig {
       ios[placement] = i.isNotEmpty ? i : sharedIos;
     }
 
+    final testDeviceIds = parseTestDeviceIds(
+      const String.fromEnvironment('ADMOB_TEST_DEVICE_IDS'),
+    );
+
     // 全空 = 没配过任何真实 unit，返回测试配置（真机可见广告、不计费）。
     if (android.values.every((v) => v.isEmpty) &&
         ios.values.every((v) => v.isEmpty)) {
-      return test;
+      return testDeviceIds.isEmpty ? test : AdMobConfig(testDeviceIds: testDeviceIds);
     }
     return AdMobConfig(
       androidUnitIds: android,
       iosUnitIds: ios,
+      testDeviceIds: testDeviceIds,
+    );
+  }
+
+  /// 解析 `ADMOB_TEST_DEVICE_IDS`（逗号分隔，容忍空格与空项）。
+  ///
+  /// 换成正式 unit 之后**必须**把调试机加进来：测试设备的请求会返回测试广告、
+  /// 不产生真实展示，也就不会被判「无效流量」。不加就是自己点掉了真实广告——
+  /// 这是 AdMob 停号的第一原因。
+  static List<String> parseTestDeviceIds(String raw) {
+    if (raw.trim().isEmpty) return const [];
+    return List<String>.unmodifiable(
+      raw.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty),
     );
   }
 

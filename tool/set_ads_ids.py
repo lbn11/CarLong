@@ -125,14 +125,33 @@ def patch_ios(path: Path, app_id: str) -> str:
     return f"{path.name} → {app_id}"
 
 
-def build_env(android_units: dict[str, str], ios_units: dict[str, str]) -> dict[str, str]:
+def build_env(
+    android_units: dict[str, str],
+    ios_units: dict[str, str],
+    test_device_ids: str = "",
+) -> dict[str, str]:
     env = {
         "_comment": "由 tool/set_ads_ids.py 生成。构建时用 --dart-define-from-file=ads.env.json。真实 ID 不要入库。",
     }
     for platform, units in (("ANDROID", android_units), ("IOS", ios_units)):
         for slot in SLOTS:
             env[f"ADMOB_{platform}_UNIT_{slot.upper()}"] = units[slot]
+    # 必须原样保留：清掉它等于把调试机变回真实流量，自点一次就是无效流量
+    env["ADMOB_TEST_DEVICE_IDS"] = test_device_ids
     return env
+
+
+def read_existing_test_devices(env_file: Path) -> str:
+    """从已有 ads.env.json 里取回 ADMOB_TEST_DEVICE_IDS，重跑脚本时不清空。"""
+    if not env_file.exists():
+        return ""
+    try:
+        data = json.loads(env_file.read_text(encoding="utf-8"))
+    except Exception:
+        return ""
+    value = data.get("ADMOB_TEST_DEVICE_IDS", "") if isinstance(data, dict) else ""
+    return str(value)
+
 
 
 def main(argv: list[str]) -> int:
@@ -212,10 +231,15 @@ def main(argv: list[str]) -> int:
         print("  " + patch_android(android_manifest, android_app_id))
         print("  " + patch_ios(info_plist, ios_app_id))
         env_file.write_text(
-            json.dumps(build_env(android_units, ios_units), indent=2, ensure_ascii=False) + "\n",
+            json.dumps(
+                build_env(android_units, ios_units, read_existing_test_devices(env_file)),
+                indent=2,
+                ensure_ascii=False,
+            )
+            + "\n",
             encoding="utf-8",
         )
-        print(f"  {env_file.name} → 10 个 unit")
+        print(f"  {env_file.name} → 10 个 unit（测试设备哈希原样保留）")
         ok("已写入。")
         print("\n构建命令：")
         print("  flutter build appbundle --release --dart-define-from-file=ads.env.json")

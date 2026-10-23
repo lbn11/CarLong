@@ -7,14 +7,15 @@
         android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher">
-        <!-- AdMob App ID。**当前是 Google 官方测试 App ID**：
-             换成正式 ID 时两个平台都要换，且必须与 Info.plist 的
-             GADApplicationIdentifier 对应同一个 AdMob 应用。
+        <!-- AdMob App ID（由 tool/set_ads_ids.py 写入，勿手改）。
+             历史上这里是 Google 官方测试值 ca-app-pub-3940256099942544~3347511713，
+             现已换成正式值。两个平台必须同时换，且与 Info.plist 的
+             GADApplicationIdentifier 属于同一 AdMob 账号下的两个应用。
              缺这一项 → SDK 启动即崩（Crashlytics 里是 "The Google Mobile Ads
              SDK crashed the app because the Android application ID is missing"）。 -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713"/>
+            android:value="ca-app-pub-3751874625509987~7003897120"/>
         <!-- 延迟初始化 / 延迟广告加载：SDK 内部把初始化推迟到首次请求，
              配合 main.dart 的首帧后 AdService.initialize()，冷启动更轻。 -->
         <meta-data

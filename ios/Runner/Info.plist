@@ -4,11 +4,11 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
-	<!-- AdMob App ID。当前是 Google 官方测试 App ID（ca-app-pub-3940256099942544~1458002511），
-	     上线前换成自己 AdMob 应用里 iOS 应用的正式 App ID。
-	     与 AndroidManifest 的 APPLICATION_ID 必须属于同一个 AdMob 应用。 -->
+	<!-- AdMob App ID（iOS 应用，由 tool/set_ads_ids.py 写入，勿手改）。
+	     历史值是 Google 官方测试 App ID ca-app-pub-3940256099942544~1458002511，现已换成正式值。
+	     与 AndroidManifest 的 APPLICATION_ID 必须属于同一个 AdMob 账号（publisher 段相同）。 -->
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<string>ca-app-pub-3751874625509987~6515229387</string>
 	<!-- iOS 14.5+ ATT 授权文案。缺这一项系统不会弹窗，IDFA 恒为零。 -->
 	<key>NSUserTrackingUsageDescription</key>
 	<string>允许跟踪可帮助我们为你展示更相关的广告，并让游戏保持免费。我们不会出售你的个人数据。</string>
