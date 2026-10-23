@@ -92,7 +92,7 @@ admob.google.com
 
 | 字段 | 填什么 | 注意 |
 |---|---|---|
-| Last name / First name | 护照拼音，**姓在前**（刘博楠 → LIU / BONAN） | 只有 a-z 与数字，不许重音符号；顺序反了银行比对会失败 |
+| Last name / First name | 护照拼音，**姓在前**（刘博楠 → Last `LIU` / First `BONAN`） | 全大写，只有 a-z；不许重音符号与中间名。顺序反了银行比对会失败 |
 | Country of citizenship | China | 与护照国籍一致 |
 | Permanent residence address | 身份证地址或常住房地址，省市区 + 门牌号 | 必须与 payments profile 的收款地址一致 |
 | Mailing address | 同上（没有独立通信地址就勾「Same as permanent」） | — |
