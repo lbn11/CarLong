@@ -642,25 +642,85 @@ flutter run -d emulator-5554 --no-pub
 另外 `flutter run` 会话挂住时触摸也会失效，用 `adb shell am force-stop` + `am start`
 把 App 与调试会话解耦即可。
 
-## 5. 域名三件套（提审硬门槛）
+## 5. 站点三件套（两个硬门槛 + 一个建议）
 
-需要一个你能控制 DNS 的域名（没有就买个便宜的，$10/年）。放三样东西：
+**不需要买域名。** 商店只认「URL 能不能打开」，不认域名归属。免费平台的子域
+（`carlong.pages.dev` / `carlong.netlify.app`）一样过审、一样能验证 `app-ads.txt`。
 
-```
-https://yourdomain.com/privacy      ← 隐私政策页（双端商店都要填）
-https://yourdomain.com/app-ads.txt  ← AdMob 验证归属
-https://yourdomain.com/support      ← 支持页（Apple 要求）
-```
-
-`app-ads.txt` 就是 §2.3 那一行，纯文本、**不要带 BOM**：
+需要挂三样东西：
 
 ```
-google.com, pub-1234567890123456, DIRECT, f08c47fec0942fa0
+https://<任意可访问域名>/privacy      ← 隐私政策页（双端商店都必填，硬门槛）
+https://<任意可访问域名>/support      ← 支持页（App Store Connect「支持网址」必填）
+https://<任意可访问域名>/app-ads.txt  ← AdMob 验证库存归属（建议，不影响能否上线）
 ```
 
-然后在 **App Store Connect 的「营销网址」**和 **Play 商店的「开发者网站」**里
-填 `https://yourdomain.com`（只要域名，不要带路径）。AdMob 靠这个反查
-app-ads.txt，**不填 = 广告库存可能被第三方劫持**（钱进别人口袋）。
+第三样不是提审门槛。不挂照样出广告，只是库存归属无法被买方验证，程序化直客
+可能因此不买你的量 —— 影响的是 eCPM 上限，不是能不能上架。
+
+### 5.1 唯一的形态限制：必须在域名根目录
+
+AdMob 的抓取链路是「商店里填的开发者网站 → **丢掉路径** → 请求
+`https://<域名>/app-ads.txt`」。三条推论：
+
+1. 开发者网站填 `https://xxx.com/abc` 与填 `https://xxx.com` 等效，路径无效。
+2. 站点放在子目录（`/site/`、`/CarLong/`）**必然失败**，必须搬到根。
+3. `app-ads.txt` 必须直接 200（不能 301/302 跳别处；http→https 跳转不算，AdMob 本来就用 https）。
+
+所以 GitHub Pages 有个坑：普通仓库部署出来的地址是 `https://user.github.io/CarLong/`，
+文件在子路径，**抓不到**。要用 GitHub Pages 就必须建一个名字正好叫 `user.github.io`
+的仓库，把 `site/` 里的文件平铺到那个仓库根。
+
+Cloudflare Pages / Netlify / Vercel 没有这个问题 —— 部署根就是域名根。
+
+### 5.2 `app-ads.txt` 内容
+
+`site/app-ads.txt` 已经是真实值，纯文本、无 BOM：
+
+```
+google.com, pub-3751874625509987, DIRECT, f08c47fec0942fa0
+```
+
+publisher 段必须与 `AndroidManifest.xml` 的 App ID 一致（`tool/check_site.py` 会自动比对）。
+
+### 5.3 商店里填在哪
+
+| 平台 | 字段 | 填什么 | 必填？ |
+|---|---|---|---|
+| App Store Connect | App 信息 → 支持网址 | `https://<域名>/support.html` | **必填** |
+| App Store Connect | App 隐私 → 隐私政策网址 | `https://<域名>/privacy.html` | **必填** |
+| App Store Connect | App 信息 → 营销网址 | `https://<域名>`（只填域名） | 选填，但填了才能反查 app-ads.txt |
+| Google Play | 商店设置 → 隐私政策 | `https://<域名>/privacy.html` | **必填**（收集数据时） |
+| Google Play | 商店设置 → 开发者网站 | `https://<域名>`（只填域名） | 选填，同上 |
+| AdMob | 应用设置 → 隐私政策网址 | `https://<域名>/privacy.html` | 建议填 |
+| AdMob | UMP → GDPR 消息 → 隐私政策网址 | `https://<域名>/privacy.html` | **必填** |
+
+**AdMob 验证 app-ads.txt 的三个前提**（缺一个就永远验证不过）：
+
+1. 应用**已上架**，或 AdMob 应用设置里已填商店链接；
+2. 商店里的开发者网站域名 = `app-ads.txt` 所在域名；
+3. 抓取有延迟，提交后几小时到一天生效，**别反复点验证**（点一次会重置）。
+
+### 5.4 什么情况才值得买域名
+
+满足任一条再买（`.com` 约 ¥80–110/年）：
+
+- 准备长期做，以后要上第二个 App（多 App 共用一个根域最省事）；
+- 需要 `support@你的域名` 这类邮箱；
+- 想把域名印在商店页当身份。
+
+不买的代价只有两条，都不影响上线：
+
+| 风险 | 概率 | 影响 |
+|---|---|---|
+| 平台封号/误删项目，免费子域失效 | 低 | 商店里的隐私政策与支持链接全 404，可能被下架 |
+| 以后换域名 | 必然 | 改 7 处字段 + `app-ads.txt` 重新验证（1 天窗口） |
+
+**若确定要买，就现在买，别等上架后。** 现在站点还没被任何商店引用，换域名零成本；
+上架后改开发者网站域名，AdMob 要重新验证，期间库存归属未验证。
+
+> **备案**：域名解析到 Cloudflare / GitHub / Netlify 这类海外托管**不需要 ICP 备案**——
+> 备案管的是国内服务器和国内 CDN，与域名本身无关。
 
 > **页面已经生成好了**：`site/` 目录（`index.html` / `privacy.html` / `support.html` /
 > `app-ads.txt` / `robots.txt` + `assets/`），纯静态、无 CDN 依赖、中英双语可切换，
@@ -727,7 +787,7 @@ AdMob → **Privacy & messaging** → 建三条消息并 **Publish**：
 ✅ Android 端首次构建成功（工具链对齐 Gradle 8.14 / AGP 8.11.1 / Kotlin 2.2.20，§4.1）
 ✅ 路径 A 模拟器链路验证（`Test Ad` → `Reward granted` → 金币 195→295 → 剩余 3→2）
 ✅ 静态站生成（`site/` 三页 + app-ads.txt，体检 6 通过 / 1 警告 / 0 失败）
-⬜ 换掉 `YOUR_EMAIL@example.com`（6 处）→ 买域名 → 部署 → `check_site.py --strict` 全绿  ← §5，**下一步**
+⬜ 换掉 `YOUR_EMAIL@example.com`（6 处）→ 免费托管上线（**不必买域名**）→ `check_site.py --strict` 全绿  ← §5，**下一步**
 ⬜ 调试机哈希加进 `ADMOB_TEST_DEVICE_IDS` + 真机四路径验证                ← §4
 ⬜ UMP 三条消息 Publish                                    ← §6
 ⬜ 商店素材 / 分级 / 封闭测试 14 天                          ← Play 个人号硬性要求
