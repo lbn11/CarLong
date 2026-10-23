@@ -662,7 +662,24 @@ google.com, pub-1234567890123456, DIRECT, f08c47fec0942fa0
 填 `https://yourdomain.com`（只要域名，不要带路径）。AdMob 靠这个反查
 app-ads.txt，**不填 = 广告库存可能被第三方劫持**（钱进别人口袋）。
 
-> 隐私政策页我可以直接产出静态页 + 部署，见文末待办。
+> **页面已经生成好了**：`site/` 目录（`index.html` / `privacy.html` / `support.html` /
+> `app-ads.txt` / `robots.txt` + `assets/`），纯静态、无 CDN 依赖、中英双语可切换，
+> 条款与 `lib/services/ads/admob/` 的实际行为一一对应（无账号、进度仅在本地、
+> 只有 AdMob 一个第三方、激励视频由玩家主动触发）。
+>
+> 部署步骤、商店字段对照表、验证用的三条 `curl` 都在 **`site/README.md`**。
+> 部署前后各跑一次体检：
+>
+> ```bash
+> python3 tool/check_site.py --strict
+> ```
+>
+> 它会查：`app-ads.txt` 的 BOM / 换行 / 字段数 / cert 值 / **publisher 与
+> AndroidManifest 是否同一个账号**、必需文件、所有本地链接、隐私政策 9 项必备条款、
+> 残留占位符（`YOUR_EMAIL` / `example.com`）、以及有没有偷偷引用外部 CDN。
+>
+> **唯一必须手改的是邮箱**：`privacy.html` 与 `support.html` 里的
+> `YOUR_EMAIL@example.com` 共 6 处，苹果审核会真的去点。
 
 ## 6. UMP 同意消息（不发 = 欧盟永远不弹窗）
 
@@ -707,8 +724,11 @@ AdMob → **Privacy & messaging** → 建三条消息并 **Publish**：
 🕐 身份验证审核中（1-2 工作日）→ 只把预扣税率从 30% 占位改为 0%，不阻塞下面任何一步
 ✅ 2 个 App ID + 10 个 unit（2026-10-23 建齐，publisher `3751874625509987`）
 ✅ 填值进工程（`AndroidManifest` / `Info.plist` / `ads.env.json`，闸门 11 通过 / 0 警告）
-⬜ 调试机哈希加进 `ADMOB_TEST_DEVICE_IDS` + 真机四路径验证   ← §4，**下一步**
-⬜ 域名 + 隐私政策 + app-ads.txt                            ← §5
+✅ Android 端首次构建成功（工具链对齐 Gradle 8.14 / AGP 8.11.1 / Kotlin 2.2.20，§4.1）
+✅ 路径 A 模拟器链路验证（`Test Ad` → `Reward granted` → 金币 195→295 → 剩余 3→2）
+✅ 静态站生成（`site/` 三页 + app-ads.txt，体检 6 通过 / 1 警告 / 0 失败）
+⬜ 换掉 `YOUR_EMAIL@example.com`（6 处）→ 买域名 → 部署 → `check_site.py --strict` 全绿  ← §5，**下一步**
+⬜ 调试机哈希加进 `ADMOB_TEST_DEVICE_IDS` + 真机四路径验证                ← §4
 ⬜ UMP 三条消息 Publish                                    ← §6
 ⬜ 商店素材 / 分级 / 封闭测试 14 天                          ← Play 个人号硬性要求
 ```
