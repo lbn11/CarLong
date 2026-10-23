@@ -43,6 +43,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+# Gradle 在 android/ 下也会留一份构建产物（rootProject buildDirectory 指到 ../../build，
+# 但插件 module 仍会落这里）
+/android/build/
+/android/.gradle/
 
 # WorkBuddy agent working memory (not project source)
 .workbuddy/

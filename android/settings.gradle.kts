@@ -19,8 +19,11 @@ pluginManagement {
 
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-    id("com.android.application") version "9.0.1" apply false
-    id("org.jetbrains.kotlin.android") version "2.3.20" apply false
+    // 版本必须与 Flutter SDK 模板一致（Flutter 3.41.6 → AGP 8.11.1 / Kotlin 2.2.20 / Gradle 8.14）。
+    // 曾被抬到 AGP 9.0.1 + Kotlin 2.3.20 + Gradle 9.1：google_mobile_ads 5.3.1 的
+    // `configurations.all` 在 Gradle 9 上直接报 unknown property，Android 端始终无法构建。
+    id("com.android.application") version "8.11.1" apply false
+    id("org.jetbrains.kotlin.android") version "2.2.20" apply false
 }
 
 include(":app")

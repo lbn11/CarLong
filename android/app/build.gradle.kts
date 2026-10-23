@@ -1,5 +1,9 @@
 plugins {
     id("com.android.application")
+    // MainActivity.kt 是 Kotlin 源码，必须应用 Kotlin 插件：
+    // 少了它 ① .kt 不参与编译 → 启动即 ClassNotFound ② 下面 kotlin{} 块无法解析，
+    // 构建直接失败在 build.gradle.kts 第 38 行。
+    id("org.jetbrains.kotlin.android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }

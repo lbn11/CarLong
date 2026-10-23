@@ -556,6 +556,21 @@ flutter run --dart-define-from-file=ads.env.json
 > 会变成「正式 App ID + 测试 unit」的混合态 —— 广告能播，但诊断面板会报测试库存，
 > 容易误判成「已经上线在赚钱」。
 
+**没有真机也能测**：Android 模拟器必须选**带 Google Play** 的镜像（`Pixel_6_Play` 这类）；
+AOSP 镜像没有 Play 服务，广告 SDK 初始化直接失败，会误判成"代码有问题"。
+
+模拟器上**不要用正式 unit**，用官方测试 unit 把链路跑通：
+
+```bash
+flutter emulators --launch Pixel_6_Play
+flutter run -d android \
+  --dart-define=ADMOB_ANDROID_UNIT=ca-app-pub-3940256099942544/5224354917
+```
+
+5 个广告位共用这一个测试 unit：永远有填充、不计费、点多少次都安全，不受"新 unit 没量"影响。
+此时诊断面板显示**测试库存**——这是对的，说明你测的是链路而不是收入。
+代价是看不出哪个广告位更值钱，那部分只能等真机 + 正式 unit 放量后再看。
+
 真机必测四条路径：
 
 | 场景 | 期望 |
@@ -567,6 +582,65 @@ flutter run --dart-define-from-file=ads.env.json
 
 App 内自检入口：首页右上角设置 → 底部「广告自检」。debug/profile 默认显示。
 换成正式 ID 后这里应该变成绿色的「正式广告 · 真实库存，会计费」。
+
+### 4.1 模拟器实测记录（2026-10-23，链路已验证通过）
+
+命令只有一句（**不带任何 `--dart-define`**，10 个 unit 全空 → 自动回落到测试配置，
+App ID 仍是正式的，属于「正式 App ID + 测试 unit」的混合态，只用于验证链路）：
+
+```bash
+flutter run -d emulator-5554 --no-pub
+```
+
+| 观察点 | 实测结果 |
+|---|---|
+| 广告自检 | 「测试广告 · 真 SDK，测试 unit，零收入（admob）」/ SDK 已就绪 |
+| 广告画面 | 顶部有 `Test Ad` 角标 + Google Ads 测试创意 |
+| 发奖回调 | 关闭时弹「Reward granted」，回 App 后弹「广告看完 +100」，金币 195 → 295 |
+| 频次闸 | 商店当日剩余 3 → 2，弹窗文案同步写「今天还可以看 2 次」 |
+
+**没有 `Test Ad` 角标就是没走测试库存，别继续点。**
+
+#### 坑 1：Android 端此前从未构建成功（工具链版本超纲）
+
+三个连环问题，逐层暴露：
+
+1. `app/build.gradle.kts:38` 的 `kotlin { compilerOptions { … } }` 报
+   `Unresolved reference 'compilerOptions'` —— `plugins {}` 里**根本没应用**
+   `org.jetbrains.kotlin.android`（`settings.gradle.kts` 里只有 `apply false` 的声明），
+   而 `MainActivity.kt` 是 Kotlin 源码。缺这个插件既让 DSL 无法解析，也编译不出 Activity。
+2. 补上插件后，卡在 `google_mobile_ads 5.3.1/android/build.gradle:58` 的
+   `configurations.all`：在 **Gradle 9** 上变成 `unknown property`（Gradle 9 移除了该属性访问）。
+3. 根因是工程被抬到 **Gradle 9.1.0 + AGP 9.0.1 + Kotlin 2.3.20**，远超插件与 Flutter 支持范围。
+
+修法是**对齐 Flutter SDK 自己的模板版本**（`flutter_tools/lib/src/android/gradle_utils.dart`）：
+
+| 项 | 曾被抬到 | 对齐后（Flutter 3.41.6 官方值） |
+|---|---|---|
+| Gradle | 9.1.0 | **8.14** |
+| AGP | 9.0.1 | **8.11.1** |
+| Kotlin | 2.3.20 | **2.2.20** |
+
+> **规则：这三者不要单独升级。** 升级 Flutter SDK 后，去
+> `gradle_utils.dart` 查 `templateDefaultGradleVersion` /
+> `templateAndroidGradlePluginVersion` / `templateKotlinGradlePluginVersion`，三者一起改。
+> 只抬一个的后果就是上面这种「业务代码没问题、构建永远失败」。
+
+#### 坑 2：磁盘剩余不足 2G 时，Gradle 报的是别的东西
+
+真实报错是 `Failed to create Jar file …`（不是「空间不足」），极易误判成代码问题。
+`df -h` 剩余 < 2G 就先腾空间：Xcode 的 `DerivedData`、未使用的 Android 系统镜像、
+旧 NDK 都可以直接删，删完 APFS 回收可能延迟几分钟才反映到 `df`。
+
+#### 坑 3：模拟器触摸全失效（`NO_INPUT_CHANNEL`）
+
+`adb shell input tap` 完全没反应，但截图显示界面正常。`dumpsys input` 里能看到一个
+`ActivityRecordInputSink` 覆盖全屏吞掉事件，同时 Activity 状态却是 `RESUMED`。
+`adb reboot` 冷重启模拟器后恢复。
+
+**判断依据：状态栏时钟不走了 = 画面已僵死，别在坐标上折腾。**
+另外 `flutter run` 会话挂住时触摸也会失效，用 `adb shell am force-stop` + `am start`
+把 App 与调试会话解耦即可。
 
 ## 5. 域名三件套（提审硬门槛）
 
