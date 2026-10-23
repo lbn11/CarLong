@@ -102,6 +102,29 @@ admob.google.com
 
 提交后页面会给出 W-8BEN 的 PDF，下载留档。**当月 20 号前提交完才能在当月结算。**
 
+### 1.7 中文地址只能填拼音（只认 a-z）
+
+税务表单的地址栏**不接受汉字**，必须转拼音，且顺序要符合国际邮寄习惯
+（门牌/楼栋 → 街道 → 区 → 市 → 省 → 邮编）。示例（呼和浩特）：
+
+| 字段 | 填 |
+|---|---|
+| 地址行 1 | `Neida Feicuicheng, Xilin South Road, Saihan District` |
+| 公寓/套房/门牌号（选填） | `Building 10` |
+| 城市 | `Hohhot` |
+| 省/自治区 | `Inner Mongolia` |
+| 邮政编码 | `010020`（按实际街道核对） |
+| 国家 | `China` |
+
+三条原则：
+
+- **小区名用拼音，不要翻译**。`内大翡翠城` 写成 `Neida Feicuicheng`，
+  别写成 `Emerald City` / `Inner Mongolia University` —— 翻译后既对不上证件，
+  也确实送不到。
+- **不要加标点缩写**（`Rd.` / `Dist.` 都不要），全拼即可，逗号只作分隔。
+- 填完回到 payments profile 核对**字形完全一致**，两边不一致会触发人工复核。
+
+
 
 ## 2. AdMob 后台建应用与广告位（40 分钟）
 
