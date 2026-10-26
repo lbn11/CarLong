@@ -124,7 +124,7 @@
 | 标识符 → 设备 ID（IDFA） | 是 | **是** | 第三方广告 |
 | 使用数据 → 广告数据 | 是 | 是 | 第三方广告 |
 | 诊断 → 崩溃数据 | 是（如接 Crashlytics） | 否 | App 功能 |
-| 购买 → 购买记录 | 是（接 IAP 后） | 否 | App 功能 |
+| 购买 → 购买记录 | **否**（无内购，见 `monetization_design.md §2`） | 否 | — |
 
 同时确认 `PrivacyInfo.xcprivacy`：`google_mobile_ads` 5.1.0 自带一份，
 但**主工程**需要声明 `NSPrivacyTracking = true` + `NSPrivacyTrackingDomains`

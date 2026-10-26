@@ -18,7 +18,18 @@ import '../widgets/candy_ui.dart';
 /// 同时与停车 3 星免费发放的 booster 完全解耦，商店不再是 booster 直购点。
 ///
 /// 视觉设计：柠檬金身份色（商店=阳光），主推的宝箱做一张大 Hero 卡，
-/// 其余内容按「福利 / 内购 / 我的消耗品」三段排列，避免一页全堆同权重卡片。
+/// 其余内容按「每日福利 / 我的消耗品」两段排列，避免一页全堆同权重卡片。
+///
+/// **没有内购**：金币只能靠看广告与游玩获得。这里曾有一个「¥6 购买 600 🪙」
+/// 的模拟内购按钮，已删除，原因有三：
+/// 1. 标价却不扣款是审核红线（Apple 3.1.1 要求 IAP、2.3.1 虚假功能；
+///    Play Payments Policy 同样禁止真实货币定价却不走 Play Billing）。
+/// 2. 只发海外却硬编码人民币符号，且 IAP 价格必须由商店返回（已本地化、
+///    含地区定价与税），代码里永远不能写死金额。
+/// 3. 它与「看广告 +100」并排放在同一张卡里，等于把「一次广告值多少钱」
+///    直接算给玩家看 —— 这是广告游戏最不该让玩家做的换算。
+///
+/// 真要加内购，做「去广告」买断（付费后激励视频改为直接领取），不要卖金币。
 class ShopScreen extends StatefulWidget {
   final PlayerData data;
   final SaveRepository repo;
@@ -33,9 +44,6 @@ class _ShopScreenState extends State<ShopScreen> {
   static final int _chestCost = GameConfig.chestCost;
   /// 单次广告奖励（每日次数与上限由 AdService 按广告位管理）。
   static final int _adReward = GameConfig.adReward;
-
-  /// 金币礼包（模拟 IAP）：600 金币档。
-  static final int _coinPackAmount = GameConfig.coinPackAmount;
 
   PlayerData get data => widget.data;
   late final AnalyticsService _analytics =
@@ -175,23 +183,6 @@ class _ShopScreenState extends State<ShopScreen> {
       title: '这条广告没看成',
       message: result.userMessage,
       confirmLabel: '知道了',
-    );
-  }
-
-  /// 金币礼包（模拟 IAP）：600 金币档。
-  void _buyCoinPack() {
-    AudioFeedback.uiTap();
-    data.addCoins(_coinPackAmount);
-    widget.repo.save(data);
-    _analytics.iapPurchase('coin_pack_600', _coinPackAmount);
-    setState(() {});
-    CandyDialog.show(
-      context,
-      emoji: '🎁',
-      color: AppColors.lemon,
-      title: '金币礼包 +$_coinPackAmount 🪙',
-      message: '演示版直接发放。上架后接入真实内购（iOS IAP / 安卓 Google Play）。',
-      confirmLabel: '谢谢！',
     );
   }
 
@@ -416,32 +407,24 @@ class _ShopScreenState extends State<ShopScreen> {
                             ],
                           ),
                           const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  '内购礼包 · $_coinPackAmount 🪙',
-                                  style: const TextStyle(
-                                      color: AppColors.ink2, fontSize: 13),
-                                ),
-                              ),
-                              CandyButton(
-                                label: '¥6 购买',
-                                size: CandyButtonSize.small,
-                                dense: true,
-                                colors: AppTheme.gradientOf(AppColors.lemon),
-                                onTap: _buyCoinPack,
-                              ),
-                            ],
+                          // 说清「没有充值入口」：既防玩家找，也让审核一眼看到
+                          // 本作不涉及 IAP（省掉一整轮 3.1.1 问询）。
+                          const Text(
+                            '金币只靠看广告和通关获得，游戏内没有充值入口。',
+                            style: TextStyle(
+                                color: AppColors.ink3,
+                                fontSize: 11,
+                                height: 1.4),
                           ),
-                          const SizedBox(height: 4),
                           // 只在模拟 provider 下说破：接真实 SDK 后这行自动消失。
-                          if (AdService.usingMock)
+                          if (AdService.usingMock) ...[
+                            const SizedBox(height: 4),
                             const Text(
-                              '演示版：广告为模拟播放（秒过即发奖），内购未接入。',
+                              '演示版：广告为模拟播放（秒过即发奖）。',
                               style: TextStyle(
                                   color: AppColors.ink3, fontSize: 10.5),
                             ),
+                          ],
                         ],
                       ),
                     ),

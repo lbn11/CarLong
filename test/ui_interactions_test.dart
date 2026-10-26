@@ -15,17 +15,21 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('商店：金币礼包购买后金币增加', (tester) async {
+  testWidgets('商店：没有假内购入口（不许标价却不扣款）', (tester) async {
     final data = PlayerData(coins: 100);
     final repo = SaveRepository();
     await tester.pumpWidget(MaterialApp(
       home: ShopScreen(data: data, repo: repo),
     ));
     await tester.pumpAndSettle();
-    expect(find.text('100'), findsOneWidget); // 余额 100
-    await tester.tap(find.text('¥6 购买'));
-    await tester.pumpAndSettle();
-    expect(data.coins, greaterThanOrEqualTo(600)); // 购买后 +600
+    // 回归锁：商店曾有一个「¥6 购买 600 🪙」的模拟内购按钮，点击直接发金币。
+    // 它同时踩三条线：①Apple 3.1.1 / 2.3.1（标价不走 IAP、虚假功能）；
+    // ②只发海外却硬编码人民币符号；③与「看广告 +100」并排放在同一张卡里，
+    // 把「一次广告值多少钱」直接算给玩家看。
+    expect(find.textContaining('¥'), findsNothing);
+    expect(find.textContaining('购买'), findsNothing);
+    expect(find.textContaining('内购礼包'), findsNothing);
+    expect(data.coins, 100, reason: '商店页不该有任何一键加金币的入口');
   });
 
   testWidgets('商店：金币不足时宝箱按钮禁用', (tester) async {

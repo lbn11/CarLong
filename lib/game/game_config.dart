@@ -23,7 +23,6 @@ class GameConfig {
   static int get chestCost => _v(150, 'chestCost'); // 金币宝箱
   static int get dailyAdLimit => _v(3, 'dailyAdLimit'); // 激励广告每日次数
   static int get adReward => _v(100, 'adReward'); // 单次广告奖励
-  static int get coinPackAmount => _v(600, 'coinPackAmount'); // 金币礼包
 
   // ===== 经济循环 =====
   static int get offlineCoinsPerHour => _v(12, 'offlineCoinsPerHour');

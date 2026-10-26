@@ -285,4 +285,4 @@ eCPM 好看但玩家体验会崩（每一步都在看广告），也容易被渠
 - [ ] 补全 `SKAdNetworkItems`（当前只有 Google 自家一条，需从 AdMob 后台复制）
 - [ ] 插屏广告位（是否要在关卡间插入，需产品决策）
 - [ ] 未成年人模式：`AdProvider` 层直接返回 `unavailable`（需要先有年龄/家长开关）
-- [ ] IAP（金币礼包仍是模拟实现，见 monetization_design.md §2）
+- [x] ~~IAP（金币礼包）~~ → **已删除**：模拟内购（标价不扣款）已移除，本作纯广告变现，见 `monetization_design.md §2`

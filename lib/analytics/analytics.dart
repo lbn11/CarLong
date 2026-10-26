@@ -111,7 +111,12 @@ class AnalyticsService {
     _log('chest_open', {'cost': cost, 'result': result});
   }
 
-  /// 金币礼包购买（模拟 IAP）。
+  /// 内购成交埋点（**当前无调用点**）。
+  ///
+  /// 商店里那个「¥6 购买 600 金币」的模拟内购已删除（标价不扣款 = 审核红线），
+  /// 本作现在是纯广告变现。这里保留事件名，是为了以后接 IAP 时口径不用重新定义；
+  /// 一旦真的接入，**必须在发货成功后调用**，不要在点击时调用——
+  /// 点击即记会把「取消支付」算成收入，报表会虚高。
   void iapPurchase(String product, int amount) {
     _log('iap_purchase', {'product': product, 'amount': amount});
   }
