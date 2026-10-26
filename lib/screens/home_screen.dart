@@ -907,12 +907,18 @@ class _HomeScreenState extends State<HomeScreen>
             ],
           ),
           const SizedBox(height: 6),
-          Text(title,
-              maxLines: 1,
-              style: const TextStyle(
-                  color: AppColors.ink1,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 12.5)),
+          // 四宫格只有 ~80px 宽，而英文标题比中文长得多
+          // （Achievements 12 字符 vs 成就 2 字）。裸 Text + maxLines:1
+          // 会硬裁成「Achieveme」，所以这里允许等比缩小。
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(title,
+                maxLines: 1,
+                style: const TextStyle(
+                    color: AppColors.ink1,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 12.5)),
+          ),
           Text(subtitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

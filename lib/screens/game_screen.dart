@@ -2207,7 +2207,10 @@ class _ResultDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    // 走 L10n.value 而不是 AppLocalizations.of(context)：结算弹窗是被
+    // showDialog 挂到根 Overlay 上的，一旦宿主没挂 delegates（单测里的裸
+    // MaterialApp 就是），of() 会在 `!` 上直接抛 null check，把整局炸掉。
+    final l10n = L10n.value;
     final isEndless = endlessLevel > 0;
     // 失败时改用柔和葡萄紫而不是刺眼的警示色：这一局没成，不代表失败。
     final headerColors = won
