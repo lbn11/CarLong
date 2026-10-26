@@ -9,6 +9,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # 官方本地化：gen-l10n 生成的 AppLocalizations 依赖它的 delegates。
+  # SDK 自带、无需联网下载。当前只有 en / zh 两套，见 lib/l10n/。
+  flutter_localizations:
+    sdk: flutter
   flame: ^1.38.0
   flame_audio: ^2.1.1
   shared_preferences: ^2.5.5
@@ -29,6 +33,10 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.3
 
 flutter:
+  # 让 flutter gen-l10n 从 lib/l10n/*.arb 生成 AppLocalizations。
+  # 生成物就在 lib/l10n/ 下并入库：不入库的话 clone 完 analyze 会直接红线
+  # （.dart_tool 方案要求每个环境先跑一次 gen-l10n，单人项目没必要）。
+  generate: true
   uses-material-design: true
 
   assets:

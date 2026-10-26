@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'game/music_player.dart';
 import 'game/vehicle_icons.dart';
 import 'game/vehicle_sprites.dart';
+import 'l10n/app_localizations.dart';
 import 'save/save_repository.dart';
 import 'screens/home_screen.dart';
 import 'services/ads/ad_diagnostics.dart';
@@ -71,8 +72,14 @@ class MergeGameApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '车水马龙',
+      // 标题也要本地化。MaterialApp.title 拿不到 context，只能用
+      // onGenerateTitle 延迟到需要时再查（安卓任务管理器会显示它）。
+      onGenerateTitle: (context) => AppLocalizations.of(context).appName,
       debugShowCheckedModeBanner: false,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      // 顺序即回落顺序：arb 按字母序生成 [en, zh]，所以非中英语言一律落到英文。
+      // 英文是海外玩家的默认语言，中文保留给自己调试与将来可能的国服。
+      supportedLocales: AppLocalizations.supportedLocales,
       navigatorObservers: [musicRouteObserver],
       // 游戏 HUD/棋盘都是固定尺寸布局：系统大字体钳制到 1.3 倍，
       // 既照顾低视力用户，又避免文字撑爆棋盘与按钮。

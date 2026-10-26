@@ -1,0 +1,20 @@
+# gen-l10n 配置。真源是 app_en.arb（英文），app_zh.arb 是中文翻译。
+#
+# 为什么以英文为模板而不是中文：
+#   本作只发行海外（App Store / Google Play），英文是玩家默认看到的语言。
+#   以英文为模板时，新增文案只要写英文就能编译通过，中文缺失不会阻塞；
+#   反过来（中文为模板）则每加一条都得同步翻中文，纯粹是给自己加活。
+#
+# 加新语言：复制 app_en.arb 成 app_<code>.arb 并翻译即可，dart 代码零改动。
+
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+
+# getter 非空：代码里直接 l10n.xxx，不用到处写 l10n!.xxx。
+# 代价是每个 arb 必须包含模板里的全部 key——由 tool/check_i18n.py 守着。
+nullable-getter: false
+
+# 未翻译的 key 落到这个文件（可选，便于补翻），不入库。
+untranslated-messages-file: lib/l10n/untranslated.txt
