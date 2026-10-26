@@ -660,4 +660,65 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get parkingBoostersLabel => '停车道具 · 仅停车模式可用';
+
+  @override
+  String get abilityNone => '无';
+
+  @override
+  String get abilityTurn => '转弯';
+
+  @override
+  String get abilityFlyOver => '飞越';
+
+  @override
+  String get abilityBreakIce => '破冰';
+
+  @override
+  String get abilityBreakChain => '解锁';
+
+  @override
+  String get abilityClearRock => '清石';
+
+  @override
+  String get abilityWaterWalk => '水上';
+
+  @override
+  String get abilityRailOnly => '轨道限定';
+
+  @override
+  String get abilityTeleport => '传送';
+
+  @override
+  String get abilityPickup => '搬运';
+
+  @override
+  String get abilitySonar => '侦察';
+
+  @override
+  String get abilityVertical => '垂直起降';
+
+  @override
+  String get abilityAmphibious => '两栖';
+
+  @override
+  String get abilityTow => '拖拽';
+
+  @override
+  String get abilityCarry => '装载';
+
+  @override
+  String get abilityWarp => '曲速';
+
+  @override
+  String get noAbility => '无特殊能力';
+
+  @override
+  String moveDistance(int n) {
+    return '移动$n格';
+  }
+
+  @override
+  String moveDistanceTurn(int n) {
+    return '移动$n格+转弯';
+  }
 }

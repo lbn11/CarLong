@@ -185,7 +185,7 @@ void main() {
     // 图鉴已点亮 + 特写浮层出现。
     expect(data.collection, contains(VehicleType.scooter.id));
     expect(find.text('✨ 新车加入图鉴'), findsOneWidget);
-    expect(find.text('踏板车'), findsOneWidget);
+    expect(find.text(VehicleType.scooter.name), findsOneWidget);
 
     // 浮层自动消失（不挡操作、不永久挂屏）。
     await tester.pump(const Duration(milliseconds: 2200));

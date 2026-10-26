@@ -671,4 +671,65 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get parkingBoostersLabel => 'Parking boosters · Parking mode only';
+
+  @override
+  String get abilityNone => 'None';
+
+  @override
+  String get abilityTurn => 'Turning';
+
+  @override
+  String get abilityFlyOver => 'Jump over';
+
+  @override
+  String get abilityBreakIce => 'Ice breaker';
+
+  @override
+  String get abilityBreakChain => 'Unlock';
+
+  @override
+  String get abilityClearRock => 'Rock breaker';
+
+  @override
+  String get abilityWaterWalk => 'Cross water';
+
+  @override
+  String get abilityRailOnly => 'Rail only';
+
+  @override
+  String get abilityTeleport => 'Teleport';
+
+  @override
+  String get abilityPickup => 'Pick up';
+
+  @override
+  String get abilitySonar => 'Scout';
+
+  @override
+  String get abilityVertical => 'VTOL';
+
+  @override
+  String get abilityAmphibious => 'Amphibious';
+
+  @override
+  String get abilityTow => 'Tow';
+
+  @override
+  String get abilityCarry => 'Load';
+
+  @override
+  String get abilityWarp => 'Warp';
+
+  @override
+  String get noAbility => 'No special ability';
+
+  @override
+  String moveDistance(int n) {
+    return 'Moves $n';
+  }
+
+  @override
+  String moveDistanceTurn(int n) {
+    return 'Moves $n + turn';
+  }
 }

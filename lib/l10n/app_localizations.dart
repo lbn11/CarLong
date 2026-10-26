@@ -1297,6 +1297,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Parking boosters · Parking mode only'**
   String get parkingBoostersLabel;
+
+  /// No description provided for @abilityNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get abilityNone;
+
+  /// No description provided for @abilityTurn.
+  ///
+  /// In en, this message translates to:
+  /// **'Turning'**
+  String get abilityTurn;
+
+  /// No description provided for @abilityFlyOver.
+  ///
+  /// In en, this message translates to:
+  /// **'Jump over'**
+  String get abilityFlyOver;
+
+  /// No description provided for @abilityBreakIce.
+  ///
+  /// In en, this message translates to:
+  /// **'Ice breaker'**
+  String get abilityBreakIce;
+
+  /// No description provided for @abilityBreakChain.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get abilityBreakChain;
+
+  /// No description provided for @abilityClearRock.
+  ///
+  /// In en, this message translates to:
+  /// **'Rock breaker'**
+  String get abilityClearRock;
+
+  /// No description provided for @abilityWaterWalk.
+  ///
+  /// In en, this message translates to:
+  /// **'Cross water'**
+  String get abilityWaterWalk;
+
+  /// No description provided for @abilityRailOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Rail only'**
+  String get abilityRailOnly;
+
+  /// No description provided for @abilityTeleport.
+  ///
+  /// In en, this message translates to:
+  /// **'Teleport'**
+  String get abilityTeleport;
+
+  /// No description provided for @abilityPickup.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick up'**
+  String get abilityPickup;
+
+  /// No description provided for @abilitySonar.
+  ///
+  /// In en, this message translates to:
+  /// **'Scout'**
+  String get abilitySonar;
+
+  /// No description provided for @abilityVertical.
+  ///
+  /// In en, this message translates to:
+  /// **'VTOL'**
+  String get abilityVertical;
+
+  /// No description provided for @abilityAmphibious.
+  ///
+  /// In en, this message translates to:
+  /// **'Amphibious'**
+  String get abilityAmphibious;
+
+  /// No description provided for @abilityTow.
+  ///
+  /// In en, this message translates to:
+  /// **'Tow'**
+  String get abilityTow;
+
+  /// No description provided for @abilityCarry.
+  ///
+  /// In en, this message translates to:
+  /// **'Load'**
+  String get abilityCarry;
+
+  /// No description provided for @abilityWarp.
+  ///
+  /// In en, this message translates to:
+  /// **'Warp'**
+  String get abilityWarp;
+
+  /// No description provided for @noAbility.
+  ///
+  /// In en, this message translates to:
+  /// **'No special ability'**
+  String get noAbility;
+
+  /// No description provided for @moveDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'Moves {n}'**
+  String moveDistance(int n);
+
+  /// No description provided for @moveDistanceTurn.
+  ///
+  /// In en, this message translates to:
+  /// **'Moves {n} + turn'**
+  String moveDistanceTurn(int n);
 }
 
 class _AppLocalizationsDelegate

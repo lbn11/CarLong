@@ -302,5 +302,27 @@
   "mergeBoostersLabel": "Merge boosters · auto-apply at level start",
   "parkingBoostersLabel": "Parking boosters · Parking mode only",
 
+  "abilityNone": "None",
+  "abilityTurn": "Turning",
+  "abilityFlyOver": "Jump over",
+  "abilityBreakIce": "Ice breaker",
+  "abilityBreakChain": "Unlock",
+  "abilityClearRock": "Rock breaker",
+  "abilityWaterWalk": "Cross water",
+  "abilityRailOnly": "Rail only",
+  "abilityTeleport": "Teleport",
+  "abilityPickup": "Pick up",
+  "abilitySonar": "Scout",
+  "abilityVertical": "VTOL",
+  "abilityAmphibious": "Amphibious",
+  "abilityTow": "Tow",
+  "abilityCarry": "Load",
+  "abilityWarp": "Warp",
+  "noAbility": "No special ability",
+  "moveDistance": "Moves {n}",
+  "@moveDistance": { "placeholders": { "n": { "type": "int" } } },
+  "moveDistanceTurn": "Moves {n} + turn",
+  "@moveDistanceTurn": { "placeholders": { "n": { "type": "int" } } },
+
   "@vehicleBicycle": { "description": "车型名。图鉴/目标车/合成方块都显示它，要短且地道。" }
 }

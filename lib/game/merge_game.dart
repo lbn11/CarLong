@@ -2958,20 +2958,28 @@ class StackSprite extends PositionComponent
   void _drawAbilityBadge(Canvas canvas) {
     final ability = data.tier.stats.ability;
     if (ability == SpecialAbility.none) return;
-    final label = ability.label;
-    final fontSize = size.x * 0.15;
-    final tp = TextPainter(
-      text: TextSpan(
-        text: label,
-        style: TextStyle(
-          fontSize: fontSize,
-          color: const Color(0xFFFFFFFF),
-          fontFamily: 'Noto Sans SC',
-        ),
-      ),
-      textAlign: TextAlign.center,
-      textDirection: TextDirection.ltr,
-    )..layout();
+    final label = ability.displayLabel;
+    var fontSize = size.x * 0.15;
+    TextPainter layout(double fs) => TextPainter(
+          text: TextSpan(
+            text: label,
+            style: TextStyle(
+              fontSize: fs,
+              color: const Color(0xFFFFFFFF),
+              fontFamily: 'Noto Sans SC',
+            ),
+          ),
+          textAlign: TextAlign.center,
+          textDirection: TextDirection.ltr,
+        )..layout();
+    var tp = layout(fontSize);
+    // 药丸总宽 = 文本 + 两侧 padding（各 0.35 倍字号），必须留在卡片内。
+    final maxW = size.x - 6;
+    final needed = tp.width + fontSize * 0.7;
+    if (needed > maxW) {
+      fontSize *= maxW / needed;
+      tp = layout(fontSize);
+    }
     final padX = fontSize * 0.35;
     final padY = fontSize * 0.18;
     final pillW = tp.width + padX * 2;

@@ -7,6 +7,7 @@ import 'game/music_player.dart';
 import 'game/vehicle_icons.dart';
 import 'game/vehicle_sprites.dart';
 import 'l10n/app_localizations.dart';
+import 'l10n/l10n.dart';
 import 'save/save_repository.dart';
 import 'screens/home_screen.dart';
 import 'services/ads/ad_diagnostics.dart';
@@ -84,6 +85,10 @@ class MergeGameApp extends StatelessWidget {
       // 游戏 HUD/棋盘都是固定尺寸布局：系统大字体钳制到 1.3 倍，
       // 既照顾低视力用户，又避免文字撑爆棋盘与按钮。
       builder: (context, child) {
+        // 模型 getter 与 Flame 组件拿不到 context，只能靠这里广播一份当前
+        // 文案表（见 lib/l10n/l10n.dart）。builder 在 locale 变化时会重建，
+        // 且早于子树的 build/render，所以下游读到的永远是本帧的 locale。
+        L10n.sync(AppLocalizations.of(context));
         final media = MediaQuery.of(context);
         return MediaQuery(
           data: media.copyWith(

@@ -1,5 +1,7 @@
 import 'dart:ui';
 
+import '../l10n/l10n.dart';
+
 /// 交通工具大类
 enum VehicleCategory {
   land('陆地'),
@@ -9,8 +11,20 @@ enum VehicleCategory {
   air('航空'),
   space('星际');
 
+  /// **落盘用**的稳定中文名（`shared/levels/vehicles.json` 直接导出它）。
+  /// 不要拿它上界面——界面走 [displayLabel]。
   final String label;
   const VehicleCategory(this.label);
+
+  /// 界面显示名。模型拿不到 context，读 [L10n.current]（顶部 builder 同步）。
+  String get displayLabel => switch (this) {
+        VehicleCategory.land => L10n.current?.catLand ?? label,
+        VehicleCategory.heavy => L10n.current?.catHeavy ?? label,
+        VehicleCategory.rail => L10n.current?.catRail ?? label,
+        VehicleCategory.maritime => L10n.current?.catMaritime ?? label,
+        VehicleCategory.air => L10n.current?.catAir ?? label,
+        VehicleCategory.space => L10n.current?.catSpace ?? label,
+      };
 }
 
 /// 地形类型
@@ -28,9 +42,17 @@ enum Rarity {
   epic('史诗', Color(0xFF9C27B0)),
   legendary('传说', Color(0xFFFFC107));
 
+  /// **落盘用**的稳定中文名，同 [VehicleCategory.label]。
   final String label;
   final Color color;
   const Rarity(this.label, this.color);
+
+  String get displayLabel => switch (this) {
+        Rarity.common => L10n.current?.rarityCommon ?? label,
+        Rarity.rare => L10n.current?.rarityRare ?? label,
+        Rarity.epic => L10n.current?.rarityEpic ?? label,
+        Rarity.legendary => L10n.current?.rarityLegendary ?? label,
+      };
 }
 
 /// 特殊能力（精简版）
@@ -52,6 +74,7 @@ enum SpecialAbility {
   carry,
   warp;
 
+  /// 落盘用中文名（`vehicles.json` 的 `abilities[].label`），界面用 [displayLabel]。
   String get label => switch (this) {
     none => '无',
     turn => '转弯',
@@ -70,6 +93,25 @@ enum SpecialAbility {
     carry => '装载',
     warp => '曲速',
   };
+
+  String get displayLabel => switch (this) {
+        SpecialAbility.none => L10n.current?.abilityNone ?? label,
+        SpecialAbility.turn => L10n.current?.abilityTurn ?? label,
+        SpecialAbility.flyOver => L10n.current?.abilityFlyOver ?? label,
+        SpecialAbility.breakIce => L10n.current?.abilityBreakIce ?? label,
+        SpecialAbility.breakChain => L10n.current?.abilityBreakChain ?? label,
+        SpecialAbility.clearRock => L10n.current?.abilityClearRock ?? label,
+        SpecialAbility.waterWalk => L10n.current?.abilityWaterWalk ?? label,
+        SpecialAbility.railOnly => L10n.current?.abilityRailOnly ?? label,
+        SpecialAbility.teleport => L10n.current?.abilityTeleport ?? label,
+        SpecialAbility.pickup => L10n.current?.abilityPickup ?? label,
+        SpecialAbility.sonar => L10n.current?.abilitySonar ?? label,
+        SpecialAbility.vertical => L10n.current?.abilityVertical ?? label,
+        SpecialAbility.amphibious => L10n.current?.abilityAmphibious ?? label,
+        SpecialAbility.tow => L10n.current?.abilityTow ?? label,
+        SpecialAbility.carry => L10n.current?.abilityCarry ?? label,
+        SpecialAbility.warp => L10n.current?.abilityWarp ?? label,
+      };
 }
 
 /// 交通工具属性
@@ -202,7 +244,11 @@ enum VehicleType {
     VehicleStats(moveDistance: 4, terrain: {TerrainType.land, TerrainType.water, TerrainType.air}, ability: SpecialAbility.warp, rarity: Rarity.legendary));
 
   final int id;
-  final String name;
+
+  /// **落盘用**的稳定中文名：`shared/levels/*.json` 的 `targetName` 与
+  /// `vehicles[].name` 直接导出它。导出必须与 locale 无关（同一个 seed
+  /// 在任何机器上都要产出逐字节相同的数据），所以绝不能导出 [name]。
+  final String zhName;
   final String icon;
   final Color color;
   final VehicleCategory category;
@@ -210,12 +256,70 @@ enum VehicleType {
 
   const VehicleType(
     this.id,
-    this.name,
+    this.zhName,
     this.icon,
     this.color,
     this.category,
     this.stats,
   );
+
+  /// 界面显示名（英文环境下是 `Sedan` 而不是 `轿车`）。
+  ///
+  /// 名字故意仍叫 `name`：全项目 30+ 处 `tier.name` 的插值点一行都不用改，
+  /// 而且它遮蔽了 `Enum.name`（`bicycle` 这种标识符），防止有人误把它当
+  /// 显示名——要标识符请用 `.sprite` 或 `id`。
+  String get name => switch (this) {
+        VehicleType.bicycle => L10n.current?.vehicleBicycle ?? zhName,
+        VehicleType.scooter => L10n.current?.vehicleScooter ?? zhName,
+        VehicleType.sedan => L10n.current?.vehicleSedan ?? zhName,
+        VehicleType.taxi => L10n.current?.vehicleTaxi ?? zhName,
+        VehicleType.bus => L10n.current?.vehicleBus ?? zhName,
+        VehicleType.motorcycle => L10n.current?.vehicleMotorcycle ?? zhName,
+        VehicleType.suv => L10n.current?.vehicleSuv ?? zhName,
+        VehicleType.van => L10n.current?.vehicleVan ?? zhName,
+        VehicleType.ambulance => L10n.current?.vehicleAmbulance ?? zhName,
+        VehicleType.police => L10n.current?.vehiclePolice ?? zhName,
+        VehicleType.firetruck => L10n.current?.vehicleFiretruck ?? zhName,
+        VehicleType.limousine => L10n.current?.vehicleLimousine ?? zhName,
+        VehicleType.truck => L10n.current?.vehicleTruck ?? zhName,
+        VehicleType.tanker => L10n.current?.vehicleTanker ?? zhName,
+        VehicleType.bulldozer => L10n.current?.vehicleBulldozer ?? zhName,
+        VehicleType.crane => L10n.current?.vehicleCrane ?? zhName,
+        VehicleType.excavator => L10n.current?.vehicleExcavator ?? zhName,
+        VehicleType.dumptruck => L10n.current?.vehicleDumptruck ?? zhName,
+        VehicleType.forklift => L10n.current?.vehicleForklift ?? zhName,
+        VehicleType.cementmixer => L10n.current?.vehicleCementmixer ?? zhName,
+        VehicleType.tram => L10n.current?.vehicleTram ?? zhName,
+        VehicleType.lightrail => L10n.current?.vehicleLightrail ?? zhName,
+        VehicleType.subway => L10n.current?.vehicleSubway ?? zhName,
+        VehicleType.highspeed => L10n.current?.vehicleHighspeed ?? zhName,
+        VehicleType.maglev => L10n.current?.vehicleMaglev ?? zhName,
+        VehicleType.monorail => L10n.current?.vehicleMonorail ?? zhName,
+        VehicleType.steam => L10n.current?.vehicleSteam ?? zhName,
+        VehicleType.hyperloop => L10n.current?.vehicleHyperloop ?? zhName,
+        VehicleType.dinghy => L10n.current?.vehicleDinghy ?? zhName,
+        VehicleType.fishing => L10n.current?.vehicleFishing ?? zhName,
+        VehicleType.ferry => L10n.current?.vehicleFerry ?? zhName,
+        VehicleType.sailboat => L10n.current?.vehicleSailboat ?? zhName,
+        VehicleType.speedboat => L10n.current?.vehicleSpeedboat ?? zhName,
+        VehicleType.barge => L10n.current?.vehicleBarge ?? zhName,
+        VehicleType.warship => L10n.current?.vehicleWarship ?? zhName,
+        VehicleType.carrier => L10n.current?.vehicleCarrier ?? zhName,
+        VehicleType.glider => L10n.current?.vehicleGlider ?? zhName,
+        VehicleType.helicopter => L10n.current?.vehicleHelicopter ?? zhName,
+        VehicleType.drone => L10n.current?.vehicleDrone ?? zhName,
+        VehicleType.airliner => L10n.current?.vehicleAirliner ?? zhName,
+        VehicleType.fighter => L10n.current?.vehicleFighter ?? zhName,
+        VehicleType.cargo => L10n.current?.vehicleCargo ?? zhName,
+        VehicleType.seaplane => L10n.current?.vehicleSeaplane ?? zhName,
+        VehicleType.stealth => L10n.current?.vehicleStealth ?? zhName,
+        VehicleType.rocket => L10n.current?.vehicleRocket ?? zhName,
+        VehicleType.spaceShuttle => L10n.current?.vehicleSpaceShuttle ?? zhName,
+        VehicleType.spaceStation => L10n.current?.vehicleSpaceStation ?? zhName,
+        VehicleType.lunar => L10n.current?.vehicleLunar ?? zhName,
+        VehicleType.starship => L10n.current?.vehicleStarship ?? zhName,
+        VehicleType.warpShip => L10n.current?.vehicleWarpShip ?? zhName,
+      };
 
   VehicleType? get next =>
       index + 1 < VehicleType.values.length ? VehicleType.values[index + 1] : null;
@@ -289,13 +393,15 @@ enum VehicleType {
   bool canMoveOn(TerrainType terrain) => stats.terrain.contains(terrain);
 
   String get moveDescription {
-    final base = '移动${stats.moveDistance}格';
-    if (stats.ability == SpecialAbility.turn) return '$base+转弯';
-    return base;
+    final d = stats.moveDistance;
+    return stats.ability == SpecialAbility.turn
+        ? (L10n.current?.moveDistanceTurn(d) ?? '移动$d格+转弯')
+        : (L10n.current?.moveDistance(d) ?? '移动$d格');
   }
 
-  String get abilityDescription =>
-      stats.ability == SpecialAbility.none ? '无特殊能力' : stats.ability.label;
+  String get abilityDescription => stats.ability == SpecialAbility.none
+      ? (L10n.current?.noAbility ?? '无特殊能力')
+      : stats.ability.displayLabel;
 }
 
 /// 棋盘上的一叠卡片（合并游戏用，兼容旧逻辑）

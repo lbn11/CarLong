@@ -54,7 +54,9 @@ Map<String, dynamic> _compact(Map<String, dynamic> m) {
 
 Map<String, dynamic> vehicleToJson(VehicleType t) => {
       'id': t.id,
-      'name': t.name,
+      // 必须用 zhName 而不是 name —— name 是本地化后的显示名，
+      // 导出数据要跨机器逐字节一致，不能被运行环境的 locale 影响。
+      'name': t.zhName,
       'icon': t.icon,
       'sprite': t.sprite,
       'color': _hex(t.color.toARGB32()),
@@ -98,7 +100,7 @@ Map<String, dynamic> mergeLevelToJson(LevelDefinition l) => _compact({
       'stock': l.stockSize,
       'goal': l.goalType.name,
       'target': l.targetTier?.id,
-      'targetName': l.targetTier?.name,
+      'targetName': l.targetTier?.zhName,
       'count': l.targetCount,
       'bias': l.highTierBias,
       'time': l.timeLimitSeconds,
@@ -159,7 +161,7 @@ Map<String, dynamic> parkingLevelToJson(ParkingLevel l, {int? minMoves}) => {
           }),
       ],
       'target': l.targetTier.id,
-      'targetName': l.targetTier.name,
+      'targetName': l.targetTier.zhName,
       'minMoves': minMoves ?? l.minMoves,
       'moves': l.movesLimit,
       'time': l.timeLimit,

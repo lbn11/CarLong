@@ -211,5 +211,25 @@
   "myBoosters": "我的消耗品",
   "myBoostersFrom": "来自宝箱与停车三星奖励",
   "mergeBoostersLabel": "合成道具 · 开局自动生效",
-  "parkingBoostersLabel": "停车道具 · 仅停车模式可用"
+  "parkingBoostersLabel": "停车道具 · 仅停车模式可用",
+
+  "abilityNone": "无",
+  "abilityTurn": "转弯",
+  "abilityFlyOver": "飞越",
+  "abilityBreakIce": "破冰",
+  "abilityBreakChain": "解锁",
+  "abilityClearRock": "清石",
+  "abilityWaterWalk": "水上",
+  "abilityRailOnly": "轨道限定",
+  "abilityTeleport": "传送",
+  "abilityPickup": "搬运",
+  "abilitySonar": "侦察",
+  "abilityVertical": "垂直起降",
+  "abilityAmphibious": "两栖",
+  "abilityTow": "拖拽",
+  "abilityCarry": "装载",
+  "abilityWarp": "曲速",
+  "noAbility": "无特殊能力",
+  "moveDistance": "移动{n}格",
+  "moveDistanceTurn": "移动{n}格+转弯"
 }
