@@ -9,6 +9,8 @@ import 'package:merge_fleet/screens/shop_screen.dart';
 import 'package:merge_fleet/widgets/candy_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'helpers/localized_app.dart';
+
 /// UI 交互冒烟（任务81）：商店购买 / 图鉴详情 / 经济弹层 关键路径不崩。
 void main() {
   setUp(() {
@@ -18,9 +20,7 @@ void main() {
   testWidgets('商店：没有假内购入口（不许标价却不扣款）', (tester) async {
     final data = PlayerData(coins: 100);
     final repo = SaveRepository();
-    await tester.pumpWidget(MaterialApp(
-      home: ShopScreen(data: data, repo: repo),
-    ));
+    await tester.pumpWidget(l10nHost(ShopScreen(data: data, repo: repo)));
     await tester.pumpAndSettle();
     // 回归锁：商店曾有一个「¥6 购买 600 🪙」的模拟内购按钮，点击直接发金币。
     // 它同时踩三条线：①Apple 3.1.1 / 2.3.1（标价不走 IAP、虚假功能）；
@@ -35,9 +35,7 @@ void main() {
   testWidgets('商店：金币不足时宝箱按钮禁用', (tester) async {
     final data = PlayerData(coins: 10);
     final repo = SaveRepository();
-    await tester.pumpWidget(MaterialApp(
-      home: ShopScreen(data: data, repo: repo),
-    ));
+    await tester.pumpWidget(l10nHost(ShopScreen(data: data, repo: repo)));
     await tester.pumpAndSettle();
     // 主推的宝箱按钮：金币不足时必须是不可点的（新版统一走 CandyButton）。
     final chestBtn =

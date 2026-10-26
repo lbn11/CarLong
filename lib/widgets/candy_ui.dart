@@ -473,14 +473,19 @@ class SoftChip extends StatelessWidget {
             Icon(icon, size: 12, color: fg),
             const SizedBox(width: 4),
           ],
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: fg,
-              fontSize: 11.5,
-              fontWeight: FontWeight.w800,
+          // 必须 Flexible：mainAxisSize.min 的 Row 会把无界约束传给 child，
+          // 裸 Text 的 ellipsis 永远不触发，长英文标签直接撑爆 Row
+          // （实测：'Merge boosters · auto-apply at level start' 溢出 202px）。
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: fg,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ],

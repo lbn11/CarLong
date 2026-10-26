@@ -763,6 +763,540 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Warp Ship'**
   String get vehicleWarpShip;
+
+  /// No description provided for @offlineHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} hours'**
+  String offlineHours(String hours);
+
+  /// No description provided for @offlineMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String offlineMinutes(String minutes);
+
+  /// No description provided for @welcomeBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome back!'**
+  String get welcomeBack;
+
+  /// No description provided for @offlineWelcome.
+  ///
+  /// In en, this message translates to:
+  /// **'You were away for {duration}. Your fleet earned +{reward} 🪙. No rush — take your time.'**
+  String offlineWelcome(String duration, int reward);
+
+  /// No description provided for @takeIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Take it!'**
+  String get takeIt;
+
+  /// No description provided for @alreadyCheckedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Already checked in today'**
+  String get alreadyCheckedIn;
+
+  /// No description provided for @signInStreakHint.
+  ///
+  /// In en, this message translates to:
+  /// **'{streak}-day streak — keep going, the big prize lands on day 7!'**
+  String signInStreakHint(int streak);
+
+  /// No description provided for @signInJackpot.
+  ///
+  /// In en, this message translates to:
+  /// **'Streak jackpot! +{reward} 🪙'**
+  String signInJackpot(int reward);
+
+  /// No description provided for @signInSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Checked in! +{reward} 🪙'**
+  String signInSuccess(int reward);
+
+  /// No description provided for @signInCycleDone.
+  ///
+  /// In en, this message translates to:
+  /// **'{streak}-day streak — 7-day cycle complete, jackpot unlocked! A fresh cycle starts tomorrow.'**
+  String signInCycleDone(int streak);
+
+  /// No description provided for @signInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'{streak}-day streak, {reward} coins banked. Keep it up — day 7 brings the big prize 🎁'**
+  String signInProgress(int streak, int reward);
+
+  /// No description provided for @soundAndMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound & Music'**
+  String get soundAndMusic;
+
+  /// No description provided for @haptics.
+  ///
+  /// In en, this message translates to:
+  /// **'Haptics'**
+  String get haptics;
+
+  /// No description provided for @privacyAdPreferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy & ad preferences'**
+  String get privacyAdPreferences;
+
+  /// No description provided for @privacyAdPreferencesSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Change or withdraw ad consent anytime'**
+  String get privacyAdPreferencesSub;
+
+  /// No description provided for @done.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get done;
+
+  /// No description provided for @adDiagnostics.
+  ///
+  /// In en, this message translates to:
+  /// **'Ad diagnostics'**
+  String get adDiagnostics;
+
+  /// No description provided for @privacyNotRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Not required in your region'**
+  String get privacyNotRequired;
+
+  /// No description provided for @privacyDemoNoSdk.
+  ///
+  /// In en, this message translates to:
+  /// **'This demo build has no real ad SDK, so no consent form appears. Once live it shows automatically wherever consent is required.'**
+  String get privacyDemoNoSdk;
+
+  /// No description provided for @privacyNonPersonalized.
+  ///
+  /// In en, this message translates to:
+  /// **'Your region doesn\'t require consent management, so we only request non-personalized ads.'**
+  String get privacyNonPersonalized;
+
+  /// No description provided for @gotIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Got it'**
+  String get gotIt;
+
+  /// No description provided for @privacyOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t open privacy settings right now'**
+  String get privacyOpenFailed;
+
+  /// No description provided for @privacyDemoForm.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo build: with the real SDK this opens the system consent form.'**
+  String get privacyDemoForm;
+
+  /// No description provided for @privacyNetworkRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your connection and try again. Your consent status is unchanged — your current settings still apply.'**
+  String get privacyNetworkRetry;
+
+  /// No description provided for @endlessLeaderboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Endless Leaderboard'**
+  String get endlessLeaderboard;
+
+  /// No description provided for @endlessNoScores.
+  ///
+  /// In en, this message translates to:
+  /// **'No scores yet — play a few Endless runs and you\'ll show up here.'**
+  String get endlessNoScores;
+
+  /// No description provided for @pointsUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'{score} pts'**
+  String pointsUnit(String score);
+
+  /// No description provided for @parkingTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Ease every car into its spot'**
+  String get parkingTagline;
+
+  /// No description provided for @claimGrandPrize.
+  ///
+  /// In en, this message translates to:
+  /// **'Claim the grand prize!'**
+  String get claimGrandPrize;
+
+  /// No description provided for @collectionGrandPrize.
+  ///
+  /// In en, this message translates to:
+  /// **'Full collection bonus +{reward} 🪙'**
+  String collectionGrandPrize(int reward);
+
+  /// No description provided for @collectionComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'All {count} vehicles collected — a true collector!'**
+  String collectionComplete(int count);
+
+  /// No description provided for @allLevels.
+  ///
+  /// In en, this message translates to:
+  /// **'All Levels'**
+  String get allLevels;
+
+  /// No description provided for @levelsCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'{done}/{total} cleared'**
+  String levelsCleared(int done, int total);
+
+  /// No description provided for @dailyDoneToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Done today · {streak}-day streak'**
+  String dailyDoneToday(int streak);
+
+  /// No description provided for @dailyStreakBonus.
+  ///
+  /// In en, this message translates to:
+  /// **'{streak}-day streak · +{reward} 🪙'**
+  String dailyStreakBonus(int streak, int reward);
+
+  /// No description provided for @dailyFinishReward.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish to earn +{reward} 🪙'**
+  String dailyFinishReward(int reward);
+
+  /// No description provided for @heroTitleNew.
+  ///
+  /// In en, this message translates to:
+  /// **'Time to Roll'**
+  String get heroTitleNew;
+
+  /// No description provided for @heroTitleResume.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep Playing'**
+  String get heroTitleResume;
+
+  /// No description provided for @bestScore.
+  ///
+  /// In en, this message translates to:
+  /// **'Best {best}'**
+  String bestScore(String best);
+
+  /// No description provided for @overallProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress'**
+  String get overallProgress;
+
+  /// No description provided for @startGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get startGame;
+
+  /// No description provided for @homeTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Play a round or two, grow your fleet at your own pace'**
+  String get homeTagline;
+
+  /// No description provided for @bestChain.
+  ///
+  /// In en, this message translates to:
+  /// **'🔥 Best chain x{combo}'**
+  String bestChain(int combo);
+
+  /// No description provided for @checkIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Check-in'**
+  String get checkIn;
+
+  /// No description provided for @streakDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{streak}-day streak'**
+  String streakDays(int streak);
+
+  /// No description provided for @claimable.
+  ///
+  /// In en, this message translates to:
+  /// **'Claimable!'**
+  String get claimable;
+
+  /// No description provided for @endlessMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Endless'**
+  String get endlessMode;
+
+  /// No description provided for @endlessTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge without stopping'**
+  String get endlessTagline;
+
+  /// No description provided for @boosterTimeCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Time Card'**
+  String get boosterTimeCard;
+
+  /// No description provided for @boosterExtraCards.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra Cards'**
+  String get boosterExtraCards;
+
+  /// No description provided for @boosterDoubleCoins.
+  ///
+  /// In en, this message translates to:
+  /// **'Double Coins'**
+  String get boosterDoubleCoins;
+
+  /// No description provided for @boosterUndoCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo Card'**
+  String get boosterUndoCard;
+
+  /// No description provided for @boosterBomb.
+  ///
+  /// In en, this message translates to:
+  /// **'Bomb'**
+  String get boosterBomb;
+
+  /// No description provided for @boosterSpring.
+  ///
+  /// In en, this message translates to:
+  /// **'Spring'**
+  String get boosterSpring;
+
+  /// No description provided for @boosterBalloon.
+  ///
+  /// In en, this message translates to:
+  /// **'Balloon'**
+  String get boosterBalloon;
+
+  /// No description provided for @boosterKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Key'**
+  String get boosterKey;
+
+  /// No description provided for @boosterHammer.
+  ///
+  /// In en, this message translates to:
+  /// **'Hammer'**
+  String get boosterHammer;
+
+  /// No description provided for @boosterDoubleMove.
+  ///
+  /// In en, this message translates to:
+  /// **'Double Move'**
+  String get boosterDoubleMove;
+
+  /// No description provided for @adRewardLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch an ad · +{reward} 🪙'**
+  String adRewardLine(int reward);
+
+  /// No description provided for @adLeftToday.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} left today'**
+  String adLeftToday(int count);
+
+  /// No description provided for @adLeftTodayWithReward.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} left today, +{reward} 🪙 each'**
+  String adLeftTodayWithReward(int count, int reward);
+
+  /// No description provided for @adUsedUp.
+  ///
+  /// In en, this message translates to:
+  /// **'All used for today — come back tomorrow'**
+  String get adUsedUp;
+
+  /// No description provided for @adDidNotFinish.
+  ///
+  /// In en, this message translates to:
+  /// **'Ad didn\'t finish'**
+  String get adDidNotFinish;
+
+  /// No description provided for @chestGotItem.
+  ///
+  /// In en, this message translates to:
+  /// **'You got {name}!'**
+  String chestGotItem(String name);
+
+  /// No description provided for @chestStockParking.
+  ///
+  /// In en, this message translates to:
+  /// **'+1 in stock — use it in Parking'**
+  String get chestStockParking;
+
+  /// No description provided for @chestStockMerge.
+  ///
+  /// In en, this message translates to:
+  /// **'+1 in stock — auto-applies when a Merge level starts'**
+  String get chestStockMerge;
+
+  /// No description provided for @chestCoins90.
+  ///
+  /// In en, this message translates to:
+  /// **'+90 coins'**
+  String get chestCoins90;
+
+  /// No description provided for @chestCoins90Note.
+  ///
+  /// In en, this message translates to:
+  /// **'A small haul — the next chest could be lucky!'**
+  String get chestCoins90Note;
+
+  /// No description provided for @chestCoins150.
+  ///
+  /// In en, this message translates to:
+  /// **'+150 coins'**
+  String get chestCoins150;
+
+  /// No description provided for @chestCoins150Note.
+  ///
+  /// In en, this message translates to:
+  /// **'Nice little win!'**
+  String get chestCoins150Note;
+
+  /// No description provided for @chestCoins300.
+  ///
+  /// In en, this message translates to:
+  /// **'+300 coins!'**
+  String get chestCoins300;
+
+  /// No description provided for @chestCoins300Note.
+  ///
+  /// In en, this message translates to:
+  /// **'Jackpot! Luck\'s on your side today!'**
+  String get chestCoins300Note;
+
+  /// No description provided for @shopTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunny Shop'**
+  String get shopTitle;
+
+  /// No description provided for @shopTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'A little luck on the side — stop whenever you like'**
+  String get shopTagline;
+
+  /// No description provided for @chestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Coin Chest'**
+  String get chestTitle;
+
+  /// No description provided for @chestPerDraw.
+  ///
+  /// In en, this message translates to:
+  /// **'{cost} 🪙 per chest · 60% coins / 40% boosters'**
+  String chestPerDraw(int cost);
+
+  /// No description provided for @chestBoosterHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Boosters save a run when it counts: Time Card +30s, Extra Cards +3, Double Coins doubles your clear reward. Parking boosters (Bomb / Spring / Key…) only work in Parking.'**
+  String get chestBoosterHelp;
+
+  /// No description provided for @chestOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open chest · {cost} 🪙'**
+  String chestOpen(int cost);
+
+  /// No description provided for @chestNeedMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Need {amount} more 🪙'**
+  String chestNeedMore(int amount);
+
+  /// No description provided for @dailyPerks.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Bonus'**
+  String get dailyPerks;
+
+  /// No description provided for @dailyPerksTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Take it easy — no need to log in every day'**
+  String get dailyPerksTagline;
+
+  /// No description provided for @loadingEllipsis.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading…'**
+  String get loadingEllipsis;
+
+  /// No description provided for @claimPlus.
+  ///
+  /// In en, this message translates to:
+  /// **'Claim +{reward}'**
+  String claimPlus(int reward);
+
+  /// No description provided for @noPurchaseNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Coins come only from ads and clearing levels. There is no purchase option in the game.'**
+  String get noPurchaseNotice;
+
+  /// No description provided for @demoAdNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo build: ads play instantly and always reward.'**
+  String get demoAdNotice;
+
+  /// No description provided for @myBoosters.
+  ///
+  /// In en, this message translates to:
+  /// **'My Boosters'**
+  String get myBoosters;
+
+  /// No description provided for @myBoostersFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'From chests and 3-star Parking rewards'**
+  String get myBoostersFrom;
+
+  /// No description provided for @mergeBoostersLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge boosters · auto-apply at level start'**
+  String get mergeBoostersLabel;
+
+  /// No description provided for @parkingBoostersLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Parking boosters · Parking mode only'**
+  String get parkingBoostersLabel;
 }
 
 class _AppLocalizationsDelegate

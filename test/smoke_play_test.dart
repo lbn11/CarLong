@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flame/game.dart';
 import 'package:merge_fleet/game/vehicle_icons.dart';
+import 'package:merge_fleet/l10n/app_localizations.dart';
 import 'package:merge_fleet/main.dart' as app;
 import 'package:merge_fleet/models/level.dart';
 import 'package:merge_fleet/save/save_repository.dart';
@@ -17,6 +18,8 @@ import 'package:merge_fleet/screens/parking_screen.dart';
 import 'package:merge_fleet/screens/shop_screen.dart';
 import 'package:merge_fleet/services/parking_generator.dart';
 
+import 'helpers/localized_app.dart';
+
 /// Flame 有持续渲染循环、首页有循环氛围动画，pumpAndSettle 永远不收敛，
 /// 所以统一用「固定时长 pump」代替。
 Future<void> pumpFor(
@@ -28,7 +31,7 @@ Future<void> pumpFor(
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = size;
   addTearDown(tester.view.reset);
-  await tester.pumpWidget(MaterialApp(home: widget));
+  await tester.pumpWidget(l10nHost(widget));
   await tester.pump(settle);
   await tester.pump(settle);
 }
@@ -45,7 +48,11 @@ void main() {
   testWidgets('应用启动且首页渲染正常', (tester) async {
     await pumpFor(tester, app.MergeGameApp(data: PlayerData(), repo: SaveRepository()));
     expect(tester.takeException(), isNull);
-    expect(find.text('开始游戏'), findsWidgets);
+    // 文案从 l10n 取，不写死语言：测试宿主默认 en，这里即 "Start"。
+    expect(
+      find.text(lookupAppLocalizations(const Locale('en')).startGame),
+      findsWidgets,
+    );
   });
 
   /// 主玩法：进入合成关卡 + 在棋盘上点两下（模拟选车/移动），不应崩溃

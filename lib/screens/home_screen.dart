@@ -13,6 +13,7 @@ import '../models/achievement.dart';
 import '../models/vehicle.dart';
 import '../theme/app_theme.dart';
 import '../models/level.dart';
+import '../l10n/app_localizations.dart';
 import '../save/save_repository.dart';
 import '../services/ads/ad_diagnostics.dart';
 import '../services/ads/ad_service.dart';
@@ -119,18 +120,19 @@ class _HomeScreenState extends State<HomeScreen>
     data.addCoins(reward);
     widget.repo.save(data);
     _analytics.offlineReward(reward, hours.round());
-    final hoursText = offlineMs >= 2 * 3600000
-        ? '${(offlineMs / 3600000).toStringAsFixed(1)} 小时'
-        : '${(offlineMs / 60000).round()} 分钟';
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
+      final hoursText = offlineMs >= 2 * 3600000
+          ? l10n.offlineHours((offlineMs / 3600000).toStringAsFixed(1))
+          : l10n.offlineMinutes('${(offlineMs / 60000).round()}');
       CandyDialog.show(
         context,
         emoji: '👋',
         color: AppColors.sun,
-        title: '欢迎回来！',
-        message: '离线 $hoursText，车队帮你攒了 +$reward 🪙。慢慢玩，不着急。',
-        confirmLabel: '收下啦',
+        title: l10n.welcomeBack,
+        message: l10n.offlineWelcome(hoursText, reward),
+        confirmLabel: l10n.takeIt,
       );
     });
   }
@@ -148,14 +150,15 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _onSignIn() {
     AudioFeedback.uiTap();
+    final l10n = AppLocalizations.of(context);
     final today = _today();
     if (data.lastSignInDate == today) {
       CandyDialog.show(
         context,
         icon: Icons.check_circle_rounded,
         color: AppColors.mint,
-        title: '今天已经签过啦',
-        message: '已连续签到 ${data.signInStreak} 天，坚持到第 7 天领大奖！',
+        title: l10n.alreadyCheckedIn,
+        message: l10n.signInStreakHint(data.signInStreak),
       );
       return;
     }
@@ -176,15 +179,18 @@ class _HomeScreenState extends State<HomeScreen>
       context,
       emoji: day == 7 ? '🎁' : '📅',
       color: AppColors.lemon,
-      title: day == 7 ? '签到大奖！+$reward 🪙' : '签到成功！+$reward 🪙',
+      title: day == 7 ? l10n.signInJackpot(reward) : l10n.signInSuccess(reward),
       message: day == 7
-          ? '已连续签到 $streak 天，集满 7 日循环，豪礼到手！明天开启新一轮循环。'
-          : '已连续签到 $streak 天，累计 $reward 金币入账。坚持签到，第 7 天有大奖 🎁',
+          ? l10n.signInCycleDone(streak)
+          : l10n.signInProgress(streak, reward),
     );
   }
 
   void _showSettings() {
     AudioFeedback.uiTap();
+    // 弹窗内容和这里同属一棵 context 树，locale 相同，
+    // 所以在 showDialog 外面取一次就够，不用把 builder 改成块语法。
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -217,7 +223,7 @@ class _HomeScreenState extends State<HomeScreen>
               children: [
                 Row(
                   children: [
-                    Text('设置',
+                    Text(l10n.settings,
                         style: const TextStyle(
                             color: AppColors.ink1,
                             fontSize: 18,
@@ -233,8 +239,8 @@ class _HomeScreenState extends State<HomeScreen>
                 const SizedBox(height: 6),
                 SwitchListTile(
                   value: data.soundOn,
-                  title: const Text('音效与音乐',
-                      style: TextStyle(color: AppColors.ink1)),
+                  title: Text(l10n.soundAndMusic,
+                      style: const TextStyle(color: AppColors.ink1)),
                   activeThumbColor: AppColors.coral,
                   contentPadding: EdgeInsets.zero,
                   dense: true,
@@ -249,8 +255,8 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 SwitchListTile(
                   value: data.vibrateOn,
-                  title: const Text('振动',
-                      style: TextStyle(color: AppColors.ink1)),
+                  title: Text(l10n.haptics,
+                      style: const TextStyle(color: AppColors.ink1)),
                   activeThumbColor: AppColors.coral,
                   contentPadding: EdgeInsets.zero,
                   dense: true,
@@ -282,18 +288,18 @@ class _HomeScreenState extends State<HomeScreen>
                         const Icon(Icons.privacy_tip_rounded,
                             size: 19, color: AppColors.grape),
                         const SizedBox(width: 10),
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('隐私设置与广告偏好',
-                                  style: TextStyle(
+                              Text(l10n.privacyAdPreferences,
+                                  style: const TextStyle(
                                       color: AppColors.ink1,
                                       fontSize: 14,
                                       fontWeight: FontWeight.w700)),
-                              SizedBox(height: 2),
-                              Text('随时修改或撤回广告同意',
-                                  style: TextStyle(
+                              const SizedBox(height: 2),
+                              Text(l10n.privacyAdPreferencesSub,
+                                  style: const TextStyle(
                                       color: AppColors.ink3, fontSize: 11.5)),
                             ],
                           ),
@@ -310,7 +316,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ],
                 const SizedBox(height: 8),
                 CandyButton(
-                  label: '完成',
+                  label: l10n.done,
                   colors: AppTheme.gradientOf(AppColors.grape),
                   expand: true,
                   size: CandyButtonSize.medium,
@@ -329,6 +335,7 @@ class _HomeScreenState extends State<HomeScreen>
   /// 唯一用途是回答「现在这条广告到底是不是真的」：真机上打开设置就能确认，
   /// 不用连调试器、也不用猜日志。三种状态用一句话说清（见 [AdDiagnostics]）。
   Widget _buildAdDiagBlock(PlayerData data) {
+    final l10n = AppLocalizations.of(context);
     final rows = AdService.diagnose(data);
     final warn = rows.any((r) => r.level == AdDiagLevel.warn);
     final tone = warn ? AppColors.coral : AppColors.mint;
@@ -347,12 +354,18 @@ class _HomeScreenState extends State<HomeScreen>
             children: [
               Icon(Icons.science_rounded, size: 13, color: tone),
               const SizedBox(width: 5),
-              Text(
-                '广告自检（开发版可见）',
-                style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w800,
-                  color: tone,
+              // Flexible：英文标签比中文长一倍，320px 小屏的弹窗里
+              // 裸 Text 会溢出 112px。
+              Flexible(
+                child: Text(
+                  l10n.adDiagnostics,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    color: tone,
+                  ),
                 ),
               ),
             ],
@@ -406,16 +419,17 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _openAdPrivacy() async {
     final required = await AdService.privacyOptionsRequired();
     if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
     if (!required) {
       CandyDialog.show(
         context,
         icon: Icons.privacy_tip_rounded,
         color: AppColors.sky,
-        title: '当前地区无需设置',
+        title: l10n.privacyNotRequired,
         message: AdService.usingMock
-            ? '演示环境没有真实广告 SDK，因此这里不会弹表单。上线后该地区要求同意管理时会自动出现。'
-            : '你所在地区不要求广告同意管理，我们目前只请求非个性化广告。',
-        confirmLabel: '知道了',
+            ? l10n.privacyDemoNoSdk
+            : l10n.privacyNonPersonalized,
+        confirmLabel: l10n.gotIt,
       );
       return;
     }
@@ -425,11 +439,10 @@ class _HomeScreenState extends State<HomeScreen>
       context,
       icon: Icons.info_outline,
       color: AppColors.ink3,
-      title: '隐私设置暂时打不开',
-      message: AdService.usingMock
-          ? '演示环境：真实 SDK 下这里会打开系统的同意管理表单。'
-          : '请检查网络后重试。广告同意状态没有变化，你的现有设置仍然有效。',
-      confirmLabel: '知道了',
+      title: l10n.privacyOpenFailed,
+      message:
+          AdService.usingMock ? l10n.privacyDemoForm : l10n.privacyNetworkRetry,
+      confirmLabel: l10n.gotIt,
     );
   }
 
@@ -453,6 +466,7 @@ class _HomeScreenState extends State<HomeScreen>
   void _showEndlessRank() {
     AudioFeedback.uiTap();
     final list = data.endlessBest;
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -488,8 +502,8 @@ class _HomeScreenState extends State<HomeScreen>
                   const Icon(Icons.emoji_events_rounded,
                       color: AppColors.sun, size: 26),
                   const SizedBox(width: 8),
-                  const Text('无尽排行榜',
-                      style: TextStyle(
+                  Text(l10n.endlessLeaderboard,
+                      style: const TextStyle(
                           color: AppColors.ink1,
                           fontSize: 19,
                           fontWeight: FontWeight.w900)),
@@ -499,7 +513,7 @@ class _HomeScreenState extends State<HomeScreen>
               if (list.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  child: Text('还没有纪录，去无尽模式随便玩两把试试～',
+                  child: Text(l10n.endlessNoScores,
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: AppColors.ink2)),
                 )
@@ -539,7 +553,7 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                         ),
                         const SizedBox(width: 10),
-                        Text('${list[i]} 分',
+                        Text(l10n.pointsUnit('${list[i]}'),
                             style: const TextStyle(
                                 color: AppColors.ink1,
                                 fontSize: 12.5,
@@ -549,7 +563,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
               const SizedBox(height: 16),
               CandyButton(
-                label: '好',
+                label: l10n.ok,
                 colors: AppTheme.gradientOf(AppColors.taro),
                 expand: true,
                 size: CandyButtonSize.medium,
@@ -655,11 +669,12 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// 停车模式入口（半宽玩法卡）。
   Widget _buildParkingCard() {
+    final l10n = AppLocalizations.of(context);
     return _buildModeCard(
       icon: Icons.local_parking_rounded,
       accent: AppColors.mint,
-      title: '停车模式',
-      subtitle: '把车轻轻挪进车位',
+      title: l10n.parking,
+      subtitle: l10n.parkingTagline,
       onTap: () {
         AudioFeedback.uiTap();
         Navigator.of(context).push(
@@ -678,11 +693,12 @@ class _HomeScreenState extends State<HomeScreen>
     final total = VehicleType.values.length;
     final complete = collected >= total;
     final claimable = complete && !data.collectionRewardClaimed;
+    final l10n = AppLocalizations.of(context);
     return _buildSquareEntry(
       icon: Icons.auto_stories_rounded,
       color: AppColors.grape,
-      title: '图鉴',
-      subtitle: claimable ? '领大奖!' : '$collected/$total',
+      title: l10n.collection,
+      subtitle: claimable ? l10n.claimGrandPrize : '$collected/$total',
       dot: claimable,
       onTap: claimable
           ? _claimCollectionReward
@@ -704,12 +720,13 @@ class _HomeScreenState extends State<HomeScreen>
     data.addCoins(GameConfig.collectionGrandReward);
     widget.repo.save(data);
     setState(() {});
+    final l10n = AppLocalizations.of(context);
     CandyDialog.show(
       context,
       emoji: '🎉',
       color: AppColors.lemon,
-      title: '全图鉴大奖 +${GameConfig.collectionGrandReward} 🪙',
-      message: '集齐全部 ${VehicleType.values.length} 款车辆，收藏家之名当之无愧！',
+      title: l10n.collectionGrandPrize(GameConfig.collectionGrandReward),
+      message: l10n.collectionComplete(VehicleType.values.length),
     );
   }
 
@@ -717,11 +734,12 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildLevelListCard() {
     final completed =
         levels.where((l) => (data.bestStars[l.id] ?? 0) > 0).length;
+    final l10n = AppLocalizations.of(context);
     return _buildModeCard(
       icon: Icons.grid_view_rounded,
       accent: AppColors.lemon,
-      title: '全部关卡',
-      subtitle: '已完成 $completed/${levels.length} 关',
+      title: l10n.allLevels,
+      subtitle: l10n.levelsCleared(completed, levels.length),
       onTap: () {
         AudioFeedback.uiTap();
         Navigator.of(context).push(
@@ -739,15 +757,16 @@ class _HomeScreenState extends State<HomeScreen>
     final cleared = data.dailyClearedDate == _today();
     final accent = level.targetTier!.color;
     final streak = data.dailyStreak;
+    final l10n = AppLocalizations.of(context);
     return _buildModeCard(
       icon: Icons.today_rounded,
       accent: cleared ? AppColors.mint : accent,
-      title: '每日挑战',
+      title: l10n.dailyChallenge,
       subtitle: cleared
-          ? '今天已完成 · 连签 $streak 天'
+          ? l10n.dailyDoneToday(streak)
           : (streak >= 2
-              ? '连签 $streak 天 · +${DailyChallenge.reward + 50}🪙'
-              : '完成领 +${DailyChallenge.reward} 🪙'),
+              ? l10n.dailyStreakBonus(streak, DailyChallenge.reward + 50)
+              : l10n.dailyFinishReward(DailyChallenge.reward)),
       onTap: _openDaily,
       trailing: Icon(
         cleared ? Icons.check_circle_rounded : Icons.play_circle_fill_rounded,
@@ -916,6 +935,7 @@ class _HomeScreenState extends State<HomeScreen>
     final progress = completed / levels.length;
     final best = data.bestScores[level.id] ?? 0;
     final isFresh = completed == 0;
+    final l10n = AppLocalizations.of(context);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(28),
@@ -979,14 +999,15 @@ class _HomeScreenState extends State<HomeScreen>
                   Row(
                     children: [
                       SoftChip(
-                        label: isFresh ? '启程时刻' : '继续挑战',
+                        label:
+                            isFresh ? l10n.heroTitleNew : l10n.heroTitleResume,
                         color: accent,
                         solid: true,
                       ),
                       const Spacer(),
                       if (best > 0)
                         SoftChip(
-                          label: '最佳 $best 分',
+                          label: l10n.bestScore('$best'),
                           color: AppColors.sun,
                           icon: Icons.star_rounded,
                         ),
@@ -1014,17 +1035,30 @@ class _HomeScreenState extends State<HomeScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            // 两个 Text 都必须包 Flexible：Row 的非 flex child
+                            // 拿到的是无界约束，ellipsis 不生效；英文
+                            // "Overall Progress" + "0/700 cleared" 溢出 141px。
                             Row(
                               children: [
-                                const Text('总进度',
-                                    style: TextStyle(
-                                        color: AppColors.ink2, fontSize: 11)),
+                                Flexible(
+                                  child: Text(l10n.overallProgress,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          color: AppColors.ink2, fontSize: 11)),
+                                ),
                                 const Spacer(),
-                                Text('$completed/${levels.length} 关',
-                                    style: const TextStyle(
-                                        color: AppColors.ink2,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800)),
+                                Flexible(
+                                  child: Text(
+                                      l10n.levelsCleared(
+                                          completed, levels.length),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          color: AppColors.ink2,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800)),
+                                ),
                               ],
                             ),
                             const SizedBox(height: 5),
@@ -1034,7 +1068,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                       const SizedBox(width: 14),
                       CandyButton(
-                        label: '开始游戏',
+                        label: l10n.startGame,
                         icon: Icons.play_arrow_rounded,
                         colors: AppTheme.gradientOf(accent),
                         size: CandyButtonSize.medium,
@@ -1053,6 +1087,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildHeader() {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 12, 14, 2),
       child: Column(
@@ -1072,8 +1107,8 @@ class _HomeScreenState extends State<HomeScreen>
                           AppColors.grape,
                         ],
                       ).createShader(rect),
-                      child: const Text('车水马龙',
-                          style: TextStyle(
+                      child: Text(l10n.appName,
+                          style: const TextStyle(
                               fontSize: 30,
                               fontWeight: FontWeight.w900,
                               color: Colors.white,
@@ -1081,8 +1116,8 @@ class _HomeScreenState extends State<HomeScreen>
                               height: 1.1)),
                     ),
                     const SizedBox(height: 1),
-                    const Text('随手玩两把，慢慢攒车队',
-                        style: TextStyle(
+                    Text(l10n.homeTagline,
+                        style: const TextStyle(
                             color: AppColors.ink3,
                             fontSize: 11.5,
                             letterSpacing: 0.6)),
@@ -1092,8 +1127,7 @@ class _HomeScreenState extends State<HomeScreen>
                     // 不会被空白的"x0"提醒自己不行。
                     Text(
                       [
-                        if (data.bestCombo >= 2)
-                          '🔥 最高连消 x${data.bestCombo}',
+                        if (data.bestCombo >= 2) l10n.bestChain(data.bestCombo),
                         '👑 Boss ${data.defeatedBosses.length}'
                             '/${LevelDataGenerator.bossTotal}',
                       ].join('  ·  '),
@@ -1125,11 +1159,14 @@ class _HomeScreenState extends State<HomeScreen>
     final signedToday = data.lastSignInDate == _today();
     final nextDay = (data.signInDay % 7) + 1;
     final nextReward = _signInRewards[nextDay - 1];
+    final l10n = AppLocalizations.of(context);
     return _buildSquareEntry(
       icon: signedToday ? Icons.task_alt_rounded : Icons.calendar_month_rounded,
       color: AppColors.lemon,
-      title: '签到',
-      subtitle: signedToday ? '连签 ${data.signInStreak} 天' : '+$nextReward 🪙',
+      title: l10n.checkIn,
+      subtitle: signedToday
+          ? l10n.streakDays(data.signInStreak)
+          : '+$nextReward 🪙',
       dot: !signedToday,
       onTap: signedToday ? null : _onSignIn,
     );
@@ -1143,12 +1180,13 @@ class _HomeScreenState extends State<HomeScreen>
         .length;
     final claimable = achievements.any((a) =>
         !data.claimedAchievements.contains(a.id) && a.achieved(data));
+    final l10n = AppLocalizations.of(context);
     return _buildSquareEntry(
       icon: Icons.emoji_events_rounded,
       color: AppColors.sun,
-      title: '成就',
+      title: l10n.achievements,
       subtitle: claimable
-          ? '可领取!'
+          ? l10n.claimable
           : '$claimed/${achievements.length}',
       dot: claimable,
       onTap: () {
@@ -1163,10 +1201,11 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildShopSquare() {
+    final l10n = AppLocalizations.of(context);
     return _buildSquareEntry(
       icon: Icons.storefront_rounded,
       color: AppColors.mint,
-      title: '商店',
+      title: l10n.shop,
       subtitle: '${data.coins} 🪙',
       onTap: () {
         AudioFeedback.uiTap();
@@ -1181,14 +1220,16 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildEndlessCard() {
     final best = data.endlessBest.isEmpty ? 0 : data.endlessBest.first;
+    final l10n = AppLocalizations.of(context);
     return Stack(
       clipBehavior: Clip.none,
       children: [
         _buildModeCard(
           icon: Icons.auto_awesome_rounded,
           accent: AppColors.taro,
-          title: '无尽模式',
-          subtitle: best > 0 ? '最高 $best 分' : '合成不停歇',
+          title: l10n.endlessMode,
+          subtitle:
+              best > 0 ? l10n.bestScore('$best') : l10n.endlessTagline,
           onTap: () => _openLevel(endlessLevel),
           trailing: GestureDetector(
             onTap: _showEndlessRank,

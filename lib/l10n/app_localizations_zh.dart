@@ -340,4 +340,324 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get vehicleWarpShip => '曲速飞船';
+
+  @override
+  String offlineHours(String hours) {
+    return '$hours 小时';
+  }
+
+  @override
+  String offlineMinutes(String minutes) {
+    return '$minutes 分钟';
+  }
+
+  @override
+  String get welcomeBack => '欢迎回来！';
+
+  @override
+  String offlineWelcome(String duration, int reward) {
+    return '离线 $duration，车队帮你攒了 +$reward 🪙。慢慢玩，不着急。';
+  }
+
+  @override
+  String get takeIt => '收下啦';
+
+  @override
+  String get alreadyCheckedIn => '今天已经签过啦';
+
+  @override
+  String signInStreakHint(int streak) {
+    return '已连续签到 $streak 天，坚持到第 7 天领大奖！';
+  }
+
+  @override
+  String signInJackpot(int reward) {
+    return '签到大奖！+$reward 🪙';
+  }
+
+  @override
+  String signInSuccess(int reward) {
+    return '签到成功！+$reward 🪙';
+  }
+
+  @override
+  String signInCycleDone(int streak) {
+    return '已连续签到 $streak 天，集满 7 日循环，豪礼到手！明天开启新一轮循环。';
+  }
+
+  @override
+  String signInProgress(int streak, int reward) {
+    return '已连续签到 $streak 天，累计 $reward 金币入账。坚持签到，第 7 天有大奖 🎁';
+  }
+
+  @override
+  String get soundAndMusic => '音效与音乐';
+
+  @override
+  String get haptics => '振动';
+
+  @override
+  String get privacyAdPreferences => '隐私设置与广告偏好';
+
+  @override
+  String get privacyAdPreferencesSub => '随时修改或撤回广告同意';
+
+  @override
+  String get done => '完成';
+
+  @override
+  String get adDiagnostics => '广告自检';
+
+  @override
+  String get privacyNotRequired => '当前地区无需设置';
+
+  @override
+  String get privacyDemoNoSdk => '演示环境没有真实广告 SDK，因此这里不会弹表单。上线后该地区要求同意管理时会自动出现。';
+
+  @override
+  String get privacyNonPersonalized => '你所在地区不要求广告同意管理，我们目前只请求非个性化广告。';
+
+  @override
+  String get gotIt => '知道了';
+
+  @override
+  String get privacyOpenFailed => '隐私设置暂时打不开';
+
+  @override
+  String get privacyDemoForm => '演示环境：真实 SDK 下这里会打开系统的同意管理表单。';
+
+  @override
+  String get privacyNetworkRetry => '请检查网络后重试。广告同意状态没有变化，你的现有设置仍然有效。';
+
+  @override
+  String get endlessLeaderboard => '无尽排行榜';
+
+  @override
+  String get endlessNoScores => '还没有纪录，去无尽模式随便玩两把试试～';
+
+  @override
+  String pointsUnit(String score) {
+    return '$score 分';
+  }
+
+  @override
+  String get parkingTagline => '把车轻轻挪进车位';
+
+  @override
+  String get claimGrandPrize => '领大奖!';
+
+  @override
+  String collectionGrandPrize(int reward) {
+    return '全图鉴大奖 +$reward 🪙';
+  }
+
+  @override
+  String collectionComplete(int count) {
+    return '集齐全部 $count 款车辆，收藏家之名当之无愧！';
+  }
+
+  @override
+  String get allLevels => '全部关卡';
+
+  @override
+  String levelsCleared(int done, int total) {
+    return '已完成 $done/$total 关';
+  }
+
+  @override
+  String dailyDoneToday(int streak) {
+    return '今天已完成 · 连签 $streak 天';
+  }
+
+  @override
+  String dailyStreakBonus(int streak, int reward) {
+    return '连签 $streak 天 · +$reward🪙';
+  }
+
+  @override
+  String dailyFinishReward(int reward) {
+    return '完成领 +$reward 🪙';
+  }
+
+  @override
+  String get heroTitleNew => '启程时刻';
+
+  @override
+  String get heroTitleResume => '继续挑战';
+
+  @override
+  String bestScore(String best) {
+    return '最佳 $best 分';
+  }
+
+  @override
+  String get overallProgress => '总进度';
+
+  @override
+  String get startGame => '开始游戏';
+
+  @override
+  String get homeTagline => '随手玩两把，慢慢攒车队';
+
+  @override
+  String bestChain(int combo) {
+    return '🔥 最高连消 x$combo';
+  }
+
+  @override
+  String get checkIn => '签到';
+
+  @override
+  String streakDays(int streak) {
+    return '连签 $streak 天';
+  }
+
+  @override
+  String get claimable => '可领取!';
+
+  @override
+  String get endlessMode => '无尽模式';
+
+  @override
+  String get endlessTagline => '合成不停歇';
+
+  @override
+  String get boosterTimeCard => '加时卡';
+
+  @override
+  String get boosterExtraCards => '补卡卡';
+
+  @override
+  String get boosterDoubleCoins => '双倍卡';
+
+  @override
+  String get boosterUndoCard => '撤销卡';
+
+  @override
+  String get boosterBomb => '炸弹';
+
+  @override
+  String get boosterSpring => '弹簧';
+
+  @override
+  String get boosterBalloon => '气球飞越';
+
+  @override
+  String get boosterKey => '钥匙';
+
+  @override
+  String get boosterHammer => '锤子';
+
+  @override
+  String get boosterDoubleMove => '双倍移动';
+
+  @override
+  String adRewardLine(int reward) {
+    return '广告看完 +$reward 🪙';
+  }
+
+  @override
+  String adLeftToday(int count) {
+    return '今天还可以看 $count 次';
+  }
+
+  @override
+  String adLeftTodayWithReward(int count, int reward) {
+    return '今天还能领 $count 次，每次 +$reward 🪙';
+  }
+
+  @override
+  String get adUsedUp => '今天的次数用完啦，明天再来';
+
+  @override
+  String get adDidNotFinish => '这条广告没看成';
+
+  @override
+  String chestGotItem(String name) {
+    return '开到 $name！';
+  }
+
+  @override
+  String get chestStockParking => '库存 +1，在停车模式里用它帮忙';
+
+  @override
+  String get chestStockMerge => '库存 +1，合成关卡开局自动生效';
+
+  @override
+  String get chestCoins90 => '金币 +90';
+
+  @override
+  String get chestCoins90Note => '这次是小收获，下一箱说不定就欧了～';
+
+  @override
+  String get chestCoins150 => '金币 +150';
+
+  @override
+  String get chestCoins150Note => '小赚一笔！';
+
+  @override
+  String get chestCoins300 => '金币 +300！';
+
+  @override
+  String get chestCoins300Note => '欧气爆发，今天运气不错！';
+
+  @override
+  String get shopTitle => '阳光小店';
+
+  @override
+  String get shopTagline => '补给一点点小运气，随时可以收手';
+
+  @override
+  String get chestTitle => '金币宝箱';
+
+  @override
+  String chestPerDraw(int cost) {
+    return '$cost 🪙 抽一箱 · 60% 金币 / 40% 道具';
+  }
+
+  @override
+  String get chestBoosterHelp =>
+      '道具在关键时候能救急：加时卡 +30 秒、补卡卡多 3 张、双倍卡通关金币翻倍。停车道具（炸弹/弹簧/钥匙等）只在停车模式用。';
+
+  @override
+  String chestOpen(int cost) {
+    return '开一箱 · $cost 🪙';
+  }
+
+  @override
+  String chestNeedMore(int amount) {
+    return '还差 $amount 🪙';
+  }
+
+  @override
+  String get dailyPerks => '每日福利';
+
+  @override
+  String get dailyPerksTagline => '放松拿一点点，不必天天打卡';
+
+  @override
+  String get loadingEllipsis => '加载中…';
+
+  @override
+  String claimPlus(int reward) {
+    return '领 +$reward';
+  }
+
+  @override
+  String get noPurchaseNotice => '金币只靠看广告和通关获得，游戏内没有充值入口。';
+
+  @override
+  String get demoAdNotice => '演示版：广告为模拟播放（秒过即发奖）。';
+
+  @override
+  String get myBoosters => '我的消耗品';
+
+  @override
+  String get myBoostersFrom => '来自宝箱与停车三星奖励';
+
+  @override
+  String get mergeBoostersLabel => '合成道具 · 开局自动生效';
+
+  @override
+  String get parkingBoostersLabel => '停车道具 · 仅停车模式可用';
 }

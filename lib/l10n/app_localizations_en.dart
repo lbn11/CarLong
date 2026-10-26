@@ -340,4 +340,335 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vehicleWarpShip => 'Warp Ship';
+
+  @override
+  String offlineHours(String hours) {
+    return '$hours hours';
+  }
+
+  @override
+  String offlineMinutes(String minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get welcomeBack => 'Welcome back!';
+
+  @override
+  String offlineWelcome(String duration, int reward) {
+    return 'You were away for $duration. Your fleet earned +$reward 🪙. No rush — take your time.';
+  }
+
+  @override
+  String get takeIt => 'Take it!';
+
+  @override
+  String get alreadyCheckedIn => 'Already checked in today';
+
+  @override
+  String signInStreakHint(int streak) {
+    return '$streak-day streak — keep going, the big prize lands on day 7!';
+  }
+
+  @override
+  String signInJackpot(int reward) {
+    return 'Streak jackpot! +$reward 🪙';
+  }
+
+  @override
+  String signInSuccess(int reward) {
+    return 'Checked in! +$reward 🪙';
+  }
+
+  @override
+  String signInCycleDone(int streak) {
+    return '$streak-day streak — 7-day cycle complete, jackpot unlocked! A fresh cycle starts tomorrow.';
+  }
+
+  @override
+  String signInProgress(int streak, int reward) {
+    return '$streak-day streak, $reward coins banked. Keep it up — day 7 brings the big prize 🎁';
+  }
+
+  @override
+  String get soundAndMusic => 'Sound & Music';
+
+  @override
+  String get haptics => 'Haptics';
+
+  @override
+  String get privacyAdPreferences => 'Privacy & ad preferences';
+
+  @override
+  String get privacyAdPreferencesSub => 'Change or withdraw ad consent anytime';
+
+  @override
+  String get done => 'Done';
+
+  @override
+  String get adDiagnostics => 'Ad diagnostics';
+
+  @override
+  String get privacyNotRequired => 'Not required in your region';
+
+  @override
+  String get privacyDemoNoSdk =>
+      'This demo build has no real ad SDK, so no consent form appears. Once live it shows automatically wherever consent is required.';
+
+  @override
+  String get privacyNonPersonalized =>
+      'Your region doesn\'t require consent management, so we only request non-personalized ads.';
+
+  @override
+  String get gotIt => 'Got it';
+
+  @override
+  String get privacyOpenFailed => 'Can\'t open privacy settings right now';
+
+  @override
+  String get privacyDemoForm =>
+      'Demo build: with the real SDK this opens the system consent form.';
+
+  @override
+  String get privacyNetworkRetry =>
+      'Check your connection and try again. Your consent status is unchanged — your current settings still apply.';
+
+  @override
+  String get endlessLeaderboard => 'Endless Leaderboard';
+
+  @override
+  String get endlessNoScores =>
+      'No scores yet — play a few Endless runs and you\'ll show up here.';
+
+  @override
+  String pointsUnit(String score) {
+    return '$score pts';
+  }
+
+  @override
+  String get parkingTagline => 'Ease every car into its spot';
+
+  @override
+  String get claimGrandPrize => 'Claim the grand prize!';
+
+  @override
+  String collectionGrandPrize(int reward) {
+    return 'Full collection bonus +$reward 🪙';
+  }
+
+  @override
+  String collectionComplete(int count) {
+    return 'All $count vehicles collected — a true collector!';
+  }
+
+  @override
+  String get allLevels => 'All Levels';
+
+  @override
+  String levelsCleared(int done, int total) {
+    return '$done/$total cleared';
+  }
+
+  @override
+  String dailyDoneToday(int streak) {
+    return 'Done today · $streak-day streak';
+  }
+
+  @override
+  String dailyStreakBonus(int streak, int reward) {
+    return '$streak-day streak · +$reward 🪙';
+  }
+
+  @override
+  String dailyFinishReward(int reward) {
+    return 'Finish to earn +$reward 🪙';
+  }
+
+  @override
+  String get heroTitleNew => 'Time to Roll';
+
+  @override
+  String get heroTitleResume => 'Keep Playing';
+
+  @override
+  String bestScore(String best) {
+    return 'Best $best';
+  }
+
+  @override
+  String get overallProgress => 'Progress';
+
+  @override
+  String get startGame => 'Start';
+
+  @override
+  String get homeTagline =>
+      'Play a round or two, grow your fleet at your own pace';
+
+  @override
+  String bestChain(int combo) {
+    return '🔥 Best chain x$combo';
+  }
+
+  @override
+  String get checkIn => 'Check-in';
+
+  @override
+  String streakDays(int streak) {
+    return '$streak-day streak';
+  }
+
+  @override
+  String get claimable => 'Claimable!';
+
+  @override
+  String get endlessMode => 'Endless';
+
+  @override
+  String get endlessTagline => 'Merge without stopping';
+
+  @override
+  String get boosterTimeCard => 'Time Card';
+
+  @override
+  String get boosterExtraCards => 'Extra Cards';
+
+  @override
+  String get boosterDoubleCoins => 'Double Coins';
+
+  @override
+  String get boosterUndoCard => 'Undo Card';
+
+  @override
+  String get boosterBomb => 'Bomb';
+
+  @override
+  String get boosterSpring => 'Spring';
+
+  @override
+  String get boosterBalloon => 'Balloon';
+
+  @override
+  String get boosterKey => 'Key';
+
+  @override
+  String get boosterHammer => 'Hammer';
+
+  @override
+  String get boosterDoubleMove => 'Double Move';
+
+  @override
+  String adRewardLine(int reward) {
+    return 'Watch an ad · +$reward 🪙';
+  }
+
+  @override
+  String adLeftToday(int count) {
+    return '$count left today';
+  }
+
+  @override
+  String adLeftTodayWithReward(int count, int reward) {
+    return '$count left today, +$reward 🪙 each';
+  }
+
+  @override
+  String get adUsedUp => 'All used for today — come back tomorrow';
+
+  @override
+  String get adDidNotFinish => 'Ad didn\'t finish';
+
+  @override
+  String chestGotItem(String name) {
+    return 'You got $name!';
+  }
+
+  @override
+  String get chestStockParking => '+1 in stock — use it in Parking';
+
+  @override
+  String get chestStockMerge =>
+      '+1 in stock — auto-applies when a Merge level starts';
+
+  @override
+  String get chestCoins90 => '+90 coins';
+
+  @override
+  String get chestCoins90Note =>
+      'A small haul — the next chest could be lucky!';
+
+  @override
+  String get chestCoins150 => '+150 coins';
+
+  @override
+  String get chestCoins150Note => 'Nice little win!';
+
+  @override
+  String get chestCoins300 => '+300 coins!';
+
+  @override
+  String get chestCoins300Note => 'Jackpot! Luck\'s on your side today!';
+
+  @override
+  String get shopTitle => 'Sunny Shop';
+
+  @override
+  String get shopTagline =>
+      'A little luck on the side — stop whenever you like';
+
+  @override
+  String get chestTitle => 'Coin Chest';
+
+  @override
+  String chestPerDraw(int cost) {
+    return '$cost 🪙 per chest · 60% coins / 40% boosters';
+  }
+
+  @override
+  String get chestBoosterHelp =>
+      'Boosters save a run when it counts: Time Card +30s, Extra Cards +3, Double Coins doubles your clear reward. Parking boosters (Bomb / Spring / Key…) only work in Parking.';
+
+  @override
+  String chestOpen(int cost) {
+    return 'Open chest · $cost 🪙';
+  }
+
+  @override
+  String chestNeedMore(int amount) {
+    return 'Need $amount more 🪙';
+  }
+
+  @override
+  String get dailyPerks => 'Daily Bonus';
+
+  @override
+  String get dailyPerksTagline => 'Take it easy — no need to log in every day';
+
+  @override
+  String get loadingEllipsis => 'Loading…';
+
+  @override
+  String claimPlus(int reward) {
+    return 'Claim +$reward';
+  }
+
+  @override
+  String get noPurchaseNotice =>
+      'Coins come only from ads and clearing levels. There is no purchase option in the game.';
+
+  @override
+  String get demoAdNotice =>
+      'Demo build: ads play instantly and always reward.';
+
+  @override
+  String get myBoosters => 'My Boosters';
+
+  @override
+  String get myBoostersFrom => 'From chests and 3-star Parking rewards';
+
+  @override
+  String get mergeBoostersLabel => 'Merge boosters · auto-apply at level start';
+
+  @override
+  String get parkingBoostersLabel => 'Parking boosters · Parking mode only';
 }

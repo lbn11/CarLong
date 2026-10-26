@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../analytics/analytics.dart';
 import '../game/audio_feedback.dart';
 import '../game/game_config.dart';
+import '../l10n/app_localizations.dart';
 import '../save/save_repository.dart';
 import '../services/ads/ad_service.dart';
 import '../services/ads/ad_types.dart';
@@ -62,70 +63,51 @@ class _ShopScreenState extends State<ShopScreen> {
   }
 
   /// 道具身份色统一走 AppColors 糖果色板（替换原先零散的 Material 500/600 色）。
-  static const _boosterMeta = <String, ({String name, IconData icon, Color color, bool parkingOnly})>{
+  ///
+  /// 这里**不存展示名**：这是 static const，拿不到 context，而名字必须跟随语言。
+  /// 名字统一由 [_boosterName] 按 id 查 l10n。
+  static const _boosterMeta = <String, ({IconData icon, Color color, bool parkingOnly})>{
     // 合成模式道具：开局自动生效（GameScreen._applyBoosters）
-    'time': (
-      name: '加时卡',
-      icon: Icons.schedule,
-      color: AppColors.aqua,
-      parkingOnly: false
-    ),
+    'time': (icon: Icons.schedule, color: AppColors.aqua, parkingOnly: false),
     'cards': (
-      name: '补卡卡',
       icon: Icons.inventory_2,
       color: AppColors.mint,
       parkingOnly: false
     ),
-    'double': (
-      name: '双倍卡',
-      icon: Icons.casino,
-      color: AppColors.sun,
-      parkingOnly: false
-    ),
+    'double': (icon: Icons.casino, color: AppColors.sun, parkingOnly: false),
     // 停车模式专用道具：仅停车对局内使用
-    'undo': (
-      name: '撤销卡',
-      icon: Icons.undo,
-      color: AppColors.grape,
-      parkingOnly: true
-    ),
-    'bomb': (
-      name: '炸弹',
-      icon: Icons.whatshot,
-      color: AppColors.melon,
-      parkingOnly: true
-    ),
-    'spring': (
-      name: '弹簧',
-      icon: Icons.open_with,
-      color: AppColors.forest,
-      parkingOnly: true
-    ),
+    'undo': (icon: Icons.undo, color: AppColors.grape, parkingOnly: true),
+    'bomb': (icon: Icons.whatshot, color: AppColors.melon, parkingOnly: true),
+    'spring': (icon: Icons.open_with, color: AppColors.forest, parkingOnly: true),
     'balloon': (
-      name: '气球飞越',
       icon: Icons.location_on,
       color: AppColors.sky,
       parkingOnly: true
     ),
-    'key': (
-      name: '钥匙',
-      icon: Icons.vpn_key,
-      color: AppColors.lemon,
-      parkingOnly: true
-    ),
-    'hammer': (
-      name: '锤子',
-      icon: Icons.build,
-      color: AppColors.cocoa,
-      parkingOnly: true
-    ),
+    'key': (icon: Icons.vpn_key, color: AppColors.lemon, parkingOnly: true),
+    'hammer': (icon: Icons.build, color: AppColors.cocoa, parkingOnly: true),
     'doubleMove': (
-      name: '双倍移动',
       icon: Icons.compare_arrows,
       color: AppColors.taro,
       parkingOnly: true
     ),
   };
+
+  /// 道具名的唯一出口。新增道具时这里和 arb 都要加，
+  /// 漏了会回落到原始 id（比直接崩溃好定位）。
+  static String _boosterName(String id, AppLocalizations l10n) => switch (id) {
+        'time' => l10n.boosterTimeCard,
+        'cards' => l10n.boosterExtraCards,
+        'double' => l10n.boosterDoubleCoins,
+        'undo' => l10n.boosterUndoCard,
+        'bomb' => l10n.boosterBomb,
+        'spring' => l10n.boosterSpring,
+        'balloon' => l10n.boosterBalloon,
+        'key' => l10n.boosterKey,
+        'hammer' => l10n.boosterHammer,
+        'doubleMove' => l10n.boosterDoubleMove,
+        _ => id,
+      };
 
   /// 今日剩余广告次数。
   ///
@@ -162,32 +144,34 @@ class _ShopScreenState extends State<ShopScreen> {
     widget.repo.save(data);
     _analytics.adWatch(_adReward);
     setState(() {});
+    final l10n = AppLocalizations.of(context);
     CandyDialog.show(
       context,
       icon: Icons.smart_display,
       color: AppColors.sky,
-      title: '广告看完 +$_adReward 🪙',
-      message: _adLeftToday > 0
-          ? '今天还可以看 $_adLeftToday 次'
-          : '今天的次数用完啦，明天再来',
-      confirmLabel: '收下啦',
+      title: l10n.adRewardLine(_adReward),
+      message:
+          _adLeftToday > 0 ? l10n.adLeftToday(_adLeftToday) : l10n.adUsedUp,
+      confirmLabel: l10n.takeIt,
     );
   }
 
   /// 广告没看成：说清原因，别让玩家以为按钮坏了。
   void _showAdNotice(AdResult result) {
+    final l10n = AppLocalizations.of(context);
     CandyDialog.show(
       context,
       icon: Icons.info_outline,
       color: AppColors.ink3,
-      title: '这条广告没看成',
+      title: l10n.adDidNotFinish,
       message: result.userMessage,
-      confirmLabel: '知道了',
+      confirmLabel: l10n.gotIt,
     );
   }
 
   void _openChest() {
     if (data.coins < _chestCost) return;
+    final l10n = AppLocalizations.of(context);
     AudioFeedback.uiTap();
     setState(() => data.coins -= _chestCost);
     widget.repo.save(data);
@@ -205,31 +189,29 @@ class _ShopScreenState extends State<ShopScreen> {
       final meta = _boosterMeta[key]!;
       emoji = '🎁';
       icon = null;
-      title = '开到 ${meta.name}！';
-      desc = meta.parkingOnly
-          ? '库存 +1，在停车模式里用它帮忙'
-          : '库存 +1，合成关卡开局自动生效';
+      title = l10n.chestGotItem(_boosterName(key, l10n));
+      desc = meta.parkingOnly ? l10n.chestStockParking : l10n.chestStockMerge;
       color = meta.color;
     } else if (roll < 0.75) {
       data.addCoins(90);
       emoji = null;
       icon = Icons.monetization_on;
-      title = '金币 +90';
-      desc = '这次是小收获，下一箱说不定就欧了～';
+      title = l10n.chestCoins90;
+      desc = l10n.chestCoins90Note;
       color = AppColors.lemon;
     } else if (roll < 0.95) {
       data.addCoins(150);
       emoji = null;
       icon = Icons.monetization_on;
-      title = '金币 +150';
-      desc = '小赚一笔！';
+      title = l10n.chestCoins150;
+      desc = l10n.chestCoins150Note;
       color = AppColors.lemon;
     } else {
       data.addCoins(300);
       emoji = '✨';
       icon = null;
-      title = '金币 +300！';
-      desc = '欧气爆发，今天运气不错！';
+      title = l10n.chestCoins300;
+      desc = l10n.chestCoins300Note;
       color = AppColors.blossom;
     }
     widget.repo.save(data);
@@ -250,13 +232,14 @@ class _ShopScreenState extends State<ShopScreen> {
       color: color,
       title: title,
       message: desc,
-      confirmLabel: '收下啦',
+      confirmLabel: l10n.takeIt,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final coins = data.coins;
+    final l10n = AppLocalizations.of(context);
     final affordable = coins >= _chestCost;
     return Scaffold(
       backgroundColor: AppColors.bg1,
@@ -265,8 +248,8 @@ class _ShopScreenState extends State<ShopScreen> {
           child: Column(
             children: [
               CandyAppBar(
-                title: '阳光小店',
-                subtitle: '补给一点点小运气，随时可以收手',
+                title: l10n.shopTitle,
+                subtitle: l10n.shopTagline,
                 accent: AppColors.lemon,
                 onBack: () => Navigator.of(context).pop(),
                 actions: [
@@ -318,14 +301,14 @@ class _ShopScreenState extends State<ShopScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text('金币宝箱',
-                                        style: TextStyle(
+                                    Text(l10n.chestTitle,
+                                        style: const TextStyle(
                                             color: AppColors.ink1,
                                             fontWeight: FontWeight.w900,
                                             fontSize: 18)),
                                     const SizedBox(height: 3),
                                     Text(
-                                      '$_chestCost 🪙 抽一箱 · 60% 金币 / 40% 道具',
+                                      l10n.chestPerDraw(_chestCost),
                                       style: const TextStyle(
                                           color: AppColors.ink2, fontSize: 12),
                                     ),
@@ -336,16 +319,15 @@ class _ShopScreenState extends State<ShopScreen> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            '道具在关键时候能救急：加时卡 +30 秒、补卡卡多 3 张、'
-                            '双倍卡通关金币翻倍。停车道具（炸弹/弹簧/钥匙等）只在停车模式用。',
-                            style: TextStyle(
+                            l10n.chestBoosterHelp,
+                            style: const TextStyle(
                                 color: AppColors.ink3, fontSize: 11.5, height: 1.5),
                           ),
                           const SizedBox(height: 14),
                           CandyButton(
                             label: affordable
-                                ? '开一箱 · $_chestCost 🪙'
-                                : '还差 ${_chestCost - coins} 🪙',
+                                ? l10n.chestOpen(_chestCost)
+                                : l10n.chestNeedMore(_chestCost - coins),
                             icon: affordable
                                 ? Icons.auto_awesome_rounded
                                 : Icons.hourglass_empty_rounded,
@@ -365,8 +347,8 @@ class _ShopScreenState extends State<ShopScreen> {
                     Padding(
                       padding: const EdgeInsets.only(left: 2, bottom: 8),
                       child: SectionTitle(
-                        title: '每日福利',
-                        subtitle: '放松拿一点点，不必天天打卡',
+                        title: l10n.dailyPerks,
+                        subtitle: l10n.dailyPerksTagline,
                         accent: AppColors.sky,
                       ),
                     ),
@@ -382,8 +364,9 @@ class _ShopScreenState extends State<ShopScreen> {
                               Expanded(
                                 child: Text(
                                   _adLeftToday > 0
-                                      ? '今天还能领 $_adLeftToday 次，每次 +$_adReward 🪙'
-                                      : '今天的次数用完啦，明天再来～',
+                                      ? l10n.adLeftTodayWithReward(
+                                          _adLeftToday, _adReward)
+                                      : l10n.adUsedUp,
                                   style: const TextStyle(
                                       color: AppColors.ink1,
                                       fontWeight: FontWeight.w800,
@@ -393,8 +376,8 @@ class _ShopScreenState extends State<ShopScreen> {
                               const SizedBox(width: 10),
                               CandyButton(
                                 label: _adLoading
-                                    ? '加载中…'
-                                    : '领 +$_adReward',
+                                    ? l10n.loadingEllipsis
+                                    : l10n.claimPlus(_adReward),
                                 size: CandyButtonSize.small,
                                 dense: true,
                                 colors: _adLeftToday > 0 && !_adLoading
@@ -409,9 +392,9 @@ class _ShopScreenState extends State<ShopScreen> {
                           const SizedBox(height: 8),
                           // 说清「没有充值入口」：既防玩家找，也让审核一眼看到
                           // 本作不涉及 IAP（省掉一整轮 3.1.1 问询）。
-                          const Text(
-                            '金币只靠看广告和通关获得，游戏内没有充值入口。',
-                            style: TextStyle(
+                          Text(
+                            l10n.noPurchaseNotice,
+                            style: const TextStyle(
                                 color: AppColors.ink3,
                                 fontSize: 11,
                                 height: 1.4),
@@ -419,9 +402,9 @@ class _ShopScreenState extends State<ShopScreen> {
                           // 只在模拟 provider 下说破：接真实 SDK 后这行自动消失。
                           if (AdService.usingMock) ...[
                             const SizedBox(height: 4),
-                            const Text(
-                              '演示版：广告为模拟播放（秒过即发奖）。',
-                              style: TextStyle(
+                            Text(
+                              l10n.demoAdNotice,
+                              style: const TextStyle(
                                   color: AppColors.ink3, fontSize: 10.5),
                             ),
                           ],
@@ -434,8 +417,8 @@ class _ShopScreenState extends State<ShopScreen> {
                     Padding(
                       padding: const EdgeInsets.only(left: 2, bottom: 8),
                       child: SectionTitle(
-                        title: '我的消耗品',
-                        subtitle: '来自宝箱与停车三星奖励',
+                        title: l10n.myBoosters,
+                        subtitle: l10n.myBoostersFrom,
                         accent: AppColors.grape,
                       ),
                     ),
@@ -447,14 +430,14 @@ class _ShopScreenState extends State<ShopScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           SoftChip(
-                              label: '合成道具 · 开局自动生效',
+                              label: l10n.mergeBoostersLabel,
                               icon: Icons.auto_awesome,
                               color: AppColors.mint),
                           const SizedBox(height: 8),
                           _boosterGrid(false),
                           const SizedBox(height: 12),
                           SoftChip(
-                              label: '停车道具 · 仅停车模式可用',
+                              label: l10n.parkingBoostersLabel,
                               icon: Icons.local_parking,
                               color: AppColors.taro),
                           const SizedBox(height: 8),
@@ -474,6 +457,7 @@ class _ShopScreenState extends State<ShopScreen> {
 
   /// 消耗品网格：2 列小卡，图标 + 名称 + 库存数字，替代原先的长列表文字行。
   Widget _boosterGrid(bool parkingOnly) {
+    final l10n = AppLocalizations.of(context);
     final entries =
         _boosterMeta.entries.where((e) => e.value.parkingOnly == parkingOnly);
     return GridView.count(
@@ -498,7 +482,7 @@ class _ShopScreenState extends State<ShopScreen> {
                 Icon(entry.value.icon, color: entry.value.color, size: 19),
                 const SizedBox(width: 7),
                 Expanded(
-                  child: Text(entry.value.name,
+                  child: Text(_boosterName(entry.key, l10n),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
