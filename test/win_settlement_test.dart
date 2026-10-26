@@ -7,6 +7,8 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'helpers/localized_app.dart';
+
 /// 「任务达成却没结算」排查用回归测试。
 ///
 /// 玩家反馈：目标看起来完成了，但没退出关卡、还能继续玩。
@@ -44,13 +46,16 @@ Future<MergeGame> _pumpGame(WidgetTester tester, LevelDefinition level) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(390, 844);
   addTearDown(tester.view.reset);
-  await tester.pumpWidget(MaterialApp(
-    home: GameScreen(
+  // 固定中文 locale：断言里的「通关成功 / 清空成功」是文案定位器，
+  // 顺带当 zh 语言包的回归（英文包下这些标题不是中文）。
+  await tester.pumpWidget(l10nHost(
+    GameScreen(
       key: ValueKey(level.id),
       level: level,
       data: PlayerData(),
       repo: SaveRepository(),
     ),
+    locale: const Locale('zh'),
   ));
   await tester.pump(const Duration(milliseconds: 150));
   await tester.pump(const Duration(milliseconds: 150));

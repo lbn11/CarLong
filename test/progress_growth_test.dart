@@ -9,6 +9,8 @@ import 'package:merge_fleet/screens/game_screen.dart';
 import 'package:merge_fleet/services/level_data_generator.dart';
 import 'package:merge_fleet/services/level_progression.dart';
 
+import 'helpers/localized_app.dart';
+
 /// 成长感三件套回归（2026-10-19）：
 /// - Boss 徽章墙：defeatedBosses 持久化 + 生成侧 bossKey 不变量
 /// - 历史最高连消：bestCombo 持久化 + 旧存档兼容
@@ -114,13 +116,14 @@ void main() {
       targetCount: 1,
     );
     final data = PlayerData();
-    await tester.pumpWidget(MaterialApp(
-      home: GameScreen(
+    await tester.pumpWidget(l10nHost(
+      GameScreen(
         key: ValueKey(level.id),
         level: level,
         data: data,
         repo: SaveRepository(),
       ),
+      locale: const Locale('zh'),
     ));
     await tester.pump(const Duration(milliseconds: 200));
 

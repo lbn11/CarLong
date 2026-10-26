@@ -8,6 +8,8 @@ import 'package:merge_fleet/save/save_repository.dart';
 import 'package:merge_fleet/screens/game_screen.dart';
 import 'package:merge_fleet/services/level_data_generator.dart';
 
+import 'helpers/localized_app.dart';
+
 /// 参考时间（par）回归测试（2026-10-17，方案 B 落地）：
 /// - parSeconds：全表覆盖、随章节增长、Boss 按 HP 折算、清盘关有值、无尽为 0
 /// - paceRatio：实时倍率外推模型（抽牌速率 + 收尾系数）、开局保护、
@@ -307,13 +309,14 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(MaterialApp(
-      home: GameScreen(
+    await tester.pumpWidget(l10nHost(
+      GameScreen(
         key: const ValueKey(9301),
         level: parLevel(),
         data: PlayerData(),
         repo: SaveRepository(),
       ),
+      locale: const Locale('zh'),
     ));
     await tester.pump(const Duration(milliseconds: 150));
     await tester.pump(const Duration(milliseconds: 150));
@@ -372,13 +375,14 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(MaterialApp(
-      home: GameScreen(
+    await tester.pumpWidget(l10nHost(
+      GameScreen(
         key: const ValueKey(9303),
         level: parLevel(id: 9303),
         data: PlayerData(),
         repo: SaveRepository(),
       ),
+      locale: const Locale('zh'),
     ));
     await tester.pump(const Duration(milliseconds: 150));
     await tester.pump(const Duration(milliseconds: 150));

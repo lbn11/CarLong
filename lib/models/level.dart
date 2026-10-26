@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import '../l10n/l10n.dart';
 import 'vehicle.dart';
 import '../services/level_data_generator.dart';
 
@@ -494,16 +495,25 @@ class LevelDefinition {
     );
   }
 
-  /// 关卡目标的一句话描述（HUD/主页用）。
+  /// 关卡目标的一句话描述（HUD/主页/结算用）。
+  ///
+  /// 会随 locale 变：拿不到文案表（单测直接构造 level）时回落到中文字面量。
+  /// 注意 **不能**把它写进存档或导出——那是 `shared/levels` 的事，
+  /// 导出器只认 `name` 这类与 locale 无关的字段。
   String get goalText {
+    final l = L10n.current;
     final limit = timeLimitSeconds;
     final moves = movesLimit;
     final goal = switch (goalType) {
-      GoalType.produce =>
-        '目标：合成 ${targetTier!.name} ×$targetCount'
-            '${boss != null ? '（攻击 👑 Boss）' : ''}',
-      GoalType.clearBoard =>
-        '目标：用光牌堆，场上剩 ≤${clearLimit ?? 0} 组车',
+      GoalType.produce => l == null
+          ? '目标：合成 ${targetTier!.name} ×$targetCount'
+              '${boss != null ? '（攻击 👑 Boss）' : ''}'
+          : (boss != null
+              ? l.goalProduceBoss(targetTier!.name, targetCount)
+              : l.goalProduce(targetTier!.name, targetCount)),
+      GoalType.clearBoard => l == null
+          ? '目标：用光牌堆，场上剩 ≤${clearLimit ?? 0} 组车'
+          : l.goalClearBoard(clearLimit ?? 0),
     };
     final obs = obstacles.isEmpty
         ? ''
@@ -517,13 +527,18 @@ class LevelDefinition {
             .toSet()
             .join();
     final special = [
-      if (wildcards > 0) '⭐ 万能卡×$wildcards',
-      if (bombs > 0) '💣 炸弹×$bombs',
-      if (fogCells > 0) '🌫 迷雾×$fogCells',
+      if (wildcards > 0) l == null ? '⭐ 万能卡×$wildcards' : l.bonusWildcard(wildcards),
+      if (bombs > 0) l == null ? '💣 炸弹×$bombs' : l.bonusBomb(bombs),
+      if (fogCells > 0) l == null ? '🌫 迷雾×$fogCells' : l.bonusFog(fogCells),
     ].join(' ');
-    if (moves != null) return '$moves 步内$goal$obs$special';
-    if (limit != null) return '$limit 秒内$goal$obs$special';
-    return '$goal$obs$special';
+    final body = '$goal$obs$special';
+    if (moves != null) {
+      return l == null ? '$moves 步内$body' : l.goalWithinMoves(moves, body);
+    }
+    if (limit != null) {
+      return l == null ? '$limit 秒内$body' : l.goalWithinTime(limit, body);
+    }
+    return body;
   }
 }
 

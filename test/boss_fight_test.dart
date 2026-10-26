@@ -8,6 +8,8 @@ import 'package:merge_fleet/save/save_repository.dart';
 import 'package:merge_fleet/screens/game_screen.dart';
 import 'package:merge_fleet/services/level_progression.dart';
 
+import 'helpers/localized_app.dart';
+
 /// Boss 战回归测试（2026-10-16）：
 /// - 配置不变量：Boss 关才挂 BossSpec、HP = 目标数 +2、强制 produce、
 ///   无限时/限步（Boss 战不叠机制）；全表 56 个，位置与判定一致
@@ -119,13 +121,14 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(MaterialApp(
-      home: GameScreen(
+    await tester.pumpWidget(l10nHost(
+      GameScreen(
         key: ValueKey(level.id),
         level: level,
         data: data ?? PlayerData(),
         repo: SaveRepository(),
       ),
+      locale: const Locale('zh'),
     ));
     await tester.pump(const Duration(milliseconds: 150));
     await tester.pump(const Duration(milliseconds: 150));

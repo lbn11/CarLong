@@ -10,6 +10,8 @@ import '../game/daily_challenge.dart';
 import '../game/game_config.dart';
 import '../game/music_player.dart';
 import '../game/merge_game.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/l10n.dart';
 import '../theme/app_theme.dart';
 import '../models/level.dart';
 import '../models/vehicle.dart';
@@ -43,6 +45,13 @@ class _GameScreenState extends State<GameScreen> {
   late final AnalyticsService _analytics;
   bool _finished = false;
   bool _hammering = false;
+
+  /// 本屏文案。
+  ///
+  /// 用 [L10n.value] 而不是 `AppLocalizations.of(context)`：好几个提示语要在
+  /// `initState`（开局教学、道具生效）里就拼好，而那时 dependOnInherited 还不
+  /// 允许调用，`of(context)` 会直接抛断言。`L10n` 由顶层 builder 同步。
+  AppLocalizations get _l10n => L10n.value;
 
   // 板块锚点（供滚动定位等复用；原教学高亮已移除）
   final GlobalKey _stockBarKey = GlobalKey();
@@ -98,7 +107,8 @@ class _GameScreenState extends State<GameScreen> {
     _game.onTierProduced = (tier) {
       if (widget.data.collection.add(tier.index)) {
         widget.data.addCoins(GameConfig.collectionNewReward);
-        _game.hint.value = '📖 图鉴点亮 ${tier.icon} ${tier.name} +5🪙';
+        _game.hint.value =
+            _l10n.hintCollectionUnlock(tier.icon, tier.name);
         widget.repo.save(widget.data);
         _analytics.collectionNew(tier.index);
         // 新车特写：hint 文字只有 2 秒且容易被棋盘操作淹没，
@@ -109,7 +119,7 @@ class _GameScreenState extends State<GameScreen> {
     };
     _game.onEndlessMilestone = (endlessLevel, reward) {
       widget.data.addCoins(reward);
-      _game.hint.value = '🏆 里程碑达成！无尽第 $endlessLevel 档 +$reward 🪙';
+      _game.hint.value = _l10n.hintMilestone(endlessLevel, reward);
       widget.repo.save(widget.data);
     };
     _game.feedback.soundOn = widget.data.soundOn;
@@ -126,17 +136,13 @@ class _GameScreenState extends State<GameScreen> {
     _applyBoosters();
     // 清道夫关开局教学：胜利条件与"顶级车升空"机制一句话讲清。
     if (widget.level.goalType == GoalType.clearBoard) {
-      _game.hint.value =
-          '🎯 把牌堆用完，场上剩 ≤${widget.level.clearLimit ?? 0} 组就赢！'
-          '同级车拖一起合成，最高档三合一会升空消失';
+      _game.hint.value = _l10n.hintClearBoardIntro(widget.level.clearLimit ?? 0);
     }
     // Boss 关开局：一句话教打法（合成什么车、打谁、防什么）。
     final bossSpec = widget.level.boss;
     if (bossSpec != null && widget.level.targetTier != null) {
       final t = widget.level.targetTier!;
-      _game.hint.value =
-          '👑 Boss 战！合成 ${t.icon} ${t.name} 攻击 Boss（${bossSpec.hp} 血）——'
-          '红圈是它的目标，小心冰块和被拖车！';
+      _game.hint.value = _l10n.hintBossIntro(t.icon, t.name, bossSpec.hp);
     }
 
     // 合成场景 BGM（跟随音效开关；返回首页由 home 的 didPopNext 恢复）。
@@ -153,23 +159,23 @@ class _GameScreenState extends State<GameScreen> {
       b['time'] = b['time']! - 1;
       if (widget.level.timeLimitSeconds != null) {
         _game.addTime(30);
-        _game.hint.value = '🕐 加时卡生效：+30 秒';
+        _game.hint.value = _l10n.hintBoosterTime;
       } else {
         widget.data.addCoins(30);
-        _game.hint.value = '🕐 加时卡（非限时关）转为 +30 🪙';
+        _game.hint.value = _l10n.hintBoosterTimeToCoins;
       }
       used = true;
     }
     if ((b['cards'] ?? 0) > 0) {
       b['cards'] = b['cards']! - 1;
       _game.addCards(3);
-      _game.hint.value = '📦 补卡卡生效：牌堆 +3';
+      _game.hint.value = _l10n.hintBoosterCards;
       used = true;
     }
     if ((b['double'] ?? 0) > 0) {
       b['double'] = b['double']! - 1;
       _doubleCoin = true;
-      _game.hint.value = '🎲 双倍卡生效：通关金币 ×2';
+      _game.hint.value = _l10n.hintBoosterDouble;
       used = true;
     }
     if (used) widget.repo.save(widget.data);
@@ -296,24 +302,24 @@ class _GameScreenState extends State<GameScreen> {
     final boss = widget.level.boss != null;
     final message = won
         ? (boss
-            ? '👑 Boss 被击败！你的车队又精进了一档'
-            : '达成目标：${widget.level.goalText}')
+            ? _l10n.winBoss
+            : _l10n.winGoal(widget.level.goalText))
         : _goalRemainText();
     final title = isEndless
-        ? (won ? '🌌 无尽纪录！' : '💥 棋盘满啦')
+        ? (won ? _l10n.winEndlessRecord : _l10n.winBoardFull)
         : won
             ? (boss
-                ? '👑 Boss 击败！'
+                ? _l10n.winBossShort
                 : (widget.level.goalType == GoalType.clearBoard
-                    ? '🎉 清空成功！'
-                    : '🚀 通关成功！'))
+                    ? _l10n.winCleared
+                    : _l10n.winLevel))
             : (boss
-                ? '👑 Boss 关 · 差一点'
+                ? _l10n.loseBoss
                 // 广告挑战关的失败标题说破身份：这是设计好的难关，
                 // 看广告续命是官方后路，不是玩家不行。
                 : (LevelProgression.isMergeAdGate(widget.level.id)
-                    ? '🎬 挑战关 · 差一点'
-                    : '⏰ 差一点'));
+                    ? _l10n.loseAdGate
+                    : _l10n.loseTime));
 
     if (!mounted) return;
     // 失败且有续命次数时，按失败原因给出对应"看广告续命"按钮。
@@ -321,10 +327,10 @@ class _GameScreenState extends State<GameScreen> {
     // 以最后一条为准）；量级小先接受，接 SDK 后可加 runId 关联去重。
     final reviveLabel = !won && _game.revivesLeft > 0
         ? switch (_game.failReason) {
-            MergeFailReason.timeOut => '🎬 看广告续命 · +30 秒',
-            MergeFailReason.movesOut => '🎬 看广告续命 · +10 步',
-            MergeFailReason.deadEnd => '🎬 看广告续命 · 牌堆+2 并重排',
-            MergeFailReason.endlessStuck => '🎬 看广告续命 · 清 3 组腾位',
+            MergeFailReason.timeOut => _l10n.reviveTime,
+            MergeFailReason.movesOut => _l10n.reviveMoves,
+            MergeFailReason.deadEnd => _l10n.reviveDeadEnd,
+            MergeFailReason.endlessStuck => _l10n.reviveEndlessStuck,
             null => null,
           }
         : null;
@@ -399,19 +405,17 @@ class _GameScreenState extends State<GameScreen> {
           // 分享战绩：复制文案到剪贴板（零依赖，跨平台；接 SDK 后可换系统分享）。
           onShare: () {
             final text = isEndless
-                ? '我在《车水马龙》无尽模式冲到 $score 分！来挑战我 🚀'
+                ? _l10n.shareEndless(score)
                 : won
-                    ? '我在《车水马龙》第 ${widget.level.id} 关拿到 $stars 星！'
-                        '合成车队解锁星辰宇宙，来挑战我 🚗✨'
-                    : '我在《车水马龙》挑战第 ${widget.level.id} 关，'
-                        '你也来试试合成车队 🚗';
+                    ? _l10n.shareLevelStars(stars, widget.level.id)
+                    : _l10n.shareLevelTry(widget.level.id);
             Clipboard.setData(ClipboardData(text: text));
             ScaffoldMessenger.of(context)
               ..hideCurrentSnackBar()
               ..showSnackBar(
-                const SnackBar(
-                  content: Text('✅ 分享文案已复制，去粘贴给好友吧！'),
-                  duration: Duration(seconds: 2),
+                SnackBar(
+                  content: Text(_l10n.shareCopied),
+                  duration: const Duration(seconds: 2),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -510,8 +514,8 @@ class _GameScreenState extends State<GameScreen> {
                         color: Colors.white, size: 24),
                   ),
                   const SizedBox(width: 12),
-                  const Text('暂停中',
-                      style: TextStyle(
+                  Text(_l10n.pausedTitle,
+                      style: const TextStyle(
                           color: AppColors.ink1,
                           fontSize: 20,
                           fontWeight: FontWeight.w900)),
@@ -522,8 +526,8 @@ class _GameScreenState extends State<GameScreen> {
                 padding: const EdgeInsets.only(left: 58),
                 child: Text(
                   widget.level.endless
-                      ? '休息一下，随时回来接着合'
-                      : '不着急，慢慢想下一步',
+                      ? _l10n.pausedTipBreak
+                      : _l10n.pausedTipThink,
                   style: const TextStyle(
                       color: AppColors.ink2, fontSize: 12.5),
                 ),
@@ -537,13 +541,13 @@ class _GameScreenState extends State<GameScreen> {
                 Row(
                   children: [
                     _pauseMetric(
-                        '用时', _clockText(_game.elapsedTime.round())),
+                        _l10n.elapsedLabel, _clockText(_game.elapsedTime.round())),
                     _pauseMetric(
-                        '参考',
+                        _l10n.parLabel,
                         _clockText(
                             LevelDataGenerator.parSeconds(widget.level).round())),
                     _pauseMetric(
-                      '预计',
+                      _l10n.estLabel,
                       _game.pace.value > 0
                           ? '${_clockText((LevelDataGenerator.parSeconds(widget.level) / _game.pace.value).round())} ⚡${_game.pace.value.clamp(0.1, 9.9).toStringAsFixed(1)}×'
                           : '—',
@@ -557,7 +561,7 @@ class _GameScreenState extends State<GameScreen> {
               ],
               const SizedBox(height: 16),
               CandyButton(
-                label: '继续游戏',
+                label: _l10n.resumeGame,
                 icon: Icons.play_arrow_rounded,
                 colors: AppTheme.gradientOf(AppColors.grape),
                 expand: true,
@@ -565,7 +569,7 @@ class _GameScreenState extends State<GameScreen> {
               ),
               const SizedBox(height: 9),
               CandyButton(
-                label: '重新开始',
+                label: _l10n.restartRun,
                 icon: Icons.refresh_rounded,
                 colors: AppTheme.softGradient,
                 expand: true,
@@ -573,7 +577,7 @@ class _GameScreenState extends State<GameScreen> {
               ),
               const SizedBox(height: 9),
               CandyButton(
-                label: '返回主页',
+                label: _l10n.backHome,
                 icon: Icons.home_rounded,
                 colors: AppTheme.softGradient,
                 expand: true,
@@ -689,25 +693,26 @@ class _GameScreenState extends State<GameScreen> {
   String _goalRemainText() {
     final level = widget.level;
     if (level.endless) {
-      return '合成到第 ${_game.endlessLevel} 档目标，下次冲更高！';
+      return _l10n.detailEndlessNext(_game.endlessLevel);
     }
     if (level.boss != null) {
       final hp = _game.bossHp.value;
-      return hp > 0 ? '👑 Boss 还剩 $hp 血，再合成目标车打它！' : '👑 Boss 倒下了！';
+      return hp > 0 ? _l10n.detailBossAlive(hp) : _l10n.detailBossDead;
     }
     if (level.timeLimitSeconds != null && _game.timeLeft.value <= 0) {
-      return '时间到，差一点就成功了';
+      return _l10n.detailTimeUp;
     }
     if (level.goalType == GoalType.clearBoard) {
       final left = _game.produced.value;
       final limit = level.clearLimit ?? 0;
       return left > limit
-          ? '场上还剩 $left 组车（目标 ≤$limit 组）'
-          : '再动一动棋子就清空啦';
+          ? _l10n.detailClearRemain(left, limit)
+          : _l10n.detailClearNearly;
     }
     final produced = _game.produced.value;
     final remain = (level.targetCount - produced).clamp(0, 999);
-    return '还差 $remain 辆 ${level.targetTier!.icon} ${level.targetTier!.name}';
+    return _l10n.detailTargetRemain(
+        remain, level.targetTier!.icon, level.targetTier!.name);
   }
 
   @override
@@ -748,11 +753,11 @@ class _GameScreenState extends State<GameScreen> {
       context,
       emoji: '🚪',
       color: AppColors.grape,
-      title: '退出本关？',
-      message: '当前这局的进度会丢掉哦，确定要走吗？',
-      confirmLabel: '继续玩',
+      title: _l10n.exitTitle,
+      message: _l10n.exitMessage,
+      confirmLabel: _l10n.keepPlaying,
       confirmValue: false,
-      cancelLabel: '退出',
+      cancelLabel: _l10n.exitRun,
       cancelValue: true,
     );
     if (!mounted) return;
@@ -820,7 +825,7 @@ class _GameScreenState extends State<GameScreen> {
           children: [
             _smallIconButton(
               icon: Icons.arrow_back,
-              tooltip: '返回',
+              tooltip: _l10n.tooltipBack,
               onPressed: _finished
                   ? null
                   : () => Navigator.of(context).pop(),
@@ -828,7 +833,7 @@ class _GameScreenState extends State<GameScreen> {
             const Spacer(),
             _smallIconButton(
               icon: Icons.pause_circle_outline,
-              tooltip: '暂停',
+              tooltip: _l10n.tooltipPause,
               onPressed: _finished ? null : _showPause,
             ),
           ],
@@ -953,10 +958,11 @@ class _GameScreenState extends State<GameScreen> {
             valueListenable: _game.stockLeft,
             builder: (_, left, _) => Text(
               left > 0
-                  ? '📦 打完牌堆 · 剩 $left 张'
+                  ? _l10n.chipDeckDone(left)
                   : (v <= (widget.level.clearLimit ?? 0)
-                      ? '✅ 达标！场上 $v 组'
-                      : '场上 $v 组 / 目标 ≤${widget.level.clearLimit ?? 0}'),
+                      ? _l10n.chipClearOk(v)
+                      : _l10n.chipClearProgress(
+                          v, widget.level.clearLimit ?? 0)),
               style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w900,
@@ -1048,10 +1054,10 @@ class _GameScreenState extends State<GameScreen> {
                 const SizedBox(height: 4),
                 Text(
                   locked
-                      ? '🔒 被 Boss 锁住'
+                      ? _l10n.chipStockLocked
                       : widget.level.endless
-                          ? '无限牌堆'
-                          : '牌堆剩 $left 张',
+                          ? _l10n.chipStockInfinite
+                          : _l10n.chipStockLeft(left),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: locked
@@ -1096,7 +1102,7 @@ class _GameScreenState extends State<GameScreen> {
           _toolButton(
             key: _hammerToolKey,
             icon: Icons.close,
-            label: '取消',
+            label: _l10n.cancel,
             cost: null,
             onTap: _cancelHammer,
             danger: true,
@@ -1105,7 +1111,7 @@ class _GameScreenState extends State<GameScreen> {
           _toolButton(
             key: _hammerToolKey,
             icon: Icons.construction,
-            label: '清除',
+            label: _l10n.actionClear,
             cost: _hammerCost,
             onTap: _useHammer,
             enabled: coins >= _hammerCost && !disabled,
@@ -1114,7 +1120,7 @@ class _GameScreenState extends State<GameScreen> {
         _toolButton(
           key: _undoToolKey,
           icon: Icons.undo,
-          label: '撤销',
+          label: _l10n.undo,
           cost: _undoCost,
           onTap: _useUndo,
           enabled: coins >= _undoCost && !disabled && _game.canUndo,
@@ -1124,7 +1130,7 @@ class _GameScreenState extends State<GameScreen> {
           _toolButton(
             key: _addCardsToolKey,
             icon: Icons.add_box,
-            label: '加牌',
+            label: _l10n.actionAddCards,
             cost: _addCardsCost,
             onTap: _useAddCards,
             enabled: coins >= _addCardsCost && !disabled,
@@ -1133,7 +1139,7 @@ class _GameScreenState extends State<GameScreen> {
         const SizedBox(height: 6),
         _toolButton(
           icon: Icons.shuffle,
-          label: '洗牌',
+          label: _l10n.actionShuffle,
           cost: _shuffleCost,
           onTap: _useShuffle,
           enabled: coins >= _shuffleCost && !disabled,
@@ -1141,7 +1147,7 @@ class _GameScreenState extends State<GameScreen> {
         const SizedBox(height: 6),
         _toolButton(
           icon: Icons.lightbulb_outline,
-          label: '提示',
+          label: _l10n.hint,
           cost: _hintCost,
           onTap: _useHint,
           enabled: coins >= _hintCost && !disabled,
@@ -1219,8 +1225,9 @@ class _GameScreenState extends State<GameScreen> {
                   shadow: true,
                   child: Text(
                     widget.level.endless
-                        ? '🌌 无尽模式'
-                        : '第 ${widget.level.id} 关 · ${widget.level.name}',
+                        ? _l10n.endlessMode
+                        : _l10n.headerLevel(
+                            widget.level.id, widget.level.name),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -1463,8 +1470,8 @@ class _GameScreenState extends State<GameScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: endless
                       ? [
-                          const Text('目标',
-                              style: TextStyle(color: Colors.white)),
+                          Text(_l10n.target,
+                              style: const TextStyle(color: Colors.white)),
                           const SizedBox(width: 6),
                           SizedBox(
                               width: 20,
@@ -1480,16 +1487,17 @@ class _GameScreenState extends State<GameScreen> {
                         ]
                       : isClear
                           ? [
-                              const Text('目标 ',
-                                  style: TextStyle(color: Colors.white)),
+                              Text('${_l10n.target} ',
+                                  style: const TextStyle(color: Colors.white)),
                               ValueListenableBuilder<int>(
                                 valueListenable: _game.stockLeft,
                                 builder: (_, left, _) => Text(
                                   left > 0
-                                      ? '打完牌堆 · 剩 $left 张'
+                                      ? _l10n.chipDeckDone(left)
                                       : (v <= (widget.level.clearLimit ?? 0)
-                                          ? '✅ 达标 场上 $v 组'
-                                          : '场上 $v 组 / 目标 ≤${widget.level.clearLimit ?? 0}'),
+                                          ? _l10n.chipClearOk(v)
+                                          : _l10n.chipClearProgress(v,
+                                              widget.level.clearLimit ?? 0)),
                                   style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.w900),
@@ -1497,8 +1505,8 @@ class _GameScreenState extends State<GameScreen> {
                               ),
                             ]
                           : [
-                              const Text('目标',
-                                  style: TextStyle(color: Colors.white)),
+                              Text(_l10n.target,
+                                  style: const TextStyle(color: Colors.white)),
                               const SizedBox(width: 6),
                               SizedBox(
                                   width: 20,
@@ -1550,7 +1558,7 @@ class _GameScreenState extends State<GameScreen> {
                           : const [Color(0xFF17C2CF), Color(0xFF0D93A0)],
                       shadow: urgent,
                       child: Text(
-                        '👟 $m 步',
+                        _l10n.movesBadge(m),
                         style: TextStyle(
                           color: urgent ? Colors.white : Colors.white70,
                           fontWeight: FontWeight.w900,
@@ -1589,32 +1597,31 @@ class _GameScreenState extends State<GameScreen> {
     final String title;
     final String howTo;
     if (level.endless) {
-      title = '🌌 无尽冲档：不断合成更高级车辆';
-      howTo = '棋盘放满即结束';
+      title = _l10n.introEndlessTitle;
+      howTo = _l10n.introEndlessHow;
     } else if (level.boss != null) {
       // Boss 关：目标栏直接教打法——合成什么车、打谁、防什么。
       // 防什么按本章技能动态说（Boss 成长线，越深的章花招越多）。
       final spec = level.boss!;
       final threats = <String>[
-        '冰封你的原料车（在旁边合成来救）',
-        if (spec.stealTopTier) '抢走你最高档的车',
-        if (spec.lockStockSeconds > 0) '锁住牌堆几秒',
-        if (spec.enrageAtHalf) '残血时会狂怒提速',
+        _l10n.threatFreeze,
+        if (spec.stealTopTier) _l10n.threatSteal,
+        if (spec.lockStockSeconds > 0) _l10n.threatLock,
+        if (spec.enrageAtHalf) _l10n.threatEnrage,
       ];
-      title = '👑 Boss 战：合成 ${level.targetTier!.icon} ${level.targetTier!.name}'
-          ' 攻击 Boss，打空 ${spec.hp} 血条就赢';
-      howTo = 'Boss 每 9 秒动手一次，看到彩环就是要出手：${threats.join('、')}！';
+      title = _l10n.introBossTitle(
+          level.targetTier!.icon, level.targetTier!.name, spec.hp);
+      howTo = _l10n.introBossHow(threats.join(_l10n.listSeparator));
     } else {
       // 清道夫关不用 goalText（"残留≤N 堆"太术语化，玩家看不懂），
       // 改成大白话：牌堆用完 + 场上剩的车不超过 N 组就赢。
       title = switch (level.goalType) {
-        GoalType.clearBoard =>
-          '🎯 目标：用光牌堆，场上剩 ≤${level.clearLimit ?? 0} 组就赢',
+        GoalType.clearBoard => _l10n.introClearTitle(level.clearLimit ?? 0),
         _ => level.goalText,
       };
       howTo = switch (level.goalType) {
-        GoalType.clearBoard => '同级 3 辆拖一起合成升级，最高档合成会升空消失',
-        _ => '同级车拖一起合成升级',
+        GoalType.clearBoard => _l10n.introClearHow,
+        _ => _l10n.introMergeHow,
       };
     }
     return Container(
@@ -1805,12 +1812,12 @@ class _GameScreenState extends State<GameScreen> {
                             const SizedBox(height: 6),
                             Text(
                               locked
-                                  ? '🔒 Boss 锁住了牌堆，等一下…'
+                                  ? _l10n.stockLockedByBoss
                                   : widget.level.endless
-                                      ? '📦 无限牌堆 · 点卡片出牌'
+                                      ? _l10n.stockInfiniteTap
                                       : (left > 0
-                                          ? '📦 牌堆剩 $left 张 · 点卡片出牌'
-                                          : '📦 牌已用完'),
+                                          ? _l10n.stockLeftTap(left)
+                                          : _l10n.stockEmpty),
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: locked
@@ -1941,7 +1948,7 @@ class _GameScreenState extends State<GameScreen> {
               _toolButton(
                 key: _hammerToolKey,
                 icon: Icons.close,
-                label: '取消',
+                label: _l10n.cancel,
                 cost: null,
                 onTap: _cancelHammer,
                 danger: true,
@@ -1950,7 +1957,7 @@ class _GameScreenState extends State<GameScreen> {
               _toolButton(
                 key: _hammerToolKey,
                 icon: Icons.construction,
-                label: '清除',
+                label: _l10n.actionClear,
                 cost: _hammerCost,
                 onTap: _useHammer,
                 enabled: coins >= _hammerCost && !disabled,
@@ -1958,7 +1965,7 @@ class _GameScreenState extends State<GameScreen> {
             _toolButton(
               key: _undoToolKey,
               icon: Icons.undo,
-              label: '撤销',
+              label: _l10n.undo,
               cost: _undoCost,
               onTap: _useUndo,
               enabled: coins >= _undoCost && !disabled && _game.canUndo,
@@ -1967,21 +1974,21 @@ class _GameScreenState extends State<GameScreen> {
               _toolButton(
                 key: _addCardsToolKey,
                 icon: Icons.add_box,
-                label: '加牌',
+                label: _l10n.actionAddCards,
                 cost: _addCardsCost,
                 onTap: _useAddCards,
                 enabled: coins >= _addCardsCost && !disabled,
               ),
           _toolButton(
             icon: Icons.shuffle,
-            label: '洗牌',
+            label: _l10n.actionShuffle,
             cost: _shuffleCost,
             onTap: _useShuffle,
             enabled: coins >= _shuffleCost && !disabled,
           ),
           _toolButton(
             icon: Icons.lightbulb_outline,
-            label: '提示',
+            label: _l10n.hint,
             cost: _hintCost,
             onTap: _useHint,
             enabled: coins >= _hintCost && !disabled,
@@ -2200,6 +2207,7 @@ class _ResultDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final isEndless = endlessLevel > 0;
     // 失败时改用柔和葡萄紫而不是刺眼的警示色：这一局没成，不代表失败。
     final headerColors = won
@@ -2288,8 +2296,8 @@ class _ResultDialog extends StatelessWidget {
                     ),
                     child: Text(
                       won
-                          ? '得分 $score  ·  +$reward 🪙'
-                          : '得分 $score  ·  安慰 +$consolation 🪙',
+                          ? l10n.resultScore(score, reward)
+                          : l10n.resultScoreConsolation(score, consolation),
                       style: const TextStyle(
                           color: AppColors.coinText,
                           fontSize: 17,
@@ -2300,7 +2308,7 @@ class _ResultDialog extends StatelessWidget {
                   // 胜利广告位：看广告金币×2（每局一次，翻倍后隐藏）。
                   if (onDoubleReward != null) ...[
                     CandyButton(
-                      label: '看广告 金币 ×2（+$reward 🪙）',
+                      label: l10n.doubleCoinsCta(reward),
                       icon: Icons.movie_creation_outlined,
                       colors: AppTheme.gradientOf(AppColors.lemon),
                       expand: true,
@@ -2311,31 +2319,28 @@ class _ResultDialog extends StatelessWidget {
                   if (isEndless)
                     Text(
                       rank != null
-                          ? '完成 ${endlessLevel - 1} 档目标 · 榜单第 $rank 名'
-                          : '完成 ${endlessLevel - 1} 档目标 · 未进前 10',
+                          ? l10n.endlessRanked(endlessLevel - 1, rank!)
+                          : l10n.endlessUnranked(endlessLevel - 1),
                       style: const TextStyle(color: AppColors.ink2, fontSize: 14),
                     )
                   else
                     Column(
                       children: [
                         Text(
-                          comboNewRecord
-                              ? '最大连消 x$maxCombo  ·  🔥 新纪录！'
-                                  '  ·  用时 $elapsedText'
-                                  '${parText != null ? '  ·  参考 $parText' : ''}'
-                              : '最大连消 x$maxCombo'
-                                  '  ·  历史最高 x$bestCombo'
-                                  '  ·  用时 $elapsedText'
-                                  '${parText != null ? '  ·  参考 $parText' : ''}',
+                          (comboNewRecord
+                                  ? l10n.comboNewRecord(maxCombo, elapsedText)
+                                  : l10n.comboNormal(
+                                      maxCombo, bestCombo, elapsedText)) +
+                              (parText != null ? l10n.parSuffix(parText!) : ''),
                           style: const TextStyle(
                               color: AppColors.ink2, fontSize: 14),
                         ),
                         // 速通徽章：奖励已并入总金币，这里只做事件感。
                         if (beatPar) ...[
                           const SizedBox(height: 4),
-                          const Text(
-                            '⚡ 速通达成！',
-                            style: TextStyle(
+                          Text(
+                            l10n.speedrunBadge,
+                            style: const TextStyle(
                                 color: AppColors.coinText,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w900),
@@ -2359,7 +2364,7 @@ class _ResultDialog extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: CandyButton(
-                        label: '分享战绩',
+                        label: l10n.shareResult,
                         icon: Icons.ios_share,
                         colors: AppTheme.softGradient,
                         expand: true,
@@ -2370,7 +2375,7 @@ class _ResultDialog extends StatelessWidget {
                     children: [
                       Expanded(
                         child: CandyButton(
-                          label: '返回',
+                          label: l10n.back,
                           colors: AppTheme.softGradient,
                           size: CandyButtonSize.medium,
                           onTap: onHome,
@@ -2379,7 +2384,9 @@ class _ResultDialog extends StatelessWidget {
                       const SizedBox(width: 10),
                       Expanded(
                         child: CandyButton(
-                          label: onNext != null ? '下一关 ▶' : '再来一局',
+                          label: onNext != null
+                              ? l10n.nextLevelArrow
+                              : l10n.playAgain,
                           colors: AppTheme.gradientOf(AppColors.coral),
                           size: CandyButtonSize.medium,
                           onTap: onNext ?? onReplay,
@@ -2498,7 +2505,7 @@ class _NewCarCinematicState extends State<_NewCarCinematic> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '✨ 新车加入图鉴',
+                        L10n.value.newCarBadge,
                         style: TextStyle(
                           color: AppTheme.deepen(tier.color, 0.42),
                           fontSize: 13,
@@ -2525,7 +2532,8 @@ class _NewCarCinematicState extends State<_NewCarCinematic> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${tier.category.label}系 · 首次合成',
+                        L10n.value
+                            .firstMergeBadge(tier.category.displayLabel),
                         style: const TextStyle(
                           color: AppColors.ink2,
                           fontSize: 12,

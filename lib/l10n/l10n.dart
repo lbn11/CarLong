@@ -1,4 +1,5 @@
 import 'app_localizations.dart';
+import 'app_localizations_en.dart';
 
 /// 非 widget 代码取文案的唯一入口。
 ///
@@ -21,8 +22,20 @@ abstract final class L10n {
 
   static AppLocalizations? _current;
 
+  /// 未同步时的兜底实例。选英文而不是中文：`supportedLocales` 里 en 排第一，
+  /// 也就是「系统语言不认识」时的实际默认语言。
+  static final AppLocalizations _fallback = AppLocalizationsEn();
+
   /// 当前 locale 的文案表；未同步时为 null。
   static AppLocalizations? get current => _current;
+
+  /// **保证非空**的文案表，widget 侧一律用它——尤其是 `initState`：
+  /// 那时还轮不到 `dependOnInheritedWidgetOfExactType`，`AppLocalizations.of`
+  /// 会直接抛断言，只能从这里拿。
+  ///
+  /// 注意与模型 getter 的回落策略不同：那边没有文案表可用，只能回落到
+  /// 源码里的中文字面量（`zhName`）；这边有完整表，所以给默认语言。
+  static AppLocalizations get value => _current ?? _fallback;
 
   /// 由 [MergeGameApp] 与测试宿主 `l10nHost` 在 builder 里调用。
   static void sync(AppLocalizations? value) => _current = value;

@@ -1411,6 +1411,594 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Moves {n} + turn'**
   String moveDistanceTurn(int n);
+
+  /// No description provided for @listSeparator.
+  ///
+  /// In en, this message translates to:
+  /// **', '**
+  String get listSeparator;
+
+  /// No description provided for @hintCollectionUnlock.
+  ///
+  /// In en, this message translates to:
+  /// **'📖 {icon} {name} added to collection +5🪙'**
+  String hintCollectionUnlock(String icon, String name);
+
+  /// No description provided for @hintMilestone.
+  ///
+  /// In en, this message translates to:
+  /// **'🏆 Milestone! Endless tier {tier} +{reward} 🪙'**
+  String hintMilestone(int tier, int reward);
+
+  /// No description provided for @hintClearBoardIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'🎯 Use up the deck — you win with ≤{limit} groups left! Drag matching cars together; three top-tier cars launch away'**
+  String hintClearBoardIntro(int limit);
+
+  /// No description provided for @hintBossIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'👑 Boss fight! Merge {icon} {name} to hit the Boss ({hp} HP) — the red circle is its target. Watch out for ice and tow trucks!'**
+  String hintBossIntro(String icon, String name, int hp);
+
+  /// No description provided for @hintBoosterTime.
+  ///
+  /// In en, this message translates to:
+  /// **'🕐 Time Card: +30s'**
+  String get hintBoosterTime;
+
+  /// No description provided for @hintBoosterTimeToCoins.
+  ///
+  /// In en, this message translates to:
+  /// **'🕐 Time Card (not a timed level) → +30 🪙'**
+  String get hintBoosterTimeToCoins;
+
+  /// No description provided for @hintBoosterCards.
+  ///
+  /// In en, this message translates to:
+  /// **'📦 Extra Cards: deck +3'**
+  String get hintBoosterCards;
+
+  /// No description provided for @hintBoosterDouble.
+  ///
+  /// In en, this message translates to:
+  /// **'🎲 Double Coins: clear reward ×2'**
+  String get hintBoosterDouble;
+
+  /// No description provided for @winBoss.
+  ///
+  /// In en, this message translates to:
+  /// **'👑 Boss down! Your fleet moved up a tier'**
+  String get winBoss;
+
+  /// No description provided for @winGoal.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal reached: {goal}'**
+  String winGoal(String goal);
+
+  /// No description provided for @winEndlessRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'🌌 Endless record!'**
+  String get winEndlessRecord;
+
+  /// No description provided for @winBoardFull.
+  ///
+  /// In en, this message translates to:
+  /// **'💥 Board full'**
+  String get winBoardFull;
+
+  /// No description provided for @winBossShort.
+  ///
+  /// In en, this message translates to:
+  /// **'👑 Boss defeated!'**
+  String get winBossShort;
+
+  /// No description provided for @winCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'🎉 Board cleared!'**
+  String get winCleared;
+
+  /// No description provided for @winLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'🚀 Level cleared!'**
+  String get winLevel;
+
+  /// No description provided for @loseBoss.
+  ///
+  /// In en, this message translates to:
+  /// **'👑 Boss level · so close'**
+  String get loseBoss;
+
+  /// No description provided for @loseAdGate.
+  ///
+  /// In en, this message translates to:
+  /// **'🎬 Challenge · so close'**
+  String get loseAdGate;
+
+  /// No description provided for @loseTime.
+  ///
+  /// In en, this message translates to:
+  /// **'⏰ So close'**
+  String get loseTime;
+
+  /// No description provided for @reviveTime.
+  ///
+  /// In en, this message translates to:
+  /// **'🎬 Watch ad to continue · +30s'**
+  String get reviveTime;
+
+  /// No description provided for @reviveMoves.
+  ///
+  /// In en, this message translates to:
+  /// **'🎬 Watch ad to continue · +10 moves'**
+  String get reviveMoves;
+
+  /// No description provided for @reviveDeadEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'🎬 Watch ad to continue · +2 cards, reshuffle'**
+  String get reviveDeadEnd;
+
+  /// No description provided for @reviveEndlessStuck.
+  ///
+  /// In en, this message translates to:
+  /// **'🎬 Watch ad to continue · clear 3 groups'**
+  String get reviveEndlessStuck;
+
+  /// No description provided for @shareEndless.
+  ///
+  /// In en, this message translates to:
+  /// **'I hit {score} points in Merge Fleet Endless! Beat me 🚀'**
+  String shareEndless(int score);
+
+  /// No description provided for @shareLevelStars.
+  ///
+  /// In en, this message translates to:
+  /// **'I got {stars} stars on level {level} in Merge Fleet! Unlock the galaxy and beat me 🚗✨'**
+  String shareLevelStars(int stars, int level);
+
+  /// No description provided for @shareLevelTry.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'m on level {level} in Merge Fleet — come merge a fleet too 🚗'**
+  String shareLevelTry(int level);
+
+  /// No description provided for @shareCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'✅ Copied — paste it to a friend!'**
+  String get shareCopied;
+
+  /// No description provided for @pausedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get pausedTitle;
+
+  /// No description provided for @pausedTipBreak.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a breather — jump back in whenever'**
+  String get pausedTipBreak;
+
+  /// No description provided for @pausedTipThink.
+  ///
+  /// In en, this message translates to:
+  /// **'No rush, think about your next move'**
+  String get pausedTipThink;
+
+  /// No description provided for @elapsedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get elapsedLabel;
+
+  /// No description provided for @parLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Par'**
+  String get parLabel;
+
+  /// No description provided for @estLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Est.'**
+  String get estLabel;
+
+  /// No description provided for @resumeGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get resumeGame;
+
+  /// No description provided for @restartRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart'**
+  String get restartRun;
+
+  /// No description provided for @backHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get backHome;
+
+  /// No description provided for @detailEndlessNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Merged up to tier {tier} — climb higher next run!'**
+  String detailEndlessNext(int tier);
+
+  /// No description provided for @detailBossAlive.
+  ///
+  /// In en, this message translates to:
+  /// **'👑 Boss has {hp} HP left — merge the target car to hit it!'**
+  String detailBossAlive(int hp);
+
+  /// No description provided for @detailBossDead.
+  ///
+  /// In en, this message translates to:
+  /// **'👑 Boss is down!'**
+  String get detailBossDead;
+
+  /// No description provided for @detailTimeUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Time\'s up — that was close'**
+  String get detailTimeUp;
+
+  /// No description provided for @detailClearRemain.
+  ///
+  /// In en, this message translates to:
+  /// **'{left} groups left (goal ≤{limit})'**
+  String detailClearRemain(int left, int limit);
+
+  /// No description provided for @detailClearNearly.
+  ///
+  /// In en, this message translates to:
+  /// **'One more nudge and it\'s clear'**
+  String get detailClearNearly;
+
+  /// No description provided for @detailTargetRemain.
+  ///
+  /// In en, this message translates to:
+  /// **'{remain} more {icon} {name} to go'**
+  String detailTargetRemain(int remain, String icon, String name);
+
+  /// No description provided for @exitTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave this level?'**
+  String get exitTitle;
+
+  /// No description provided for @exitMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress in this run will be lost. Sure you want to go?'**
+  String get exitMessage;
+
+  /// No description provided for @keepPlaying.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep playing'**
+  String get keepPlaying;
+
+  /// No description provided for @exitRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get exitRun;
+
+  /// No description provided for @tooltipBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get tooltipBack;
+
+  /// No description provided for @tooltipPause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get tooltipPause;
+
+  /// No description provided for @chipDeckDone.
+  ///
+  /// In en, this message translates to:
+  /// **'📦 Deck done · {left} left'**
+  String chipDeckDone(int left);
+
+  /// No description provided for @chipClearOk.
+  ///
+  /// In en, this message translates to:
+  /// **'✅ On target! {v} groups'**
+  String chipClearOk(int v);
+
+  /// No description provided for @chipClearProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'{v} groups / goal ≤{limit}'**
+  String chipClearProgress(int v, int limit);
+
+  /// No description provided for @chipStockLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'🔒 Locked by Boss'**
+  String get chipStockLocked;
+
+  /// No description provided for @chipStockInfinite.
+  ///
+  /// In en, this message translates to:
+  /// **'Infinite deck'**
+  String get chipStockInfinite;
+
+  /// No description provided for @chipStockLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Deck: {left} left'**
+  String chipStockLeft(int left);
+
+  /// No description provided for @actionClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get actionClear;
+
+  /// No description provided for @actionAddCards.
+  ///
+  /// In en, this message translates to:
+  /// **'Add cards'**
+  String get actionAddCards;
+
+  /// No description provided for @actionShuffle.
+  ///
+  /// In en, this message translates to:
+  /// **'Shuffle'**
+  String get actionShuffle;
+
+  /// No description provided for @headerLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Level {id} · {name}'**
+  String headerLevel(int id, String name);
+
+  /// No description provided for @movesBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'👟 {m} moves'**
+  String movesBadge(int m);
+
+  /// No description provided for @introEndlessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'🌌 Endless climb: keep merging to higher tiers'**
+  String get introEndlessTitle;
+
+  /// No description provided for @introEndlessHow.
+  ///
+  /// In en, this message translates to:
+  /// **'It ends when the board fills up'**
+  String get introEndlessHow;
+
+  /// No description provided for @introBossTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'👑 Boss fight: merge {icon} {name} to hit the Boss — empty its {hp} HP bar to win'**
+  String introBossTitle(String icon, String name, int hp);
+
+  /// No description provided for @introBossHow.
+  ///
+  /// In en, this message translates to:
+  /// **'The Boss strikes every 9s — a colored ring means it\'s about to act: {threats}!'**
+  String introBossHow(String threats);
+
+  /// No description provided for @introClearTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'🎯 Goal: use up the deck — win with ≤{limit} groups left'**
+  String introClearTitle(int limit);
+
+  /// No description provided for @introClearHow.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag 3 matching cars together to upgrade; the top tier launches away'**
+  String get introClearHow;
+
+  /// No description provided for @introMergeHow.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag matching cars together to upgrade'**
+  String get introMergeHow;
+
+  /// No description provided for @threatFreeze.
+  ///
+  /// In en, this message translates to:
+  /// **'freezes your key cars (merge next to them to free them)'**
+  String get threatFreeze;
+
+  /// No description provided for @threatSteal.
+  ///
+  /// In en, this message translates to:
+  /// **'steals your highest-tier car'**
+  String get threatSteal;
+
+  /// No description provided for @threatLock.
+  ///
+  /// In en, this message translates to:
+  /// **'locks the deck for a few seconds'**
+  String get threatLock;
+
+  /// No description provided for @threatEnrage.
+  ///
+  /// In en, this message translates to:
+  /// **'enrages and speeds up at half HP'**
+  String get threatEnrage;
+
+  /// No description provided for @stockLockedByBoss.
+  ///
+  /// In en, this message translates to:
+  /// **'🔒 The Boss locked the deck, hang on…'**
+  String get stockLockedByBoss;
+
+  /// No description provided for @stockInfiniteTap.
+  ///
+  /// In en, this message translates to:
+  /// **'📦 Infinite deck · tap a card to draw'**
+  String get stockInfiniteTap;
+
+  /// No description provided for @stockLeftTap.
+  ///
+  /// In en, this message translates to:
+  /// **'📦 {left} left · tap a card to draw'**
+  String stockLeftTap(int left);
+
+  /// No description provided for @stockEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'📦 Deck empty'**
+  String get stockEmpty;
+
+  /// No description provided for @resultScore.
+  ///
+  /// In en, this message translates to:
+  /// **'Score {score}  ·  +{reward} 🪙'**
+  String resultScore(int score, int reward);
+
+  /// No description provided for @resultScoreConsolation.
+  ///
+  /// In en, this message translates to:
+  /// **'Score {score}  ·  consolation +{consolation} 🪙'**
+  String resultScoreConsolation(int score, int consolation);
+
+  /// No description provided for @doubleCoinsCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch ad · coins ×2 (+{reward} 🪙)'**
+  String doubleCoinsCta(int reward);
+
+  /// No description provided for @endlessRanked.
+  ///
+  /// In en, this message translates to:
+  /// **'Cleared {tier} tiers · rank #{rank}'**
+  String endlessRanked(int tier, int rank);
+
+  /// No description provided for @endlessUnranked.
+  ///
+  /// In en, this message translates to:
+  /// **'Cleared {tier} tiers · outside top 10'**
+  String endlessUnranked(int tier);
+
+  /// No description provided for @comboNewRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'Best chain x{combo}  ·  🔥 New record!  ·  {time}'**
+  String comboNewRecord(int combo, String time);
+
+  /// No description provided for @comboNormal.
+  ///
+  /// In en, this message translates to:
+  /// **'Best chain x{combo}  ·  best ever x{best}  ·  {time}'**
+  String comboNormal(int combo, int best, String time);
+
+  /// No description provided for @parSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'  ·  par {par}'**
+  String parSuffix(String par);
+
+  /// No description provided for @speedrunBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'⚡ Speedrun!'**
+  String get speedrunBadge;
+
+  /// No description provided for @shareResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Share result'**
+  String get shareResult;
+
+  /// No description provided for @nextLevelArrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Next ▶'**
+  String get nextLevelArrow;
+
+  /// No description provided for @playAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Play again'**
+  String get playAgain;
+
+  /// No description provided for @newCarBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'✨ New car unlocked'**
+  String get newCarBadge;
+
+  /// No description provided for @firstMergeBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'{category} · first merge'**
+  String firstMergeBadge(String category);
+
+  /// No description provided for @headerEndless.
+  ///
+  /// In en, this message translates to:
+  /// **'🌌 Endless'**
+  String get headerEndless;
+
+  /// No description provided for @goalProduce.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal: merge {name} ×{count}'**
+  String goalProduce(String name, int count);
+
+  /// No description provided for @goalProduceBoss.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal: merge {name} ×{count} (hit the Boss)'**
+  String goalProduceBoss(String name, int count);
+
+  /// No description provided for @goalClearBoard.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal: use up the deck, ≤{limit} groups left'**
+  String goalClearBoard(int limit);
+
+  /// No description provided for @goalWithinMoves.
+  ///
+  /// In en, this message translates to:
+  /// **'Within {moves} moves · {goal}'**
+  String goalWithinMoves(int moves, String goal);
+
+  /// No description provided for @goalWithinTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Within {seconds}s · {goal}'**
+  String goalWithinTime(int seconds, String goal);
+
+  /// No description provided for @bonusWildcard.
+  ///
+  /// In en, this message translates to:
+  /// **'⭐ Wildcard×{n}'**
+  String bonusWildcard(int n);
+
+  /// No description provided for @bonusBomb.
+  ///
+  /// In en, this message translates to:
+  /// **'💣 Bomb×{n}'**
+  String bonusBomb(int n);
+
+  /// No description provided for @bonusFog.
+  ///
+  /// In en, this message translates to:
+  /// **'🌫 Fog×{n}'**
+  String bonusFog(int n);
 }
 
 class _AppLocalizationsDelegate

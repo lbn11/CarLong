@@ -721,4 +721,376 @@ class AppLocalizationsZh extends AppLocalizations {
   String moveDistanceTurn(int n) {
     return '移动$n格+转弯';
   }
+
+  @override
+  String get listSeparator => '、';
+
+  @override
+  String hintCollectionUnlock(String icon, String name) {
+    return '📖 图鉴点亮 $icon $name +5🪙';
+  }
+
+  @override
+  String hintMilestone(int tier, int reward) {
+    return '🏆 里程碑达成！无尽第 $tier 档 +$reward 🪙';
+  }
+
+  @override
+  String hintClearBoardIntro(int limit) {
+    return '🎯 把牌堆用完，场上剩 ≤$limit 组就赢！同级车拖一起合成，最高档三合一会升空消失';
+  }
+
+  @override
+  String hintBossIntro(String icon, String name, int hp) {
+    return '👑 Boss 战！合成 $icon $name 攻击 Boss（$hp 血）——红圈是它的目标，小心冰块和被拖车！';
+  }
+
+  @override
+  String get hintBoosterTime => '🕐 加时卡生效：+30 秒';
+
+  @override
+  String get hintBoosterTimeToCoins => '🕐 加时卡（非限时关）转为 +30 🪙';
+
+  @override
+  String get hintBoosterCards => '📦 补卡卡生效：牌堆 +3';
+
+  @override
+  String get hintBoosterDouble => '🎲 双倍卡生效：通关金币 ×2';
+
+  @override
+  String get winBoss => '👑 Boss 被击败！你的车队又精进了一档';
+
+  @override
+  String winGoal(String goal) {
+    return '达成目标：$goal';
+  }
+
+  @override
+  String get winEndlessRecord => '🌌 无尽纪录！';
+
+  @override
+  String get winBoardFull => '💥 棋盘满啦';
+
+  @override
+  String get winBossShort => '👑 Boss 击败！';
+
+  @override
+  String get winCleared => '🎉 清空成功！';
+
+  @override
+  String get winLevel => '🚀 通关成功！';
+
+  @override
+  String get loseBoss => '👑 Boss 关 · 差一点';
+
+  @override
+  String get loseAdGate => '🎬 挑战关 · 差一点';
+
+  @override
+  String get loseTime => '⏰ 差一点';
+
+  @override
+  String get reviveTime => '🎬 看广告续命 · +30 秒';
+
+  @override
+  String get reviveMoves => '🎬 看广告续命 · +10 步';
+
+  @override
+  String get reviveDeadEnd => '🎬 看广告续命 · 牌堆+2 并重排';
+
+  @override
+  String get reviveEndlessStuck => '🎬 看广告续命 · 清 3 组腾位';
+
+  @override
+  String shareEndless(int score) {
+    return '我在《车水马龙》无尽模式冲到 $score 分！来挑战我 🚀';
+  }
+
+  @override
+  String shareLevelStars(int stars, int level) {
+    return '我在《车水马龙》第 $level 关拿到 $stars 星！合成车队解锁星辰宇宙，来挑战我 🚗✨';
+  }
+
+  @override
+  String shareLevelTry(int level) {
+    return '我在《车水马龙》挑战第 $level 关，你也来试试合成车队 🚗';
+  }
+
+  @override
+  String get shareCopied => '✅ 分享文案已复制，去粘贴给好友吧！';
+
+  @override
+  String get pausedTitle => '暂停中';
+
+  @override
+  String get pausedTipBreak => '休息一下，随时回来接着合';
+
+  @override
+  String get pausedTipThink => '不着急，慢慢想下一步';
+
+  @override
+  String get elapsedLabel => '用时';
+
+  @override
+  String get parLabel => '参考';
+
+  @override
+  String get estLabel => '预计';
+
+  @override
+  String get resumeGame => '继续游戏';
+
+  @override
+  String get restartRun => '重新开始';
+
+  @override
+  String get backHome => '返回主页';
+
+  @override
+  String detailEndlessNext(int tier) {
+    return '合成到第 $tier 档目标，下次冲更高！';
+  }
+
+  @override
+  String detailBossAlive(int hp) {
+    return '👑 Boss 还剩 $hp 血，再合成目标车打它！';
+  }
+
+  @override
+  String get detailBossDead => '👑 Boss 倒下了！';
+
+  @override
+  String get detailTimeUp => '时间到，差一点就成功了';
+
+  @override
+  String detailClearRemain(int left, int limit) {
+    return '场上还剩 $left 组车（目标 ≤$limit 组）';
+  }
+
+  @override
+  String get detailClearNearly => '再动一动棋子就清空啦';
+
+  @override
+  String detailTargetRemain(int remain, String icon, String name) {
+    return '还差 $remain 辆 $icon $name';
+  }
+
+  @override
+  String get exitTitle => '退出本关？';
+
+  @override
+  String get exitMessage => '当前这局的进度会丢掉哦，确定要走吗？';
+
+  @override
+  String get keepPlaying => '继续玩';
+
+  @override
+  String get exitRun => '退出';
+
+  @override
+  String get tooltipBack => '返回';
+
+  @override
+  String get tooltipPause => '暂停';
+
+  @override
+  String chipDeckDone(int left) {
+    return '📦 打完牌堆 · 剩 $left 张';
+  }
+
+  @override
+  String chipClearOk(int v) {
+    return '✅ 达标！场上 $v 组';
+  }
+
+  @override
+  String chipClearProgress(int v, int limit) {
+    return '场上 $v 组 / 目标 ≤$limit';
+  }
+
+  @override
+  String get chipStockLocked => '🔒 被 Boss 锁住';
+
+  @override
+  String get chipStockInfinite => '无限牌堆';
+
+  @override
+  String chipStockLeft(int left) {
+    return '牌堆剩 $left 张';
+  }
+
+  @override
+  String get actionClear => '清除';
+
+  @override
+  String get actionAddCards => '加牌';
+
+  @override
+  String get actionShuffle => '洗牌';
+
+  @override
+  String headerLevel(int id, String name) {
+    return '第 $id 关 · $name';
+  }
+
+  @override
+  String movesBadge(int m) {
+    return '👟 $m 步';
+  }
+
+  @override
+  String get introEndlessTitle => '🌌 无尽冲档：不断合成更高级车辆';
+
+  @override
+  String get introEndlessHow => '棋盘放满即结束';
+
+  @override
+  String introBossTitle(String icon, String name, int hp) {
+    return '👑 Boss 战：合成 $icon $name 攻击 Boss，打空 $hp 血条就赢';
+  }
+
+  @override
+  String introBossHow(String threats) {
+    return 'Boss 每 9 秒动手一次，看到彩环就是要出手：$threats！';
+  }
+
+  @override
+  String introClearTitle(int limit) {
+    return '🎯 目标：用光牌堆，场上剩 ≤$limit 组就赢';
+  }
+
+  @override
+  String get introClearHow => '同级 3 辆拖一起合成升级，最高档合成会升空消失';
+
+  @override
+  String get introMergeHow => '同级车拖一起合成升级';
+
+  @override
+  String get threatFreeze => '冰封你的原料车（在旁边合成来救）';
+
+  @override
+  String get threatSteal => '抢走你最高档的车';
+
+  @override
+  String get threatLock => '锁住牌堆几秒';
+
+  @override
+  String get threatEnrage => '残血时会狂怒提速';
+
+  @override
+  String get stockLockedByBoss => '🔒 Boss 锁住了牌堆，等一下…';
+
+  @override
+  String get stockInfiniteTap => '📦 无限牌堆 · 点卡片出牌';
+
+  @override
+  String stockLeftTap(int left) {
+    return '📦 牌堆剩 $left 张 · 点卡片出牌';
+  }
+
+  @override
+  String get stockEmpty => '📦 牌已用完';
+
+  @override
+  String resultScore(int score, int reward) {
+    return '得分 $score  ·  +$reward 🪙';
+  }
+
+  @override
+  String resultScoreConsolation(int score, int consolation) {
+    return '得分 $score  ·  安慰 +$consolation 🪙';
+  }
+
+  @override
+  String doubleCoinsCta(int reward) {
+    return '看广告 金币 ×2（+$reward 🪙）';
+  }
+
+  @override
+  String endlessRanked(int tier, int rank) {
+    return '完成 $tier 档目标 · 榜单第 $rank 名';
+  }
+
+  @override
+  String endlessUnranked(int tier) {
+    return '完成 $tier 档目标 · 未进前 10';
+  }
+
+  @override
+  String comboNewRecord(int combo, String time) {
+    return '最大连消 x$combo  ·  🔥 新纪录！  ·  用时 $time';
+  }
+
+  @override
+  String comboNormal(int combo, int best, String time) {
+    return '最大连消 x$combo  ·  历史最高 x$best  ·  用时 $time';
+  }
+
+  @override
+  String parSuffix(String par) {
+    return '  ·  参考 $par';
+  }
+
+  @override
+  String get speedrunBadge => '⚡ 速通达成！';
+
+  @override
+  String get shareResult => '分享战绩';
+
+  @override
+  String get nextLevelArrow => '下一关 ▶';
+
+  @override
+  String get playAgain => '再来一局';
+
+  @override
+  String get newCarBadge => '✨ 新车加入图鉴';
+
+  @override
+  String firstMergeBadge(String category) {
+    return '$category系 · 首次合成';
+  }
+
+  @override
+  String get headerEndless => '🌌 无尽模式';
+
+  @override
+  String goalProduce(String name, int count) {
+    return '目标：合成 $name ×$count';
+  }
+
+  @override
+  String goalProduceBoss(String name, int count) {
+    return '目标：合成 $name ×$count（攻击 👑 Boss）';
+  }
+
+  @override
+  String goalClearBoard(int limit) {
+    return '目标：用光牌堆，场上剩 ≤$limit 组车';
+  }
+
+  @override
+  String goalWithinMoves(int moves, String goal) {
+    return '$moves 步内$goal';
+  }
+
+  @override
+  String goalWithinTime(int seconds, String goal) {
+    return '$seconds 秒内$goal';
+  }
+
+  @override
+  String bonusWildcard(int n) {
+    return '⭐ 万能卡×$n';
+  }
+
+  @override
+  String bonusBomb(int n) {
+    return '💣 炸弹×$n';
+  }
+
+  @override
+  String bonusFog(int n) {
+    return '🌫 迷雾×$n';
+  }
 }

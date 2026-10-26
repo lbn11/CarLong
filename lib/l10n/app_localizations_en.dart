@@ -732,4 +732,381 @@ class AppLocalizationsEn extends AppLocalizations {
   String moveDistanceTurn(int n) {
     return 'Moves $n + turn';
   }
+
+  @override
+  String get listSeparator => ', ';
+
+  @override
+  String hintCollectionUnlock(String icon, String name) {
+    return '📖 $icon $name added to collection +5🪙';
+  }
+
+  @override
+  String hintMilestone(int tier, int reward) {
+    return '🏆 Milestone! Endless tier $tier +$reward 🪙';
+  }
+
+  @override
+  String hintClearBoardIntro(int limit) {
+    return '🎯 Use up the deck — you win with ≤$limit groups left! Drag matching cars together; three top-tier cars launch away';
+  }
+
+  @override
+  String hintBossIntro(String icon, String name, int hp) {
+    return '👑 Boss fight! Merge $icon $name to hit the Boss ($hp HP) — the red circle is its target. Watch out for ice and tow trucks!';
+  }
+
+  @override
+  String get hintBoosterTime => '🕐 Time Card: +30s';
+
+  @override
+  String get hintBoosterTimeToCoins =>
+      '🕐 Time Card (not a timed level) → +30 🪙';
+
+  @override
+  String get hintBoosterCards => '📦 Extra Cards: deck +3';
+
+  @override
+  String get hintBoosterDouble => '🎲 Double Coins: clear reward ×2';
+
+  @override
+  String get winBoss => '👑 Boss down! Your fleet moved up a tier';
+
+  @override
+  String winGoal(String goal) {
+    return 'Goal reached: $goal';
+  }
+
+  @override
+  String get winEndlessRecord => '🌌 Endless record!';
+
+  @override
+  String get winBoardFull => '💥 Board full';
+
+  @override
+  String get winBossShort => '👑 Boss defeated!';
+
+  @override
+  String get winCleared => '🎉 Board cleared!';
+
+  @override
+  String get winLevel => '🚀 Level cleared!';
+
+  @override
+  String get loseBoss => '👑 Boss level · so close';
+
+  @override
+  String get loseAdGate => '🎬 Challenge · so close';
+
+  @override
+  String get loseTime => '⏰ So close';
+
+  @override
+  String get reviveTime => '🎬 Watch ad to continue · +30s';
+
+  @override
+  String get reviveMoves => '🎬 Watch ad to continue · +10 moves';
+
+  @override
+  String get reviveDeadEnd => '🎬 Watch ad to continue · +2 cards, reshuffle';
+
+  @override
+  String get reviveEndlessStuck => '🎬 Watch ad to continue · clear 3 groups';
+
+  @override
+  String shareEndless(int score) {
+    return 'I hit $score points in Merge Fleet Endless! Beat me 🚀';
+  }
+
+  @override
+  String shareLevelStars(int stars, int level) {
+    return 'I got $stars stars on level $level in Merge Fleet! Unlock the galaxy and beat me 🚗✨';
+  }
+
+  @override
+  String shareLevelTry(int level) {
+    return 'I\'m on level $level in Merge Fleet — come merge a fleet too 🚗';
+  }
+
+  @override
+  String get shareCopied => '✅ Copied — paste it to a friend!';
+
+  @override
+  String get pausedTitle => 'Paused';
+
+  @override
+  String get pausedTipBreak => 'Take a breather — jump back in whenever';
+
+  @override
+  String get pausedTipThink => 'No rush, think about your next move';
+
+  @override
+  String get elapsedLabel => 'Time';
+
+  @override
+  String get parLabel => 'Par';
+
+  @override
+  String get estLabel => 'Est.';
+
+  @override
+  String get resumeGame => 'Resume';
+
+  @override
+  String get restartRun => 'Restart';
+
+  @override
+  String get backHome => 'Home';
+
+  @override
+  String detailEndlessNext(int tier) {
+    return 'Merged up to tier $tier — climb higher next run!';
+  }
+
+  @override
+  String detailBossAlive(int hp) {
+    return '👑 Boss has $hp HP left — merge the target car to hit it!';
+  }
+
+  @override
+  String get detailBossDead => '👑 Boss is down!';
+
+  @override
+  String get detailTimeUp => 'Time\'s up — that was close';
+
+  @override
+  String detailClearRemain(int left, int limit) {
+    return '$left groups left (goal ≤$limit)';
+  }
+
+  @override
+  String get detailClearNearly => 'One more nudge and it\'s clear';
+
+  @override
+  String detailTargetRemain(int remain, String icon, String name) {
+    return '$remain more $icon $name to go';
+  }
+
+  @override
+  String get exitTitle => 'Leave this level?';
+
+  @override
+  String get exitMessage =>
+      'Progress in this run will be lost. Sure you want to go?';
+
+  @override
+  String get keepPlaying => 'Keep playing';
+
+  @override
+  String get exitRun => 'Leave';
+
+  @override
+  String get tooltipBack => 'Back';
+
+  @override
+  String get tooltipPause => 'Pause';
+
+  @override
+  String chipDeckDone(int left) {
+    return '📦 Deck done · $left left';
+  }
+
+  @override
+  String chipClearOk(int v) {
+    return '✅ On target! $v groups';
+  }
+
+  @override
+  String chipClearProgress(int v, int limit) {
+    return '$v groups / goal ≤$limit';
+  }
+
+  @override
+  String get chipStockLocked => '🔒 Locked by Boss';
+
+  @override
+  String get chipStockInfinite => 'Infinite deck';
+
+  @override
+  String chipStockLeft(int left) {
+    return 'Deck: $left left';
+  }
+
+  @override
+  String get actionClear => 'Clear';
+
+  @override
+  String get actionAddCards => 'Add cards';
+
+  @override
+  String get actionShuffle => 'Shuffle';
+
+  @override
+  String headerLevel(int id, String name) {
+    return 'Level $id · $name';
+  }
+
+  @override
+  String movesBadge(int m) {
+    return '👟 $m moves';
+  }
+
+  @override
+  String get introEndlessTitle =>
+      '🌌 Endless climb: keep merging to higher tiers';
+
+  @override
+  String get introEndlessHow => 'It ends when the board fills up';
+
+  @override
+  String introBossTitle(String icon, String name, int hp) {
+    return '👑 Boss fight: merge $icon $name to hit the Boss — empty its $hp HP bar to win';
+  }
+
+  @override
+  String introBossHow(String threats) {
+    return 'The Boss strikes every 9s — a colored ring means it\'s about to act: $threats!';
+  }
+
+  @override
+  String introClearTitle(int limit) {
+    return '🎯 Goal: use up the deck — win with ≤$limit groups left';
+  }
+
+  @override
+  String get introClearHow =>
+      'Drag 3 matching cars together to upgrade; the top tier launches away';
+
+  @override
+  String get introMergeHow => 'Drag matching cars together to upgrade';
+
+  @override
+  String get threatFreeze =>
+      'freezes your key cars (merge next to them to free them)';
+
+  @override
+  String get threatSteal => 'steals your highest-tier car';
+
+  @override
+  String get threatLock => 'locks the deck for a few seconds';
+
+  @override
+  String get threatEnrage => 'enrages and speeds up at half HP';
+
+  @override
+  String get stockLockedByBoss => '🔒 The Boss locked the deck, hang on…';
+
+  @override
+  String get stockInfiniteTap => '📦 Infinite deck · tap a card to draw';
+
+  @override
+  String stockLeftTap(int left) {
+    return '📦 $left left · tap a card to draw';
+  }
+
+  @override
+  String get stockEmpty => '📦 Deck empty';
+
+  @override
+  String resultScore(int score, int reward) {
+    return 'Score $score  ·  +$reward 🪙';
+  }
+
+  @override
+  String resultScoreConsolation(int score, int consolation) {
+    return 'Score $score  ·  consolation +$consolation 🪙';
+  }
+
+  @override
+  String doubleCoinsCta(int reward) {
+    return 'Watch ad · coins ×2 (+$reward 🪙)';
+  }
+
+  @override
+  String endlessRanked(int tier, int rank) {
+    return 'Cleared $tier tiers · rank #$rank';
+  }
+
+  @override
+  String endlessUnranked(int tier) {
+    return 'Cleared $tier tiers · outside top 10';
+  }
+
+  @override
+  String comboNewRecord(int combo, String time) {
+    return 'Best chain x$combo  ·  🔥 New record!  ·  $time';
+  }
+
+  @override
+  String comboNormal(int combo, int best, String time) {
+    return 'Best chain x$combo  ·  best ever x$best  ·  $time';
+  }
+
+  @override
+  String parSuffix(String par) {
+    return '  ·  par $par';
+  }
+
+  @override
+  String get speedrunBadge => '⚡ Speedrun!';
+
+  @override
+  String get shareResult => 'Share result';
+
+  @override
+  String get nextLevelArrow => 'Next ▶';
+
+  @override
+  String get playAgain => 'Play again';
+
+  @override
+  String get newCarBadge => '✨ New car unlocked';
+
+  @override
+  String firstMergeBadge(String category) {
+    return '$category · first merge';
+  }
+
+  @override
+  String get headerEndless => '🌌 Endless';
+
+  @override
+  String goalProduce(String name, int count) {
+    return 'Goal: merge $name ×$count';
+  }
+
+  @override
+  String goalProduceBoss(String name, int count) {
+    return 'Goal: merge $name ×$count (hit the Boss)';
+  }
+
+  @override
+  String goalClearBoard(int limit) {
+    return 'Goal: use up the deck, ≤$limit groups left';
+  }
+
+  @override
+  String goalWithinMoves(int moves, String goal) {
+    return 'Within $moves moves · $goal';
+  }
+
+  @override
+  String goalWithinTime(int seconds, String goal) {
+    return 'Within ${seconds}s · $goal';
+  }
+
+  @override
+  String bonusWildcard(int n) {
+    return '⭐ Wildcard×$n';
+  }
+
+  @override
+  String bonusBomb(int n) {
+    return '💣 Bomb×$n';
+  }
+
+  @override
+  String bonusFog(int n) {
+    return '🌫 Fog×$n';
+  }
 }
