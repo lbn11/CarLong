@@ -34,13 +34,13 @@ STR_LIT = re.compile(r"'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\"")
 # 「数据原文」而不是界面文案：这些中文**必须留着**——
 #   zhName / zhTitle / zhSubtitle / label  是导出 shared/levels 与存档用的
 #   稳定值（见 docs 里的「落盘 ≠ 显示」），本地化版本另有 getter。
-DATA_FIELD = re.compile(r"^\s*(zhName|zhTitle|zhSubtitle|label):\s*['\"]")
+DATA_FIELD = re.compile(r"^\s*(zh[A-Z]\w*|label):\s*\S")
 DATA_MARK = "// i18n-data"  # 位置式数据（LevelChapter(...) / Boss 绰号元组）的显式标记
 BLOCK_BEGIN = "// i18n-data-block"  # 整段数据表（枚举体、名字池）的区间标记
 BLOCK_END = "// i18n-data-end"
 # `?? '中文'` 是拿不到文案表时的兜底，线上永不触发（builder 一定先同步），
 # 和「界面漏翻」不是一回事，单独归到数据栏。
-DATA_FALLBACK = re.compile(r"\?\?\s*['\"]")
+DATA_FALLBACK = re.compile(r"(\?\?|== null \?)\s*['\"]")
 
 # 这些目录/文件里的中文是数据或调试用，不算 UI 文案。
 IGNORE_FILES = {

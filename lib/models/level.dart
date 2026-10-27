@@ -571,13 +571,13 @@ class LevelDefinition {
     final moves = movesLimit;
     final goal = switch (goalType) {
       GoalType.produce => l == null
-          ? '目标：合成 ${targetTier!.name} ×$targetCount'
+          ? '目标：合成 ${targetTier!.name} ×$targetCount'  // i18n-data
               '${boss != null ? '（攻击 👑 Boss）' : ''}'
           : (boss != null
               ? l.goalProduceBoss(targetTier!.name, targetCount)
               : l.goalProduce(targetTier!.name, targetCount)),
       GoalType.clearBoard => l == null
-          ? '目标：用光牌堆，场上剩 ≤${clearLimit ?? 0} 组车'
+          ? '目标：用光牌堆，场上剩 ≤${clearLimit ?? 0} 组车'  // i18n-data
           : l.goalClearBoard(clearLimit ?? 0),
     };
     final obs = obstacles.isEmpty

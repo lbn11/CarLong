@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../game/audio_feedback.dart';
+import '../l10n/l10n.dart';
 import '../models/achievement.dart';
 import '../save/save_repository.dart';
 import '../theme/app_theme.dart';
@@ -58,6 +59,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
 
   void _claim(Achievement a) {
     if (data.claimedAchievements.contains(a.id)) return;
+    final l = L10n.value;
     AudioFeedback.uiTap();
     setState(() {
       data.claimedAchievements.add(a.id);
@@ -68,13 +70,14 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
       context,
       emoji: '🎉',
       color: AppColors.sun,
-      title: '成就达成！+${a.reward} 🪙',
-      message: '「${a.title}」已入袋，继续收集更多奖章吧。',
+      title: l.achToastTitle(a.reward),
+      message: l.achToastMessage(a.title),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = L10n.value;
     // 一次算完达成状态，后面分组/筛选/计数都复用，避免 achieved() 被反复调用
     // （章节成就每次调用要查 45 个 id，70 条 × 多轮 build 会白白多算几千次）。
     final achievedMap = <String, bool>{
@@ -109,8 +112,8 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
           child: Column(
             children: [
               CandyAppBar(
-                title: '成就',
-                subtitle: '收集路上的小奖章',
+                title: l.achScreenTitle,
+                subtitle: l.achScreenSubtitle,
                 accent: AppColors.grape,
                 onBack: () => Navigator.of(context).pop(),
                 actions: [
@@ -145,11 +148,11 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                     // 筛选后一条都不剩（例如「可领取」但都还没打）→ 空态提示，
                     // 否则玩家会以为页面加载失败。
                     if (achievements.every((a) => !visible(a)))
-                      const Padding(
-                        padding: EdgeInsets.only(top: 40),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 40),
                         child: Center(
-                          child: Text('这个分类还空着，先去打几关吧',
-                              style: TextStyle(color: AppColors.ink3)),
+                          child: Text(l.achEmptyFilter,
+                              style: const TextStyle(color: AppColors.ink3)),
                         ),
                       ),
                   ],
@@ -173,13 +176,14 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
     if (shown.isEmpty) return const [];
     final done =
         all.where((a) => data.claimedAchievements.contains(a.id)).length;
+    final l = L10n.value;
     final color = _groupColor(group);
     return [
       Padding(
         padding: const EdgeInsets.fromLTRB(2, 14, 2, 8),
         child: SectionTitle(
-          title: '${group.label} · ${all.length} 枚',
-          subtitle: '已领取 $done/${all.length}',
+          title: l.achGroupHeader(group.displayLabel, all.length),
+          subtitle: l.achGroupClaimed(done, all.length),
           accent: color,
           trailing: Icon(_groupIcon(group), size: 18, color: color),
         ),
@@ -206,10 +210,10 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
     required int total,
   }) {
     final items = <(_Filter, String, int)>[
-      (_Filter.all, '全部', total),
-      (_Filter.active, '进行中', total - achievedCount),
-      (_Filter.claimable, '可领取', claimableCount),
-      (_Filter.done, '已完成', claimedCount),
+      (_Filter.all, L10n.value.achFilterAll, total),
+      (_Filter.active, L10n.value.achFilterActive, total - achievedCount),
+      (_Filter.claimable, L10n.value.achFilterClaimable, claimableCount),
+      (_Filter.done, L10n.value.achFilterDone, claimedCount),
     ];
     return SizedBox(
       height: 32,
@@ -328,7 +332,7 @@ class _SummaryCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      ' / $total 枚',
+                      L10n.value.achMedalsSuffix(total),
                       style: const TextStyle(
                         color: AppColors.ink3,
                         fontSize: 14,
@@ -338,7 +342,7 @@ class _SummaryCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     Flexible(
                       child: Text(
-                        '已达成 $achieved',
+                        L10n.value.achAchieved(achieved),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -425,7 +429,7 @@ class _AchievementTile extends StatelessWidget {
                 if (achieved && !claimed) ...[
                   const SizedBox(height: 6),
                   SoftChip(
-                    label: '可领取 +${a.reward} 🪙',
+                    label: L10n.value.achClaimCta(a.reward),
                     icon: Icons.redeem,
                     color: AppColors.sun,
                     solid: true,
@@ -436,10 +440,13 @@ class _AchievementTile extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           if (claimed)
-            SoftChip(label: '已领取', icon: Icons.check, color: AppColors.mint)
+            SoftChip(
+                label: L10n.value.achClaimedChip,
+                icon: Icons.check,
+                color: AppColors.mint)
           else if (achieved)
             CandyButton(
-              label: '领取',
+              label: L10n.value.achClaimBtn,
               size: CandyButtonSize.small,
               dense: true,
               colors: AppTheme.gradientOf(accent),

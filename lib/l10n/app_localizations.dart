@@ -2923,6 +2923,720 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Chapter {n}'**
   String chapterOnly(int n);
+
+  /// 成就分组名：进度
+  ///
+  /// In en, this message translates to:
+  /// **'Progress'**
+  String get achGroupProgress;
+
+  /// 成就分组名：章节
+  ///
+  /// In en, this message translates to:
+  /// **'Chapters'**
+  String get achGroupChapter;
+
+  /// 成就分组名：Boss
+  ///
+  /// In en, this message translates to:
+  /// **'Bosses'**
+  String get achGroupBoss;
+
+  /// 成就分组名：停车
+  ///
+  /// In en, this message translates to:
+  /// **'Parking'**
+  String get achGroupParking;
+
+  /// 成就分组名：图鉴
+  ///
+  /// In en, this message translates to:
+  /// **'Collection'**
+  String get achGroupCollection;
+
+  /// 成就分组名：技巧
+  ///
+  /// In en, this message translates to:
+  /// **'Skill'**
+  String get achGroupSkill;
+
+  /// 成就分组名：日常
+  ///
+  /// In en, this message translates to:
+  /// **'Daily'**
+  String get achGroupLife;
+
+  /// 成就「初出茅庐」的标题（id=first_win）
+  ///
+  /// In en, this message translates to:
+  /// **'First Steps'**
+  String get achFirstWinTitle;
+
+  /// 成就「初出茅庐」的描述（id=first_win）
+  ///
+  /// In en, this message translates to:
+  /// **'Clear level 1'**
+  String get achFirstWinDesc;
+
+  /// 成就「十关先锋」的标题（id=clear_10）
+  ///
+  /// In en, this message translates to:
+  /// **'Ten Down'**
+  String get achClear10Title;
+
+  /// 成就「十关先锋」的描述（id=clear_10）
+  ///
+  /// In en, this message translates to:
+  /// **'Clear 10 levels in total'**
+  String get achClear10Desc;
+
+  /// 成就「马路老手」的标题（id=clear_30）
+  ///
+  /// In en, this message translates to:
+  /// **'Road Veteran'**
+  String get achClear30Title;
+
+  /// 成就「马路老手」的描述（id=clear_30）
+  ///
+  /// In en, this message translates to:
+  /// **'Clear 30 levels in total'**
+  String get achClear30Desc;
+
+  /// 成就「城市通途」的标题（id=clear_100）
+  ///
+  /// In en, this message translates to:
+  /// **'City Crosser'**
+  String get achClear100Title;
+
+  /// 成就「城市通途」的描述（id=clear_100）
+  ///
+  /// In en, this message translates to:
+  /// **'Clear 100 levels in total'**
+  String get achClear100Desc;
+
+  /// 成就「干线贯通」的标题（id=clear_200）
+  ///
+  /// In en, this message translates to:
+  /// **'Trunk Line Open'**
+  String get achClear200Title;
+
+  /// 成就「干线贯通」的描述（id=clear_200）
+  ///
+  /// In en, this message translates to:
+  /// **'Clear 200 levels in total'**
+  String get achClear200Desc;
+
+  /// 成就「环城大师」的标题（id=clear_300）
+  ///
+  /// In en, this message translates to:
+  /// **'Ring Master'**
+  String get achClear300Title;
+
+  /// 成就「环城大师」的描述（id=clear_300）
+  ///
+  /// In en, this message translates to:
+  /// **'Clear 300 levels in total'**
+  String get achClear300Desc;
+
+  /// 成就「跨越星港」的标题（id=clear_500）
+  ///
+  /// In en, this message translates to:
+  /// **'Past the Starport'**
+  String get achClear500Title;
+
+  /// 成就「跨越星港」的描述（id=clear_500）
+  ///
+  /// In en, this message translates to:
+  /// **'Clear 500 levels in total'**
+  String get achClear500Desc;
+
+  /// 成就「初战告捷」的标题（id=boss_first）
+  ///
+  /// In en, this message translates to:
+  /// **'First Blood'**
+  String get achBossFirstTitle;
+
+  /// 成就「初战告捷」的描述（id=boss_first）
+  ///
+  /// In en, this message translates to:
+  /// **'Defeat a guardian Boss for the first time'**
+  String get achBossFirstDesc;
+
+  /// 成就「猎手入场」的标题（id=boss_5）
+  ///
+  /// In en, this message translates to:
+  /// **'Hunter\'s Entry'**
+  String get achBoss5Title;
+
+  /// 成就「猎手入场」的描述（id=boss_5）
+  ///
+  /// In en, this message translates to:
+  /// **'Defeat 5 Bosses'**
+  String get achBoss5Desc;
+
+  /// 成就「守关者克星」的标题（id=boss_15）
+  ///
+  /// In en, this message translates to:
+  /// **'Guardian Bane'**
+  String get achBoss15Title;
+
+  /// 成就「守关者克星」的描述（id=boss_15）
+  ///
+  /// In en, this message translates to:
+  /// **'Defeat 15 Bosses'**
+  String get achBoss15Desc;
+
+  /// 成就「Boss 收割机」的标题（id=boss_30）
+  ///
+  /// In en, this message translates to:
+  /// **'Boss Harvester'**
+  String get achBoss30Title;
+
+  /// 成就「Boss 收割机」的描述（id=boss_30）
+  ///
+  /// In en, this message translates to:
+  /// **'Defeat 30 Bosses'**
+  String get achBoss30Desc;
+
+  /// 成就「初停牛刀」的标题（id=park_first）
+  ///
+  /// In en, this message translates to:
+  /// **'First Park'**
+  String get achParkFirstTitle;
+
+  /// 成就「初停牛刀」的描述（id=park_first）
+  ///
+  /// In en, this message translates to:
+  /// **'Clear your first parking level'**
+  String get achParkFirstDesc;
+
+  /// 成就「泊车新手」的标题（id=park_clear_5）
+  ///
+  /// In en, this message translates to:
+  /// **'Parking Rookie'**
+  String get achParkClear5Title;
+
+  /// 成就「泊车新手」的描述（id=park_clear_5）
+  ///
+  /// In en, this message translates to:
+  /// **'Clear 5 parking levels'**
+  String get achParkClear5Desc;
+
+  /// 成就「停车达人」的标题（id=park_clear_10）
+  ///
+  /// In en, this message translates to:
+  /// **'Parking Pro'**
+  String get achParkClear10Title;
+
+  /// 成就「停车达人」的描述（id=park_clear_10）
+  ///
+  /// In en, this message translates to:
+  /// **'Clear 10 parking levels'**
+  String get achParkClear10Desc;
+
+  /// 成就「车位老手」的标题（id=park_clear_100）
+  ///
+  /// In en, this message translates to:
+  /// **'Bay Veteran'**
+  String get achParkClear100Title;
+
+  /// 成就「车位老手」的描述（id=park_clear_100）
+  ///
+  /// In en, this message translates to:
+  /// **'Clear 100 parking levels'**
+  String get achParkClear100Desc;
+
+  /// 成就「泊车大师」的标题（id=park_master）
+  ///
+  /// In en, this message translates to:
+  /// **'Parking Master'**
+  String get achParkMasterTitle;
+
+  /// 成就「泊车大师」的描述（id=park_master）
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock parking level 20'**
+  String get achParkMasterDesc;
+
+  /// 成就「完美泊车」的标题（id=park_star_3）
+  ///
+  /// In en, this message translates to:
+  /// **'Perfect Park'**
+  String get achParkStar3Title;
+
+  /// 成就「完美泊车」的描述（id=park_star_3）
+  ///
+  /// In en, this message translates to:
+  /// **'Get 3 stars on any parking level'**
+  String get achParkStar3Desc;
+
+  /// 成就「三星泊车手」的标题（id=park_star5）
+  ///
+  /// In en, this message translates to:
+  /// **'Triple-Star Parker'**
+  String get achParkStar5Title;
+
+  /// 成就「三星泊车手」的描述（id=park_star5）
+  ///
+  /// In en, this message translates to:
+  /// **'Get 3 stars on 5 parking levels'**
+  String get achParkStar5Desc;
+
+  /// 成就「车位精度控」的标题（id=park_star50）
+  ///
+  /// In en, this message translates to:
+  /// **'Bay Precision'**
+  String get achParkStar50Title;
+
+  /// 成就「车位精度控」的描述（id=park_star50）
+  ///
+  /// In en, this message translates to:
+  /// **'Get 3 stars on 50 parking levels'**
+  String get achParkStar50Desc;
+
+  /// 成就「前五章清场」的标题（id=park_chapters_5）
+  ///
+  /// In en, this message translates to:
+  /// **'First Five Chapters'**
+  String get achParkChapters5Title;
+
+  /// 成就「前五章清场」的描述（id=park_chapters_5）
+  ///
+  /// In en, this message translates to:
+  /// **'Clear parking chapters 1-5 (levels 1-180)'**
+  String get achParkChapters5Desc;
+
+  /// 成就「终极泊车王」的标题（id=park_clear_all）
+  ///
+  /// In en, this message translates to:
+  /// **'Ultimate Parker'**
+  String get achParkClearAllTitle;
+
+  /// 成就「终极泊车王」的描述（id=park_clear_all）
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all 800 parking levels'**
+  String get achParkClearAllDesc;
+
+  /// 成就「铁轨轰鸣」的标题（id=train_1）
+  ///
+  /// In en, this message translates to:
+  /// **'Rails Roaring'**
+  String get achTrain1Title;
+
+  /// 成就「铁轨轰鸣」的描述（id=train_1）
+  ///
+  /// In en, this message translates to:
+  /// **'Merge your first high-speed train'**
+  String get achTrain1Desc;
+
+  /// 成就「冲向云霄」的标题（id=plane_1）
+  ///
+  /// In en, this message translates to:
+  /// **'Into the Clouds'**
+  String get achPlane1Title;
+
+  /// 成就「冲向云霄」的描述（id=plane_1）
+  ///
+  /// In en, this message translates to:
+  /// **'Merge your first airliner'**
+  String get achPlane1Desc;
+
+  /// 成就「彗星追迹者」的标题（id=comet_1）
+  ///
+  /// In en, this message translates to:
+  /// **'Comet Chaser'**
+  String get achComet1Title;
+
+  /// 成就「彗星追迹者」的描述（id=comet_1）
+  ///
+  /// In en, this message translates to:
+  /// **'Merge a starship'**
+  String get achComet1Desc;
+
+  /// 成就「终极造物」的标题（id=void_1）
+  ///
+  /// In en, this message translates to:
+  /// **'Ultimate Creation'**
+  String get achVoid1Title;
+
+  /// 成就「终极造物」的描述（id=void_1）
+  ///
+  /// In en, this message translates to:
+  /// **'Merge the top-tier warp ship'**
+  String get achVoid1Desc;
+
+  /// 成就「连消起步」的标题（id=combo_5）
+  ///
+  /// In en, this message translates to:
+  /// **'Combo Start'**
+  String get achCombo5Title;
+
+  /// 成就「连消起步」的描述（id=combo_5）
+  ///
+  /// In en, this message translates to:
+  /// **'Reach a 5-merge combo in one run'**
+  String get achCombo5Desc;
+
+  /// 成就「连锁反应」的标题（id=combo_10）
+  ///
+  /// In en, this message translates to:
+  /// **'Chain Reaction'**
+  String get achCombo10Title;
+
+  /// 成就「连锁反应」的描述（id=combo_10）
+  ///
+  /// In en, this message translates to:
+  /// **'Reach a 10-merge combo in one run'**
+  String get achCombo10Desc;
+
+  /// 成就「连消之神」的标题（id=combo_15）
+  ///
+  /// In en, this message translates to:
+  /// **'Combo Deity'**
+  String get achCombo15Title;
+
+  /// 成就「连消之神」的描述（id=combo_15）
+  ///
+  /// In en, this message translates to:
+  /// **'Reach a 15-merge combo in one run'**
+  String get achCombo15Desc;
+
+  /// 成就「星级收藏家」的标题（id=stars_30）
+  ///
+  /// In en, this message translates to:
+  /// **'Star Collector'**
+  String get achStars30Title;
+
+  /// 成就「星级收藏家」的描述（id=stars_30）
+  ///
+  /// In en, this message translates to:
+  /// **'Earn 30 stars in total'**
+  String get achStars30Desc;
+
+  /// 成就「三星猎手」的标题（id=stars_300）
+  ///
+  /// In en, this message translates to:
+  /// **'Star Hunter'**
+  String get achStars300Title;
+
+  /// 成就「三星猎手」的描述（id=stars_300）
+  ///
+  /// In en, this message translates to:
+  /// **'Earn 300 stars in total'**
+  String get achStars300Desc;
+
+  /// 成就「满星征途」的标题（id=stars_1000）
+  ///
+  /// In en, this message translates to:
+  /// **'Star Marathon'**
+  String get achStars1000Title;
+
+  /// 成就「满星征途」的描述（id=stars_1000）
+  ///
+  /// In en, this message translates to:
+  /// **'Earn 1000 stars in total'**
+  String get achStars1000Desc;
+
+  /// 成就「小有积蓄」的标题（id=coins_500）
+  ///
+  /// In en, this message translates to:
+  /// **'Some Savings'**
+  String get achCoins500Title;
+
+  /// 成就「小有积蓄」的描述（id=coins_500）
+  ///
+  /// In en, this message translates to:
+  /// **'Hold 500 coins'**
+  String get achCoins500Desc;
+
+  /// 成就「家财万贯」的标题（id=coins_2000）
+  ///
+  /// In en, this message translates to:
+  /// **'Well Off'**
+  String get achCoins2000Title;
+
+  /// 成就「家财万贯」的描述（id=coins_2000）
+  ///
+  /// In en, this message translates to:
+  /// **'Hold 2000 coins'**
+  String get achCoins2000Desc;
+
+  /// 成就「车库财主」的标题（id=coins_5000）
+  ///
+  /// In en, this message translates to:
+  /// **'Garage Tycoon'**
+  String get achCoins5000Title;
+
+  /// 成就「车库财主」的描述（id=coins_5000）
+  ///
+  /// In en, this message translates to:
+  /// **'Hold 5000 coins'**
+  String get achCoins5000Desc;
+
+  /// 成就「七日签到」的标题（id=signin_7）
+  ///
+  /// In en, this message translates to:
+  /// **'Seven Days In'**
+  String get achSignin7Title;
+
+  /// 成就「七日签到」的描述（id=signin_7）
+  ///
+  /// In en, this message translates to:
+  /// **'Check in 7 days in total'**
+  String get achSignin7Desc;
+
+  /// 成就「月度全勤」的标题（id=signin_30）
+  ///
+  /// In en, this message translates to:
+  /// **'Full Month'**
+  String get achSignin30Title;
+
+  /// 成就「月度全勤」的描述（id=signin_30）
+  ///
+  /// In en, this message translates to:
+  /// **'Check in 30 days in total'**
+  String get achSignin30Desc;
+
+  /// 成就「铁杆签到党」的标题（id=signin_streak_7）
+  ///
+  /// In en, this message translates to:
+  /// **'Streak Regular'**
+  String get achSigninStreak7Title;
+
+  /// 成就「铁杆签到党」的描述（id=signin_streak_7）
+  ///
+  /// In en, this message translates to:
+  /// **'Check in 7 days in a row'**
+  String get achSigninStreak7Desc;
+
+  /// 成就「今日挑战」的标题（id=daily_first）
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Debut'**
+  String get achDailyFirstTitle;
+
+  /// 成就「今日挑战」的描述（id=daily_first）
+  ///
+  /// In en, this message translates to:
+  /// **'Finish a daily challenge'**
+  String get achDailyFirstDesc;
+
+  /// 成就「每日全勤」的标题（id=daily_streak_7）
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Devotion'**
+  String get achDailyStreak7Title;
+
+  /// 成就「每日全勤」的描述（id=daily_streak_7）
+  ///
+  /// In en, this message translates to:
+  /// **'Clear 7 daily challenges in a row'**
+  String get achDailyStreak7Desc;
+
+  /// 成就「永动引擎」的标题（id=endless_1000）
+  ///
+  /// In en, this message translates to:
+  /// **'Perpetual Engine'**
+  String get achEndless1000Title;
+
+  /// 成就「永动引擎」的描述（id=endless_1000）
+  ///
+  /// In en, this message translates to:
+  /// **'Score 1000 in Endless'**
+  String get achEndless1000Desc;
+
+  /// 成就「永动机」的标题（id=endless_3000）
+  ///
+  /// In en, this message translates to:
+  /// **'Perpetual Motion'**
+  String get achEndless3000Title;
+
+  /// 成就「永动机」的描述（id=endless_3000）
+  ///
+  /// In en, this message translates to:
+  /// **'Score 3000 in Endless'**
+  String get achEndless3000Desc;
+
+  /// 成就「都市传奇」的标题（id=clear_all）
+  ///
+  /// In en, this message translates to:
+  /// **'Urban Legend'**
+  String get achClearAllTitle;
+
+  /// 成就「都市传奇」的描述（id=clear_all）
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all {count} levels'**
+  String achClearAllDesc(int count);
+
+  /// 成就「一章节全清」的标题（id=boss_sweep）
+  ///
+  /// In en, this message translates to:
+  /// **'Clean Sweep'**
+  String get achBossSweepTitle;
+
+  /// 成就「一章节全清」的描述（id=boss_sweep）
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all {count} Bosses of any chapter'**
+  String achBossSweepDesc(int count);
+
+  /// 成就「徽章墙圆满」的标题（id=boss_all）
+  ///
+  /// In en, this message translates to:
+  /// **'Full Badge Wall'**
+  String get achBossAllTitle;
+
+  /// 成就「徽章墙圆满」的描述（id=boss_all）
+  ///
+  /// In en, this message translates to:
+  /// **'Defeat all {count} Bosses'**
+  String achBossAllDesc(int count);
+
+  /// 成就「小有收藏」的标题（id=collection_25）
+  ///
+  /// In en, this message translates to:
+  /// **'Small Collection'**
+  String get achCollection25Title;
+
+  /// 成就「小有收藏」的描述（id=collection_25）
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock {count} vehicle types'**
+  String achCollection25Desc(int count);
+
+  /// 成就「终极收藏家」的标题（id=collection_all）
+  ///
+  /// In en, this message translates to:
+  /// **'Ultimate Collector'**
+  String get achCollectionAllTitle;
+
+  /// 成就「终极收藏家」的描述（id=collection_all）
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock all {count} vehicle types'**
+  String achCollectionAllDesc(int count);
+
+  /// 最后一章的章节成就标题
+  ///
+  /// In en, this message translates to:
+  /// **'Finale · {name}'**
+  String achFinalChapter(String name);
+
+  /// 章节成就描述
+  ///
+  /// In en, this message translates to:
+  /// **'Clear {chapter} (levels {start}-{end})'**
+  String achChapterDesc(String chapter, int start, int end);
+
+  /// 车系全收成就标题，cat = 车系名（陆地/重工/…）
+  ///
+  /// In en, this message translates to:
+  /// **'{cat} Collector'**
+  String achFamilyTitle(String cat);
+
+  /// 车系全收成就描述
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock all {count} {cat} vehicles'**
+  String achFamilyDesc(String cat, int count);
+
+  /// 领取成功后弹出的标题
+  ///
+  /// In en, this message translates to:
+  /// **'🏆 Achievement unlocked! +{reward} 🪙'**
+  String achToastTitle(int reward);
+
+  /// 领取成功后弹出的正文，title = 成就名
+  ///
+  /// In en, this message translates to:
+  /// **'“{title}” is in the bag — keep collecting!'**
+  String achToastMessage(String title);
+
+  /// 成就页标题
+  ///
+  /// In en, this message translates to:
+  /// **'Achievements'**
+  String get achScreenTitle;
+
+  /// 成就页副标题
+  ///
+  /// In en, this message translates to:
+  /// **'Small medals along the way'**
+  String get achScreenSubtitle;
+
+  /// 筛选后没有条目时的空态
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing here yet — go clear a few levels'**
+  String get achEmptyFilter;
+
+  /// 分组小标题，group = 分组名，count = 该组总数
+  ///
+  /// In en, this message translates to:
+  /// **'{group} · {count} medals'**
+  String achGroupHeader(String group, int count);
+
+  /// 分组小标题的第二行进度
+  ///
+  /// In en, this message translates to:
+  /// **'Claimed {done}/{total}'**
+  String achGroupClaimed(int done, int total);
+
+  /// 筛选 chip：全部
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get achFilterAll;
+
+  /// 筛选 chip：未达成
+  ///
+  /// In en, this message translates to:
+  /// **'In progress'**
+  String get achFilterActive;
+
+  /// 筛选 chip：已达成本可领取
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get achFilterClaimable;
+
+  /// 筛选 chip：已领取
+  ///
+  /// In en, this message translates to:
+  /// **'Claimed'**
+  String get achFilterDone;
+
+  /// 顶部进度条后缀，前面已经有一个数字
+  ///
+  /// In en, this message translates to:
+  /// **'/{total} medals'**
+  String achMedalsSuffix(int total);
+
+  /// 顶部进度条旁的小字
+  ///
+  /// In en, this message translates to:
+  /// **'{count} achieved'**
+  String achAchieved(int count);
+
+  /// 条目上的领取提示 chip
+  ///
+  /// In en, this message translates to:
+  /// **'Ready +{reward} 🪙'**
+  String achClaimCta(int reward);
+
+  /// 条目右侧的已领取标记
+  ///
+  /// In en, this message translates to:
+  /// **'Claimed'**
+  String get achClaimedChip;
+
+  /// 条目右侧的领取按钮
+  ///
+  /// In en, this message translates to:
+  /// **'Claim'**
+  String get achClaimBtn;
 }
 
 class _AppLocalizationsDelegate

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/achievement_texts.dart';
+import '../l10n/l10n.dart';
 import '../save/save_repository.dart';
 import '../services/level_data_generator.dart';
 import 'level.dart';
@@ -9,6 +11,7 @@ import 'vehicle.dart';
 ///
 /// 分组的意义：27 条时平铺还看得过来，扩到 70+ 条后玩家无法定位
 /// 「我还差哪一类」，必须靠分组 + 状态筛选来导航。
+// i18n-data-block：分组名原文，界面显示走 displayLabel
 enum AchievementGroup {
   progress('进度'),
   chapter('章节'),
@@ -17,17 +20,37 @@ enum AchievementGroup {
   collection('图鉴'),
   skill('技巧'),
   life('日常');
+// i18n-data-end
 
+  /// 中文组名原文（落库/回落用），界面显示用 [displayLabel]。
   final String label;
   const AchievementGroup(this.label);
+
+  String get displayLabel {
+    final l = L10n.current;
+    if (l == null) return label;
+    return switch (this) {
+      progress => l.achGroupProgress,
+      chapter => l.achGroupChapter,
+      boss => l.achGroupBoss,
+      parking => l.achGroupParking,
+      collection => l.achGroupCollection,
+      skill => l.achGroupSkill,
+      life => l.achGroupLife,
+    };
+  }
 }
 
 /// 一个成就定义。达成条件基于现有存档字段计算，无需额外埋点。
 class Achievement {
   final String id;
   final AchievementGroup group;
-  final String title;
-  final String desc;
+
+  /// 中文标题/描述原文。显示走 [title] / [desc]——文案表按 [id] 查，
+  /// 章节成就的名字与数量还要跟着章节表 / 车型表动，不能写死在这里。
+  final String zhTitle;
+  final String zhDesc;
+
   final int reward;
   final IconData icon;
   final bool Function(PlayerData data) achieved;
@@ -35,12 +58,22 @@ class Achievement {
   const Achievement({
     required this.id,
     required this.group,
-    required this.title,
-    required this.desc,
+    required this.zhTitle,
+    required this.zhDesc,
     required this.reward,
     required this.icon,
     required this.achieved,
   });
+
+  String get title {
+    final l = L10n.current;
+    return l == null ? zhTitle : (achievementTitleById(l, id) ?? zhTitle);
+  }
+
+  String get desc {
+    final l = L10n.current;
+    return l == null ? zhDesc : (achievementDescById(l, id) ?? zhDesc);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -94,8 +127,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'first_win',
     group: AchievementGroup.progress,
-    title: '初出茅庐',
-    desc: '通关第 1 关',
+    zhTitle: '初出茅庐',
+    zhDesc: '通关第 1 关',
     reward: 30,
     icon: Icons.directions_car,
     achieved: (d) => (d.bestStars[1] ?? 0) > 0,
@@ -103,8 +136,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'clear_10',
     group: AchievementGroup.progress,
-    title: '十关先锋',
-    desc: '累计通关 10 关',
+    zhTitle: '十关先锋',
+    zhDesc: '累计通关 10 关',
     reward: 60,
     icon: Icons.map,
     achieved: (d) => _completed(d) >= 10,
@@ -112,8 +145,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'clear_30',
     group: AchievementGroup.progress,
-    title: '马路老手',
-    desc: '累计通关 30 关',
+    zhTitle: '马路老手',
+    zhDesc: '累计通关 30 关',
     reward: 80,
     icon: Icons.route,
     achieved: (d) => _completed(d) >= 30,
@@ -121,8 +154,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'clear_100',
     group: AchievementGroup.progress,
-    title: '城市通途',
-    desc: '累计通关 100 关',
+    zhTitle: '城市通途',
+    zhDesc: '累计通关 100 关',
     reward: 120,
     icon: Icons.map_rounded,
     achieved: (d) => _completed(d) >= 100,
@@ -130,8 +163,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'clear_200',
     group: AchievementGroup.progress,
-    title: '干线贯通',
-    desc: '累计通关 200 关',
+    zhTitle: '干线贯通',
+    zhDesc: '累计通关 200 关',
     reward: 140,
     icon: Icons.alt_route_rounded,
     achieved: (d) => _completed(d) >= 200,
@@ -139,8 +172,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'clear_300',
     group: AchievementGroup.progress,
-    title: '环城大师',
-    desc: '累计通关 300 关',
+    zhTitle: '环城大师',
+    zhDesc: '累计通关 300 关',
     reward: 160,
     icon: Icons.location_city_rounded,
     achieved: (d) => _completed(d) >= 300,
@@ -148,8 +181,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'clear_500',
     group: AchievementGroup.progress,
-    title: '跨越星港',
-    desc: '累计通关 500 关',
+    zhTitle: '跨越星港',
+    zhDesc: '累计通关 500 关',
     reward: 180,
     icon: Icons.rocket_launch_rounded,
     achieved: (d) => _completed(d) >= 500,
@@ -157,8 +190,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'clear_all',
     group: AchievementGroup.progress,
-    title: '都市传奇',
-    desc: '通关全部 ${levels.length} 关',
+    zhTitle: '都市传奇',
+    zhDesc: '通关全部 ${levels.length} 关',
     reward: 200,
     icon: Icons.workspace_premium,
     achieved: (d) => _completed(d) >= levels.length,
@@ -174,8 +207,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'boss_first',
     group: AchievementGroup.boss,
-    title: '初战告捷',
-    desc: '首次击败守关 Boss',
+    zhTitle: '初战告捷',
+    zhDesc: '首次击败守关 Boss',
     reward: 100,
     icon: Icons.sports_martial_arts,
     achieved: (d) => _bossKills(d) >= 1,
@@ -183,8 +216,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'boss_5',
     group: AchievementGroup.boss,
-    title: '猎手入场',
-    desc: '击败 5 只 Boss',
+    zhTitle: '猎手入场',
+    zhDesc: '击败 5 只 Boss',
     reward: 120,
     icon: Icons.gps_fixed_rounded,
     achieved: (d) => _bossKills(d) >= 5,
@@ -192,8 +225,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'boss_15',
     group: AchievementGroup.boss,
-    title: '守关者克星',
-    desc: '击败 15 只 Boss',
+    zhTitle: '守关者克星',
+    zhDesc: '击败 15 只 Boss',
     reward: 150,
     icon: Icons.shield_moon_rounded,
     achieved: (d) => _bossKills(d) >= 15,
@@ -201,8 +234,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'boss_30',
     group: AchievementGroup.boss,
-    title: 'Boss 收割机',
-    desc: '击败 30 只 Boss',
+    zhTitle: 'Boss 收割机',
+    zhDesc: '击败 30 只 Boss',
     reward: 180,
     icon: Icons.local_fire_department_rounded,
     achieved: (d) => _bossKills(d) >= 30,
@@ -210,8 +243,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'boss_sweep',
     group: AchievementGroup.boss,
-    title: '一章节全清',
-    desc: '清空任意一章的全部 4 只 Boss',
+    zhTitle: '一章节全清',
+    zhDesc: '清空任意一章的全部 4 只 Boss',
     reward: 150,
     icon: Icons.done_all_rounded,
     achieved: (d) => _anyChapterSwept(d),
@@ -219,8 +252,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'boss_all',
     group: AchievementGroup.boss,
-    title: '徽章墙圆满',
-    desc: '击败全部 ${LevelDataGenerator.bossTotal} 只 Boss',
+    zhTitle: '徽章墙圆满',
+    zhDesc: '击败全部 ${LevelDataGenerator.bossTotal} 只 Boss',
     reward: 300,
     icon: Icons.military_tech_rounded,
     achieved: (d) => _bossKills(d) >= LevelDataGenerator.bossTotal,
@@ -230,8 +263,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'park_first',
     group: AchievementGroup.parking,
-    title: '初停牛刀',
-    desc: '通关第 1 个停车关卡',
+    zhTitle: '初停牛刀',
+    zhDesc: '通关第 1 个停车关卡',
     reward: 30,
     icon: Icons.local_parking,
     achieved: (d) => (d.parkingBestStars[1] ?? 0) > 0,
@@ -239,8 +272,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'park_clear_5',
     group: AchievementGroup.parking,
-    title: '泊车新手',
-    desc: '累计通关 5 个停车关卡',
+    zhTitle: '泊车新手',
+    zhDesc: '累计通关 5 个停车关卡',
     reward: 60,
     icon: Icons.directions_car,
     achieved: (d) => _parkingCompleted(d) >= 5,
@@ -248,8 +281,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'park_clear_10',
     group: AchievementGroup.parking,
-    title: '停车达人',
-    desc: '累计通关 10 个停车关卡',
+    zhTitle: '停车达人',
+    zhDesc: '累计通关 10 个停车关卡',
     reward: 100,
     icon: Icons.emoji_events,
     achieved: (d) => _parkingCompleted(d) >= 10,
@@ -257,8 +290,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'park_clear_100',
     group: AchievementGroup.parking,
-    title: '车位老手',
-    desc: '累计通关 100 个停车关卡',
+    zhTitle: '车位老手',
+    zhDesc: '累计通关 100 个停车关卡',
     reward: 140,
     icon: Icons.garage_rounded,
     achieved: (d) => _parkingCompleted(d) >= 100,
@@ -266,8 +299,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'park_master',
     group: AchievementGroup.parking,
-    title: '泊车大师',
-    desc: '解锁第 20 个停车关卡',
+    zhTitle: '泊车大师',
+    zhDesc: '解锁第 20 个停车关卡',
     reward: 100,
     icon: Icons.workspace_premium,
     achieved: (d) => d.parkingUnlocked > 20,
@@ -275,8 +308,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'park_star_3',
     group: AchievementGroup.parking,
-    title: '完美泊车',
-    desc: '任一停车关卡拿到 3 星',
+    zhTitle: '完美泊车',
+    zhDesc: '任一停车关卡拿到 3 星',
     reward: 80,
     icon: Icons.star_rate,
     achieved: (d) => d.parkingBestStars.values.any((s) => s >= 3),
@@ -284,8 +317,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'park_star5',
     group: AchievementGroup.parking,
-    title: '三星泊车手',
-    desc: '5 个停车关卡拿到 3 星',
+    zhTitle: '三星泊车手',
+    zhDesc: '5 个停车关卡拿到 3 星',
     reward: 120,
     icon: Icons.star,
     achieved: (d) => d.parkingBestStars.values.where((s) => s >= 3).length >= 5,
@@ -293,8 +326,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'park_star50',
     group: AchievementGroup.parking,
-    title: '车位精度控',
-    desc: '50 个停车关卡拿到 3 星',
+    zhTitle: '车位精度控',
+    zhDesc: '50 个停车关卡拿到 3 星',
     reward: 150,
     icon: Icons.auto_awesome_rounded,
     achieved: (d) =>
@@ -303,8 +336,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'park_chapters_5',
     group: AchievementGroup.parking,
-    title: '前五章清场',
-    desc: '通关停车前 5 章（第 1-180 关）',
+    zhTitle: '前五章清场',
+    zhDesc: '通关停车前 5 章（第 1-180 关）',
     reward: 130,
     icon: Icons.subdirectory_arrow_right_rounded,
     achieved: (d) => _allParked(d, 1, 180),
@@ -312,8 +345,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'park_clear_all',
     group: AchievementGroup.parking,
-    title: '终极泊车王',
-    desc: '通关全部 800 个停车关卡',
+    zhTitle: '终极泊车王',
+    zhDesc: '通关全部 800 个停车关卡',
     reward: 300,
     icon: Icons.workspaces_rounded,
     achieved: (d) => _parkingCompleted(d) >= 800,
@@ -323,8 +356,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'train_1',
     group: AchievementGroup.collection,
-    title: '铁轨轰鸣',
-    desc: '合成出第一辆高铁',
+    zhTitle: '铁轨轰鸣',
+    zhDesc: '合成出第一辆高铁',
     reward: 80,
     icon: Icons.train,
     // 原来判据是 subway（地铁），与「高铁」文案不符，改判 highspeed。
@@ -333,8 +366,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'plane_1',
     group: AchievementGroup.collection,
-    title: '冲向云霄',
-    desc: '合成出第一架客机',
+    zhTitle: '冲向云霄',
+    zhDesc: '合成出第一架客机',
     reward: 100,
     icon: Icons.flight,
     achieved: (d) => d.collection.contains(VehicleType.airliner.id),
@@ -342,8 +375,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'comet_1',
     group: AchievementGroup.collection,
-    title: '彗星追迹者',
-    desc: '合成出星际飞船',
+    zhTitle: '彗星追迹者',
+    zhDesc: '合成出星际飞船',
     reward: 120,
     icon: Icons.auto_awesome,
     achieved: (d) => d.collection.contains(VehicleType.starship.id),
@@ -351,8 +384,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'void_1',
     group: AchievementGroup.collection,
-    title: '终极造物',
-    desc: '合成出最高级的曲速飞船',
+    zhTitle: '终极造物',
+    zhDesc: '合成出最高级的曲速飞船',
     reward: 200,
     icon: Icons.rocket_launch,
     achieved: (d) => d.collection.contains(VehicleType.warpShip.id),
@@ -360,8 +393,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'collection_25',
     group: AchievementGroup.collection,
-    title: '小有收藏',
-    desc: '点亮 ${(VehicleType.values.length / 2).floor()} 款车型',
+    zhTitle: '小有收藏',
+    zhDesc: '点亮 ${(VehicleType.values.length / 2).floor()} 款车型',
     reward: 100,
     icon: Icons.inventory_2_rounded,
     achieved: (d) =>
@@ -372,19 +405,21 @@ final achievements = <Achievement>[
     Achievement(
       id: 'collection_${family.name}',
       group: AchievementGroup.collection,
-      title: '${family.label}系全收',
-      desc: '点亮全部 '
+      zhTitle: '${family.label}系全收',
+    // i18n-data-block：车系成就文案（多行拼接）
+      zhDesc: '点亮全部 '
           '${VehicleType.values.where((t) => t.category == family).length} '
           '款${family.label}车型',
       reward: 80,
       icon: Icons.directions_bus_rounded,
+    // i18n-data-end
       achieved: (d) => _familyCollected(d, family),
     ),
   Achievement(
     id: 'collection_all',
     group: AchievementGroup.collection,
-    title: '终极收藏家',
-    desc: '点亮全部 ${VehicleType.values.length} 款车型',
+    zhTitle: '终极收藏家',
+    zhDesc: '点亮全部 ${VehicleType.values.length} 款车型',
     reward: 250,
     icon: Icons.collections_bookmark,
     achieved: (d) => VehicleType.values.every((t) => d.collection.contains(t.id)),
@@ -394,8 +429,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'combo_5',
     group: AchievementGroup.skill,
-    title: '连消起步',
-    desc: '单局达成 5 连消',
+    zhTitle: '连消起步',
+    zhDesc: '单局达成 5 连消',
     reward: 80,
     icon: Icons.bolt_rounded,
     achieved: (d) => d.bestCombo >= 5,
@@ -403,8 +438,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'combo_10',
     group: AchievementGroup.skill,
-    title: '连锁反应',
-    desc: '单局达成 10 连消',
+    zhTitle: '连锁反应',
+    zhDesc: '单局达成 10 连消',
     reward: 120,
     icon: Icons.flash_on_rounded,
     achieved: (d) => d.bestCombo >= 10,
@@ -412,8 +447,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'combo_15',
     group: AchievementGroup.skill,
-    title: '连消之神',
-    desc: '单局达成 15 连消',
+    zhTitle: '连消之神',
+    zhDesc: '单局达成 15 连消',
     reward: 180,
     icon: Icons.whatshot_rounded,
     achieved: (d) => d.bestCombo >= 15,
@@ -421,8 +456,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'stars_30',
     group: AchievementGroup.skill,
-    title: '星级收藏家',
-    desc: '累计获得 30 颗星',
+    zhTitle: '星级收藏家',
+    zhDesc: '累计获得 30 颗星',
     reward: 100,
     icon: Icons.stars,
     achieved: (d) => _totalStars(d) >= 30,
@@ -430,8 +465,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'stars_300',
     group: AchievementGroup.skill,
-    title: '三星猎手',
-    desc: '累计获得 300 颗星',
+    zhTitle: '三星猎手',
+    zhDesc: '累计获得 300 颗星',
     reward: 150,
     icon: Icons.star_half_rounded,
     achieved: (d) => _totalStars(d) >= 300,
@@ -439,8 +474,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'stars_1000',
     group: AchievementGroup.skill,
-    title: '满星征途',
-    desc: '累计获得 1000 颗星',
+    zhTitle: '满星征途',
+    zhDesc: '累计获得 1000 颗星',
     reward: 250,
     icon: Icons.grade_rounded,
     achieved: (d) => _totalStars(d) >= 1000,
@@ -450,8 +485,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'coins_500',
     group: AchievementGroup.life,
-    title: '小有积蓄',
-    desc: '持有 500 金币',
+    zhTitle: '小有积蓄',
+    zhDesc: '持有 500 金币',
     reward: 50,
     icon: Icons.savings,
     achieved: (d) => d.coins >= 500,
@@ -459,8 +494,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'coins_2000',
     group: AchievementGroup.life,
-    title: '家财万贯',
-    desc: '持有 2000 金币',
+    zhTitle: '家财万贯',
+    zhDesc: '持有 2000 金币',
     reward: 120,
     icon: Icons.account_balance_wallet,
     achieved: (d) => d.coins >= 2000,
@@ -468,8 +503,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'coins_5000',
     group: AchievementGroup.life,
-    title: '车库财主',
-    desc: '持有 5000 金币',
+    zhTitle: '车库财主',
+    zhDesc: '持有 5000 金币',
     reward: 180,
     icon: Icons.diamond_rounded,
     achieved: (d) => d.coins >= 5000,
@@ -477,8 +512,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'signin_7',
     group: AchievementGroup.life,
-    title: '七日签到',
-    desc: '累计签到 7 天',
+    zhTitle: '七日签到',
+    zhDesc: '累计签到 7 天',
     reward: 80,
     icon: Icons.event_available,
     achieved: (d) => d.signInTotal >= 7,
@@ -486,8 +521,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'signin_30',
     group: AchievementGroup.life,
-    title: '月度全勤',
-    desc: '累计签到 30 天',
+    zhTitle: '月度全勤',
+    zhDesc: '累计签到 30 天',
     reward: 150,
     icon: Icons.calendar_month_rounded,
     achieved: (d) => d.signInTotal >= 30,
@@ -495,8 +530,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'signin_streak_7',
     group: AchievementGroup.life,
-    title: '铁杆签到党',
-    desc: '连续签到 7 天',
+    zhTitle: '铁杆签到党',
+    zhDesc: '连续签到 7 天',
     reward: 100,
     icon: Icons.local_fire_department,
     achieved: (d) => d.signInStreak >= 7,
@@ -504,8 +539,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'daily_first',
     group: AchievementGroup.life,
-    title: '今日挑战',
-    desc: '完成一次每日挑战',
+    zhTitle: '今日挑战',
+    zhDesc: '完成一次每日挑战',
     reward: 60,
     icon: Icons.today_rounded,
     achieved: (d) => d.dailyClearedDate != null,
@@ -513,8 +548,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'daily_streak_7',
     group: AchievementGroup.life,
-    title: '每日全勤',
-    desc: '每日挑战连续通关 7 天',
+    zhTitle: '每日全勤',
+    zhDesc: '每日挑战连续通关 7 天',
     reward: 180,
     icon: Icons.event_repeat_rounded,
     achieved: (d) => d.dailyStreak >= 7,
@@ -522,8 +557,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'endless_1000',
     group: AchievementGroup.life,
-    title: '永动引擎',
-    desc: '无尽模式突破 1000 分',
+    zhTitle: '永动引擎',
+    zhDesc: '无尽模式突破 1000 分',
     reward: 120,
     icon: Icons.auto_awesome,
     achieved: (d) => (d.endlessBest.isEmpty ? 0 : d.endlessBest.first) >= 1000,
@@ -531,8 +566,8 @@ final achievements = <Achievement>[
   Achievement(
     id: 'endless_3000',
     group: AchievementGroup.life,
-    title: '永动机',
-    desc: '无尽模式突破 3000 分',
+    zhTitle: '永动机',
+    zhDesc: '无尽模式突破 3000 分',
     reward: 150,
     icon: Icons.bolt,
     achieved: (d) => (d.endlessBest.isEmpty ? 0 : d.endlessBest.first) >= 3000,
@@ -553,26 +588,21 @@ List<Achievement> _chapterAchievements() {
     final start = levelChapters[i].startId;
     final end =
         i + 1 < levelChapters.length ? levelChapters[i + 1].startId - 1 : levels.last.id;
-    final name = _shortChapterName(levelChapters[i].title);
+    // 中文原文用 zh 字段拼：`title` / `shortTitle` 是本地化版本，
+    // 拿它拼落盘文案会让成就表随系统语言变。
+    final name = levelChapters[i].zhShortTitle;
     final isLast = i == levelChapters.length - 1;
     out.add(Achievement(
       id: 'chapter_${(i + 1).toString().padLeft(2, '0')}',
       group: AchievementGroup.chapter,
-      title: isLast ? '终章 · $name' : name,
-      desc: '通关${levelChapters[i].title}（第 $start-$end 关）',
+      zhTitle: isLast ? '终章 · $name' : name,
+      zhDesc: '通关${levelChapters[i].zhTitle}（第 $start-$end 关）',
       reward: isLast ? 150 : (i < 10 ? 50 : 70),
       icon: isLast ? Icons.flag_circle_rounded : Icons.flag_rounded,
       achieved: (d) => _allCleared(d, start, end),
     ));
   }
   return out;
-}
-
-/// `第八章 · 地下铁网` → `地下铁网`（取「·」后的短名）。
-String _shortChapterName(String title) {
-  final idx = title.indexOf('·');
-  if (idx < 0) return title;
-  return title.substring(idx + 1).trim();
 }
 
 /// 是否清空过任意一章的全部 Boss（每章 [LevelDataGenerator.bossPerChapter] 只）。

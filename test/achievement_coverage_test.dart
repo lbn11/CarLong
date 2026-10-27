@@ -8,6 +8,8 @@ import 'package:merge_fleet/screens/achievements_screen.dart';
 import 'package:merge_fleet/services/level_data_generator.dart';
 import 'package:merge_fleet/services/parking_chapters.dart';
 
+import 'helpers/localized_app.dart';
+
 /// 成就表的结构与判据守护。
 ///
 /// 这组测试存在的理由：成就从 27 条扩到 70+ 条时，最大的风险不是写错
@@ -181,8 +183,10 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       tester.view.physicalSize = size;
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(MaterialApp(
-        home: AchievementsScreen(data: data, repo: SaveRepository()),
+      // 固定中文 locale：下面的断言拿中文当定位器，顺带当 zh 语言包回归。
+      await tester.pumpWidget(l10nHost(
+        AchievementsScreen(data: data, repo: SaveRepository()),
+        locale: const Locale('zh'),
       ));
       // 页面有循环氛围动画，pumpAndSettle 不收敛，用固定时长 pump。
       await tester.pump(const Duration(milliseconds: 300));

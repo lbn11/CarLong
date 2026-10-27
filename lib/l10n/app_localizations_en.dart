@@ -1579,4 +1579,394 @@ class AppLocalizationsEn extends AppLocalizations {
   String chapterOnly(int n) {
     return 'Chapter $n';
   }
+
+  @override
+  String get achGroupProgress => 'Progress';
+
+  @override
+  String get achGroupChapter => 'Chapters';
+
+  @override
+  String get achGroupBoss => 'Bosses';
+
+  @override
+  String get achGroupParking => 'Parking';
+
+  @override
+  String get achGroupCollection => 'Collection';
+
+  @override
+  String get achGroupSkill => 'Skill';
+
+  @override
+  String get achGroupLife => 'Daily';
+
+  @override
+  String get achFirstWinTitle => 'First Steps';
+
+  @override
+  String get achFirstWinDesc => 'Clear level 1';
+
+  @override
+  String get achClear10Title => 'Ten Down';
+
+  @override
+  String get achClear10Desc => 'Clear 10 levels in total';
+
+  @override
+  String get achClear30Title => 'Road Veteran';
+
+  @override
+  String get achClear30Desc => 'Clear 30 levels in total';
+
+  @override
+  String get achClear100Title => 'City Crosser';
+
+  @override
+  String get achClear100Desc => 'Clear 100 levels in total';
+
+  @override
+  String get achClear200Title => 'Trunk Line Open';
+
+  @override
+  String get achClear200Desc => 'Clear 200 levels in total';
+
+  @override
+  String get achClear300Title => 'Ring Master';
+
+  @override
+  String get achClear300Desc => 'Clear 300 levels in total';
+
+  @override
+  String get achClear500Title => 'Past the Starport';
+
+  @override
+  String get achClear500Desc => 'Clear 500 levels in total';
+
+  @override
+  String get achBossFirstTitle => 'First Blood';
+
+  @override
+  String get achBossFirstDesc => 'Defeat a guardian Boss for the first time';
+
+  @override
+  String get achBoss5Title => 'Hunter\'s Entry';
+
+  @override
+  String get achBoss5Desc => 'Defeat 5 Bosses';
+
+  @override
+  String get achBoss15Title => 'Guardian Bane';
+
+  @override
+  String get achBoss15Desc => 'Defeat 15 Bosses';
+
+  @override
+  String get achBoss30Title => 'Boss Harvester';
+
+  @override
+  String get achBoss30Desc => 'Defeat 30 Bosses';
+
+  @override
+  String get achParkFirstTitle => 'First Park';
+
+  @override
+  String get achParkFirstDesc => 'Clear your first parking level';
+
+  @override
+  String get achParkClear5Title => 'Parking Rookie';
+
+  @override
+  String get achParkClear5Desc => 'Clear 5 parking levels';
+
+  @override
+  String get achParkClear10Title => 'Parking Pro';
+
+  @override
+  String get achParkClear10Desc => 'Clear 10 parking levels';
+
+  @override
+  String get achParkClear100Title => 'Bay Veteran';
+
+  @override
+  String get achParkClear100Desc => 'Clear 100 parking levels';
+
+  @override
+  String get achParkMasterTitle => 'Parking Master';
+
+  @override
+  String get achParkMasterDesc => 'Unlock parking level 20';
+
+  @override
+  String get achParkStar3Title => 'Perfect Park';
+
+  @override
+  String get achParkStar3Desc => 'Get 3 stars on any parking level';
+
+  @override
+  String get achParkStar5Title => 'Triple-Star Parker';
+
+  @override
+  String get achParkStar5Desc => 'Get 3 stars on 5 parking levels';
+
+  @override
+  String get achParkStar50Title => 'Bay Precision';
+
+  @override
+  String get achParkStar50Desc => 'Get 3 stars on 50 parking levels';
+
+  @override
+  String get achParkChapters5Title => 'First Five Chapters';
+
+  @override
+  String get achParkChapters5Desc =>
+      'Clear parking chapters 1-5 (levels 1-180)';
+
+  @override
+  String get achParkClearAllTitle => 'Ultimate Parker';
+
+  @override
+  String get achParkClearAllDesc => 'Clear all 800 parking levels';
+
+  @override
+  String get achTrain1Title => 'Rails Roaring';
+
+  @override
+  String get achTrain1Desc => 'Merge your first high-speed train';
+
+  @override
+  String get achPlane1Title => 'Into the Clouds';
+
+  @override
+  String get achPlane1Desc => 'Merge your first airliner';
+
+  @override
+  String get achComet1Title => 'Comet Chaser';
+
+  @override
+  String get achComet1Desc => 'Merge a starship';
+
+  @override
+  String get achVoid1Title => 'Ultimate Creation';
+
+  @override
+  String get achVoid1Desc => 'Merge the top-tier warp ship';
+
+  @override
+  String get achCombo5Title => 'Combo Start';
+
+  @override
+  String get achCombo5Desc => 'Reach a 5-merge combo in one run';
+
+  @override
+  String get achCombo10Title => 'Chain Reaction';
+
+  @override
+  String get achCombo10Desc => 'Reach a 10-merge combo in one run';
+
+  @override
+  String get achCombo15Title => 'Combo Deity';
+
+  @override
+  String get achCombo15Desc => 'Reach a 15-merge combo in one run';
+
+  @override
+  String get achStars30Title => 'Star Collector';
+
+  @override
+  String get achStars30Desc => 'Earn 30 stars in total';
+
+  @override
+  String get achStars300Title => 'Star Hunter';
+
+  @override
+  String get achStars300Desc => 'Earn 300 stars in total';
+
+  @override
+  String get achStars1000Title => 'Star Marathon';
+
+  @override
+  String get achStars1000Desc => 'Earn 1000 stars in total';
+
+  @override
+  String get achCoins500Title => 'Some Savings';
+
+  @override
+  String get achCoins500Desc => 'Hold 500 coins';
+
+  @override
+  String get achCoins2000Title => 'Well Off';
+
+  @override
+  String get achCoins2000Desc => 'Hold 2000 coins';
+
+  @override
+  String get achCoins5000Title => 'Garage Tycoon';
+
+  @override
+  String get achCoins5000Desc => 'Hold 5000 coins';
+
+  @override
+  String get achSignin7Title => 'Seven Days In';
+
+  @override
+  String get achSignin7Desc => 'Check in 7 days in total';
+
+  @override
+  String get achSignin30Title => 'Full Month';
+
+  @override
+  String get achSignin30Desc => 'Check in 30 days in total';
+
+  @override
+  String get achSigninStreak7Title => 'Streak Regular';
+
+  @override
+  String get achSigninStreak7Desc => 'Check in 7 days in a row';
+
+  @override
+  String get achDailyFirstTitle => 'Daily Debut';
+
+  @override
+  String get achDailyFirstDesc => 'Finish a daily challenge';
+
+  @override
+  String get achDailyStreak7Title => 'Daily Devotion';
+
+  @override
+  String get achDailyStreak7Desc => 'Clear 7 daily challenges in a row';
+
+  @override
+  String get achEndless1000Title => 'Perpetual Engine';
+
+  @override
+  String get achEndless1000Desc => 'Score 1000 in Endless';
+
+  @override
+  String get achEndless3000Title => 'Perpetual Motion';
+
+  @override
+  String get achEndless3000Desc => 'Score 3000 in Endless';
+
+  @override
+  String get achClearAllTitle => 'Urban Legend';
+
+  @override
+  String achClearAllDesc(int count) {
+    return 'Clear all $count levels';
+  }
+
+  @override
+  String get achBossSweepTitle => 'Clean Sweep';
+
+  @override
+  String achBossSweepDesc(int count) {
+    return 'Clear all $count Bosses of any chapter';
+  }
+
+  @override
+  String get achBossAllTitle => 'Full Badge Wall';
+
+  @override
+  String achBossAllDesc(int count) {
+    return 'Defeat all $count Bosses';
+  }
+
+  @override
+  String get achCollection25Title => 'Small Collection';
+
+  @override
+  String achCollection25Desc(int count) {
+    return 'Unlock $count vehicle types';
+  }
+
+  @override
+  String get achCollectionAllTitle => 'Ultimate Collector';
+
+  @override
+  String achCollectionAllDesc(int count) {
+    return 'Unlock all $count vehicle types';
+  }
+
+  @override
+  String achFinalChapter(String name) {
+    return 'Finale · $name';
+  }
+
+  @override
+  String achChapterDesc(String chapter, int start, int end) {
+    return 'Clear $chapter (levels $start-$end)';
+  }
+
+  @override
+  String achFamilyTitle(String cat) {
+    return '$cat Collector';
+  }
+
+  @override
+  String achFamilyDesc(String cat, int count) {
+    return 'Unlock all $count $cat vehicles';
+  }
+
+  @override
+  String achToastTitle(int reward) {
+    return '🏆 Achievement unlocked! +$reward 🪙';
+  }
+
+  @override
+  String achToastMessage(String title) {
+    return '“$title” is in the bag — keep collecting!';
+  }
+
+  @override
+  String get achScreenTitle => 'Achievements';
+
+  @override
+  String get achScreenSubtitle => 'Small medals along the way';
+
+  @override
+  String get achEmptyFilter => 'Nothing here yet — go clear a few levels';
+
+  @override
+  String achGroupHeader(String group, int count) {
+    return '$group · $count medals';
+  }
+
+  @override
+  String achGroupClaimed(int done, int total) {
+    return 'Claimed $done/$total';
+  }
+
+  @override
+  String get achFilterAll => 'All';
+
+  @override
+  String get achFilterActive => 'In progress';
+
+  @override
+  String get achFilterClaimable => 'Ready';
+
+  @override
+  String get achFilterDone => 'Claimed';
+
+  @override
+  String achMedalsSuffix(int total) {
+    return '/$total medals';
+  }
+
+  @override
+  String achAchieved(int count) {
+    return '$count achieved';
+  }
+
+  @override
+  String achClaimCta(int reward) {
+    return 'Ready +$reward 🪙';
+  }
+
+  @override
+  String get achClaimedChip => 'Claimed';
+
+  @override
+  String get achClaimBtn => 'Claim';
 }

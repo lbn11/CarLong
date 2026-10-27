@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:merge_fleet/l10n/l10n.dart';
+import 'package:merge_fleet/models/achievement.dart';
 import 'package:merge_fleet/models/level.dart';
 import 'package:merge_fleet/models/vehicle.dart';
 
@@ -147,5 +148,41 @@ void main() {
     // 导出的是 zhName，不能跟着界面走。
     expect(mergeLevelToJson(levels.first)['name'], '清晨路段');
     expect(mergeLevelToJson(levels[699])['name'], levels[699].zhName);
+  });
+
+  /// 成就表是静态 final 列表，文案按 id 查表——漏一条 id 就会静默回落中文，
+  /// 界面上一半英文一半中文，所以这里 73 条逐条过。
+  testWidgets('英文 locale：成就标题与描述全部英文化', (tester) async {
+    await tester.pumpWidget(
+      l10nHost(const SizedBox(), locale: const Locale('en')),
+    );
+    final cjk = RegExp(r'[\u4e00-\u9fff]');
+    expect(achievements.length, greaterThanOrEqualTo(70));
+    for (final a in achievements) {
+      expect(cjk.hasMatch(a.title), isFalse,
+          reason: '成就 ${a.id} 标题漏翻：${a.title}');
+      expect(cjk.hasMatch(a.desc), isFalse,
+          reason: '成就 ${a.id} 描述漏翻：${a.desc}');
+    }
+    // 分组名。
+    for (final g in AchievementGroup.values) {
+      expect(cjk.hasMatch(g.displayLabel), isFalse,
+          reason: '成就分组 ${g.name} 漏翻：${g.displayLabel}');
+    }
+    expect(achievements.first.title, 'First Steps');
+    expect(AchievementGroup.progress.displayLabel, 'Progress');
+  });
+
+  testWidgets('中文 locale：成就文案回到原文', (tester) async {
+    await tester.pumpWidget(
+      l10nHost(const SizedBox(), locale: const Locale('zh')),
+    );
+    for (final a in achievements) {
+      expect(a.title, a.zhTitle, reason: '成就 ${a.id} 中文标题与 zhTitle 不一致');
+      expect(a.desc, a.zhDesc, reason: '成就 ${a.id} 中文描述与 zhDesc 不一致');
+    }
+    for (final g in AchievementGroup.values) {
+      expect(g.displayLabel, g.label);
+    }
   });
 }

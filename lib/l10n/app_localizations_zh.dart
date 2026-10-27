@@ -1563,4 +1563,393 @@ class AppLocalizationsZh extends AppLocalizations {
   String chapterOnly(int n) {
     return '第 $n 章';
   }
+
+  @override
+  String get achGroupProgress => '进度';
+
+  @override
+  String get achGroupChapter => '章节';
+
+  @override
+  String get achGroupBoss => 'Boss';
+
+  @override
+  String get achGroupParking => '停车';
+
+  @override
+  String get achGroupCollection => '图鉴';
+
+  @override
+  String get achGroupSkill => '技巧';
+
+  @override
+  String get achGroupLife => '日常';
+
+  @override
+  String get achFirstWinTitle => '初出茅庐';
+
+  @override
+  String get achFirstWinDesc => '通关第 1 关';
+
+  @override
+  String get achClear10Title => '十关先锋';
+
+  @override
+  String get achClear10Desc => '累计通关 10 关';
+
+  @override
+  String get achClear30Title => '马路老手';
+
+  @override
+  String get achClear30Desc => '累计通关 30 关';
+
+  @override
+  String get achClear100Title => '城市通途';
+
+  @override
+  String get achClear100Desc => '累计通关 100 关';
+
+  @override
+  String get achClear200Title => '干线贯通';
+
+  @override
+  String get achClear200Desc => '累计通关 200 关';
+
+  @override
+  String get achClear300Title => '环城大师';
+
+  @override
+  String get achClear300Desc => '累计通关 300 关';
+
+  @override
+  String get achClear500Title => '跨越星港';
+
+  @override
+  String get achClear500Desc => '累计通关 500 关';
+
+  @override
+  String get achBossFirstTitle => '初战告捷';
+
+  @override
+  String get achBossFirstDesc => '首次击败守关 Boss';
+
+  @override
+  String get achBoss5Title => '猎手入场';
+
+  @override
+  String get achBoss5Desc => '击败 5 只 Boss';
+
+  @override
+  String get achBoss15Title => '守关者克星';
+
+  @override
+  String get achBoss15Desc => '击败 15 只 Boss';
+
+  @override
+  String get achBoss30Title => 'Boss 收割机';
+
+  @override
+  String get achBoss30Desc => '击败 30 只 Boss';
+
+  @override
+  String get achParkFirstTitle => '初停牛刀';
+
+  @override
+  String get achParkFirstDesc => '通关第 1 个停车关卡';
+
+  @override
+  String get achParkClear5Title => '泊车新手';
+
+  @override
+  String get achParkClear5Desc => '累计通关 5 个停车关卡';
+
+  @override
+  String get achParkClear10Title => '停车达人';
+
+  @override
+  String get achParkClear10Desc => '累计通关 10 个停车关卡';
+
+  @override
+  String get achParkClear100Title => '车位老手';
+
+  @override
+  String get achParkClear100Desc => '累计通关 100 个停车关卡';
+
+  @override
+  String get achParkMasterTitle => '泊车大师';
+
+  @override
+  String get achParkMasterDesc => '解锁第 20 个停车关卡';
+
+  @override
+  String get achParkStar3Title => '完美泊车';
+
+  @override
+  String get achParkStar3Desc => '任一停车关卡拿到 3 星';
+
+  @override
+  String get achParkStar5Title => '三星泊车手';
+
+  @override
+  String get achParkStar5Desc => '5 个停车关卡拿到 3 星';
+
+  @override
+  String get achParkStar50Title => '车位精度控';
+
+  @override
+  String get achParkStar50Desc => '50 个停车关卡拿到 3 星';
+
+  @override
+  String get achParkChapters5Title => '前五章清场';
+
+  @override
+  String get achParkChapters5Desc => '通关停车前 5 章（第 1-180 关）';
+
+  @override
+  String get achParkClearAllTitle => '终极泊车王';
+
+  @override
+  String get achParkClearAllDesc => '通关全部 800 个停车关卡';
+
+  @override
+  String get achTrain1Title => '铁轨轰鸣';
+
+  @override
+  String get achTrain1Desc => '合成出第一辆高铁';
+
+  @override
+  String get achPlane1Title => '冲向云霄';
+
+  @override
+  String get achPlane1Desc => '合成出第一架客机';
+
+  @override
+  String get achComet1Title => '彗星追迹者';
+
+  @override
+  String get achComet1Desc => '合成出星际飞船';
+
+  @override
+  String get achVoid1Title => '终极造物';
+
+  @override
+  String get achVoid1Desc => '合成出最高级的曲速飞船';
+
+  @override
+  String get achCombo5Title => '连消起步';
+
+  @override
+  String get achCombo5Desc => '单局达成 5 连消';
+
+  @override
+  String get achCombo10Title => '连锁反应';
+
+  @override
+  String get achCombo10Desc => '单局达成 10 连消';
+
+  @override
+  String get achCombo15Title => '连消之神';
+
+  @override
+  String get achCombo15Desc => '单局达成 15 连消';
+
+  @override
+  String get achStars30Title => '星级收藏家';
+
+  @override
+  String get achStars30Desc => '累计获得 30 颗星';
+
+  @override
+  String get achStars300Title => '三星猎手';
+
+  @override
+  String get achStars300Desc => '累计获得 300 颗星';
+
+  @override
+  String get achStars1000Title => '满星征途';
+
+  @override
+  String get achStars1000Desc => '累计获得 1000 颗星';
+
+  @override
+  String get achCoins500Title => '小有积蓄';
+
+  @override
+  String get achCoins500Desc => '持有 500 金币';
+
+  @override
+  String get achCoins2000Title => '家财万贯';
+
+  @override
+  String get achCoins2000Desc => '持有 2000 金币';
+
+  @override
+  String get achCoins5000Title => '车库财主';
+
+  @override
+  String get achCoins5000Desc => '持有 5000 金币';
+
+  @override
+  String get achSignin7Title => '七日签到';
+
+  @override
+  String get achSignin7Desc => '累计签到 7 天';
+
+  @override
+  String get achSignin30Title => '月度全勤';
+
+  @override
+  String get achSignin30Desc => '累计签到 30 天';
+
+  @override
+  String get achSigninStreak7Title => '铁杆签到党';
+
+  @override
+  String get achSigninStreak7Desc => '连续签到 7 天';
+
+  @override
+  String get achDailyFirstTitle => '今日挑战';
+
+  @override
+  String get achDailyFirstDesc => '完成一次每日挑战';
+
+  @override
+  String get achDailyStreak7Title => '每日全勤';
+
+  @override
+  String get achDailyStreak7Desc => '每日挑战连续通关 7 天';
+
+  @override
+  String get achEndless1000Title => '永动引擎';
+
+  @override
+  String get achEndless1000Desc => '无尽模式突破 1000 分';
+
+  @override
+  String get achEndless3000Title => '永动机';
+
+  @override
+  String get achEndless3000Desc => '无尽模式突破 3000 分';
+
+  @override
+  String get achClearAllTitle => '都市传奇';
+
+  @override
+  String achClearAllDesc(int count) {
+    return '通关全部 $count 关';
+  }
+
+  @override
+  String get achBossSweepTitle => '一章节全清';
+
+  @override
+  String achBossSweepDesc(int count) {
+    return '清空任意一章的全部 $count 只 Boss';
+  }
+
+  @override
+  String get achBossAllTitle => '徽章墙圆满';
+
+  @override
+  String achBossAllDesc(int count) {
+    return '击败全部 $count 只 Boss';
+  }
+
+  @override
+  String get achCollection25Title => '小有收藏';
+
+  @override
+  String achCollection25Desc(int count) {
+    return '点亮 $count 款车型';
+  }
+
+  @override
+  String get achCollectionAllTitle => '终极收藏家';
+
+  @override
+  String achCollectionAllDesc(int count) {
+    return '点亮全部 $count 款车型';
+  }
+
+  @override
+  String achFinalChapter(String name) {
+    return '终章 · $name';
+  }
+
+  @override
+  String achChapterDesc(String chapter, int start, int end) {
+    return '通关$chapter（第 $start-$end 关）';
+  }
+
+  @override
+  String achFamilyTitle(String cat) {
+    return '$cat系全收';
+  }
+
+  @override
+  String achFamilyDesc(String cat, int count) {
+    return '点亮全部 $count 款$cat车型';
+  }
+
+  @override
+  String achToastTitle(int reward) {
+    return '🏆 成就达成！+$reward 🪙';
+  }
+
+  @override
+  String achToastMessage(String title) {
+    return '「$title」已入袋，继续收集更多奖章吧。';
+  }
+
+  @override
+  String get achScreenTitle => '成就';
+
+  @override
+  String get achScreenSubtitle => '收集路上的小奖章';
+
+  @override
+  String get achEmptyFilter => '这个分类还空着，先去打几关吧';
+
+  @override
+  String achGroupHeader(String group, int count) {
+    return '$group · $count 枚';
+  }
+
+  @override
+  String achGroupClaimed(int done, int total) {
+    return '已领取 $done/$total';
+  }
+
+  @override
+  String get achFilterAll => '全部';
+
+  @override
+  String get achFilterActive => '进行中';
+
+  @override
+  String get achFilterClaimable => '可领取';
+
+  @override
+  String get achFilterDone => '已完成';
+
+  @override
+  String achMedalsSuffix(int total) {
+    return '/ $total 枚';
+  }
+
+  @override
+  String achAchieved(int count) {
+    return '已达成 $count';
+  }
+
+  @override
+  String achClaimCta(int reward) {
+    return '可领取 +$reward 🪙';
+  }
+
+  @override
+  String get achClaimedChip => '已领取';
+
+  @override
+  String get achClaimBtn => '领取';
 }
