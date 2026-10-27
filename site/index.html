@@ -7,6 +7,13 @@
 <meta name="description" content="Merge Fleet (车水马龙) — a traffic-themed merge puzzle game. Privacy policy and support information.">
 <meta name="theme-color" content="#FCF3EA">
 <link rel="stylesheet" href="assets/style.css">
+<style>
+/* 语言显隐的关键规则内联一份：即使 assets/style.css 没传上去（部署漏文件），
+   也不会出现中英文同时显示 / 语言切反。修改时两边必须一起改，
+   tool/check_site.py 会校验两处一致。 */
+html[data-lang="en"] .lang-zh { display: none !important; }
+html[data-lang="zh"] .lang-en { display: none !important; }
+</style>
 </head>
 <body>
 <div class="wrap">

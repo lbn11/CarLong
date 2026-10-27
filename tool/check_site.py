@@ -208,6 +208,33 @@ def check_offline_assets(site: Path) -> None:
         add("OK", "外部静态资源", "全部本地")
 
 
+def check_lang_rules(site: Path) -> None:
+    """语言显隐规则必须「内联 + style.css」两处都有且一致。
+
+    为什么：部署时 assets/ 漏传是最常见的故障（只传了 index.html），
+    一旦 style.css 没上去，页面上中英文会同时糊在一起。把关键规则内联进
+    HTML 后即使漏传也不至于错乱，但两边必须一致，否则以后改一处就会漂移。
+    """
+    want = (
+        'html[data-lang="en"] .lang-zh',
+        'html[data-lang="zh"] .lang-en',
+    )
+    css = (site / "assets" / "style.css")
+    css_text = css.read_text(encoding="utf-8") if css.is_file() else ""
+
+    missing_css = [r for r in want if r not in css_text]
+    if missing_css:
+        add("FAIL", "语言规则 · style.css", "缺少：" + "；".join(missing_css))
+
+    no_inline = [p.name for p in sorted(site.glob("*.html"))
+                 if any(r not in p.read_text(encoding="utf-8") for r in want)]
+    if no_inline:
+        add("FAIL", "语言规则 · 内联保险",
+            "这些页面没内联关键规则：" + ", ".join(no_inline))
+    elif not missing_css:
+        add("OK", "语言规则 · 两处一致", "style.css 与全部页面内联副本一致")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="上架前静态站体检")
     ap.add_argument("--site-dir", default=str(ROOT / "site"), help="站点目录")
@@ -225,6 +252,7 @@ def main() -> int:
     check_links(site)
     check_privacy(site)
     check_placeholders(site)
+    check_lang_rules(site)
 
     width = max(len(n) for _, n, _ in results)
     for level, name, detail in results:
