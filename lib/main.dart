@@ -103,9 +103,10 @@ class MergeGameApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         fontFamily: 'Baloo2',
+        // Nunito.ttf 文件已截断损坏（gvar 表越界）且 Baloo2 覆盖全部拉丁字符，
+        // 2026-10-27 移除；拉丁缺口由 Noto Sans SC 兜底。
         fontFamilyFallback: const [
           'NotoColorEmoji',
-          'Nunito',
           'Noto Sans SC',
           'PingFang SC',
           'Microsoft YaHei'

@@ -10,14 +10,17 @@ class MusicPlayer {
 
   bool enabled = true;
 
+  // BGM 源文件在 assets/audio/bgm/（Flutter 目录资源不递归，故不进包）。
+  // 恢复步骤：1) 把 bgm/*.wav 移回 assets/audio/；
+  //           2) 恢复 lib/game/music_player.dart 里的 _current 字段；
+  //           3) 取消下面整段注释即可。
   static const home = 'bgm_home.wav';
   static const merge = 'bgm_merge.wav';
   static const parking = 'bgm_parking.wav';
 
   /// 切换/播放场景 BGM（自动停掉上一首）。
   // 音乐暂时关闭：保留接口，但不播放任何 BGM。
-  // 恢复步骤：1) 恢复 lib/game/music_player.dart 里的 _current 字段；
-  //           2) 取消下面整段注释即可。
+  // 恢复步骤见上方常量注释（bgm 文件已移出打包目录）。
   Future<void> play(String asset) async {
     // if (!enabled || asset == _current) return;
     // _current = asset;

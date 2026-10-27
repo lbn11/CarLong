@@ -45,14 +45,17 @@ def human(n: float) -> str:
 
 
 def walk_size(path: str) -> tuple[int, int]:
-    """返回 (字节数, 文件数)。"""
+    """返回 (字节数, 文件数)。
+
+    只统计目录直接文件，不含子目录 —— 与 Flutter 的 pubspec 目录语义一致
+    （`- assets/audio/` 不递归，子目录里的文件不进包）。
+    """
     total = files = 0
-    for root, _, fs in os.walk(path):
-        for f in fs:
-            p = os.path.join(root, f)
-            if os.path.isfile(p):
-                total += os.path.getsize(p)
-                files += 1
+    for f in os.listdir(path):
+        p = os.path.join(path, f)
+        if os.path.isfile(p):
+            total += os.path.getsize(p)
+            files += 1
     return total, files
 
 

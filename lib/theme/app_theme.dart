@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 /// 全局统一配色与质感体系。
 ///
 /// Sunny Candy 浅色基调：奶油底 + 珊瑚/莓红主强调 + 每款车型一个身份色
-/// （颜色 = 车型身份）+ 圆润字体（Baloo 2 / Nunito）。深色令牌保留以兼容旧引用。
+/// （颜色 = 车型身份）+ 圆润字体（Baloo 2，Noto Sans SC 兜底）。深色令牌保留以兼容旧引用。
 class AppColors {
   AppColors._();
 

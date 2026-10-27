@@ -47,9 +47,6 @@ flutter:
     - family: Baloo2
       fonts:
         - asset: assets/fonts/Baloo2.ttf
-    - family: Nunito
-      fonts:
-        - asset: assets/fonts/Nunito.ttf
     - family: Noto Sans SC
       fonts:
         - asset: assets/fonts/NotoSansSC-Regular.ttf

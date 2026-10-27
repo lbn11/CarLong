@@ -18,15 +18,17 @@ class AudioFeedback {
   static bool globalVibrateOn = true;
 
   static const Map<Sfx, String> _files = {
+    // 体积优化（2026-10-27）：够长的音效转 AAC m4a（64k 单声道），
+    // move/tick/place 这种 <5KB 的短音效转码反而更大，保留 wav。
     Sfx.place: 'place.wav',
     Sfx.move: 'move.wav',
-    Sfx.merge: 'merge.wav',
-    Sfx.bonus: 'bonus.wav',
-    Sfx.error: 'error.wav',
-    Sfx.undo: 'undo.wav',
+    Sfx.merge: 'merge.m4a',
+    Sfx.bonus: 'bonus.m4a',
+    Sfx.error: 'error.m4a',
+    Sfx.undo: 'undo.m4a',
     Sfx.tick: 'tick.wav',
-    Sfx.win: 'win.wav',
-    Sfx.lose: 'lose.wav',
+    Sfx.win: 'win.m4a',
+    Sfx.lose: 'lose.m4a',
   };
 
   final Map<Sfx, AudioPool> _pools = {};
