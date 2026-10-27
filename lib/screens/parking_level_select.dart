@@ -473,7 +473,7 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                   childAspectRatio: 0.92,
                 ),
                 itemCount: levels.length,
-                itemBuilder: (context, i) => _levelTile(levels[i], tier),
+                itemBuilder: (context, i) => _levelTile(levels[i], tier, chapter.sign),
               ),
             )
           else
@@ -514,7 +514,7 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
     );
   }
 
-  Widget _levelTile(int levelId, Color chapterColor) {
+  Widget _levelTile(int levelId, Color chapterColor, TrafficSignKind sign) {
     final stars = widget.data.parkingBestStars[levelId] ?? 0;
     final cleared = stars > 0;
     // 「接下来该打的那一关」：加一圈实色环 + ▶ 角标，进页自动定位后
@@ -551,16 +551,25 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.white, Color.lerp(accent, Colors.white, 0.88)!],
+            colors: [
+              AppColors.surfaceLight,
+              Color.lerp(accent, Colors.white, 0.92)!,
+            ],
           ),
           borderRadius: BorderRadius.circular(15),
           border: Border.all(
             color: accent.withValues(
               alpha: current ? 1.0 : (cleared ? 0.42 : 0.24),
             ),
-            width: current ? 2.6 : (cleared ? 1.8 : 1),
+            width: current ? 2.6 : (cleared ? 1.6 : 1),
           ),
           boxShadow: [
+            // 卡面顶端一线高光：项目糖果卡的统一"贵气"来源（见 CandyCard）。
+            BoxShadow(
+              color: AppColors.whiteGlint.withValues(alpha: 0.9),
+              blurRadius: 0,
+              offset: const Offset(0, 1),
+            ),
             BoxShadow(
               color: accent.withValues(
                 alpha: current ? 0.40 : (cleared ? 0.20 : 0.12),
@@ -581,25 +590,69 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // 章节身份小糖果 chip：白字交通标志 + 章节色渐变底座，
+                // 呼应首页图标 chip / 每日卡渐变图标——给格子注入项目统一的
+                // 糖果色，不再是一味留白。标志不是车，不会提前剧透未解锁车型。
+                // 广告关的 🎬 挂在 chip 左上角当通知点：以前浮在格子左上，
+                // 会和 chip 的角挤在一起。
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.gradientFor(accent),
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: accent.withValues(alpha: 0.34),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: TrafficSign(
+                          kind: sign,
+                          size: 15,
+                          color: Colors.white,
+                          face: Colors.transparent,
+                        ),
+                      ),
+                    ),
+                    if (LevelProgression.isParkingAdGate(levelId))
+                      Positioned(
+                        top: -4,
+                        left: -4,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: AppColors.coralDeep,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1.2),
+                          ),
+                          child: const Text(
+                            '🎬',
+                            style: TextStyle(fontSize: 6.5, height: 1),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 3),
                 Text(
                   '$levelId',
                   style: TextStyle(
                     color: AppTheme.deepen(accent, 0.34),
                     fontWeight: FontWeight.w900,
-                    fontSize: 15,
+                    fontSize: 14,
                   ),
                 ),
                 const SizedBox(height: 2),
-                StarRow(stars: stars, size: 11),
-                const SizedBox(height: 1),
-                // 格子统一用 P，不贴本章的车：36 格贴同一辆车是噪音，
-                // 随机换车又会提前剧透玩家还没解锁的车型。
-                TrafficSign(
-                  kind: TrafficSignKind.parking,
-                  size: 18,
-                  color: chapterColor.withValues(alpha: 0.55),
-                  face: Colors.transparent,
-                ),
+                StarRow(stars: stars, size: 10),
               ],
             ),
             // 难度心跳角标：一个色点表明这一关在本轮 6 关中的位置，
@@ -620,27 +673,6 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                 ),
               ),
             ),
-            // 广告挑战关角标：🎬 徽标。这一关比同位置难一档（步数 +1 /
-            // 挡路车 +1），但失败了可以看广告续命/撤销/提示——是难关，不是墙。
-            if (LevelProgression.isParkingAdGate(levelId))
-              Positioned(
-                top: 3,
-                left: 3,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 3,
-                    vertical: 1,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.coralDeep.withValues(alpha: 0.92),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text(
-                    '🎬',
-                    style: TextStyle(fontSize: 7.5, height: 1.1),
-                  ),
-                ),
-              ),
             // 「继续」角标：当前关右下角挂一枚播放按钮，配合实色环
             // 让"点哪一格"无需阅读。
             if (current)
