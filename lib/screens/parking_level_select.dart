@@ -5,6 +5,7 @@ import '../game/audio_feedback.dart';
 import '../game/parking_daily_challenge.dart';
 import '../l10n/l10n.dart';
 import '../models/parking_level.dart';
+import '../models/traffic_sign.dart';
 import '../save/save_repository.dart';
 import '../services/level_progression.dart';
 import '../services/level_rhythm.dart';
@@ -13,7 +14,7 @@ import '../services/parking_generator.dart';
 import '../theme/app_theme.dart';
 import '../widgets/candy_ui.dart';
 import '../widgets/pressable.dart';
-import '../widgets/vehicle_image.dart';
+import '../widgets/traffic_sign.dart';
 import 'parking_screen.dart';
 
 /// 停车关卡选择屏（按车型章节分组，章节解锁与合成图鉴双向联动）。
@@ -56,8 +57,10 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
   /// 量尺寸/校正用的锚点：每日卡、每一章的卡片、列表视口。
   final GlobalKey _dailyKey = GlobalKey();
   final GlobalKey _viewportKey = GlobalKey();
-  final List<GlobalKey> _chapterKeys =
-      List.generate(ParkingChapters.all.length, (_) => GlobalKey());
+  final List<GlobalKey> _chapterKeys = List.generate(
+    ParkingChapters.all.length,
+    (_) => GlobalKey(),
+  );
 
   /// 定位到「下一关」的格子（滚动后把格子精确推进视口）。
   final GlobalKey _currentTileKey = GlobalKey();
@@ -75,9 +78,7 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
   @override
   void initState() {
     super.initState();
-    _levelIds = [
-      for (var i = 1; i <= ParkingChapters.totalLevels; i++) i,
-    ];
+    _levelIds = [for (var i = 1; i <= ParkingChapters.totalLevels; i++) i];
     _byChapter = {};
     for (final c in ParkingChapters.all) {
       _byChapter[c] = _levelIds
@@ -150,18 +151,21 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
     final viewportBox = _viewportKey.currentContext?.findRenderObject();
     final tileCtx = _currentTileKey.currentContext;
     if (viewportBox is! RenderBox || tileCtx == null) return null;
-    final chIdx = ParkingChapters.all
-        .indexWhere((c) => _currentLevelId >= c.startId && _currentLevelId <= c.endId);
+    final chIdx = ParkingChapters.all.indexWhere(
+      (c) => _currentLevelId >= c.startId && _currentLevelId <= c.endId,
+    );
     if (chIdx < 0) return null;
     final chapterCtx = _chapterKeys[chIdx].currentContext;
     if (chapterCtx == null) return null;
     final chapterBox = chapterCtx.findRenderObject();
     final tileBox = tileCtx.findRenderObject();
     if (chapterBox is! RenderBox || tileBox is! RenderBox) return null;
-    final chTop = _scroll.offset +
+    final chTop =
+        _scroll.offset +
         chapterBox.localToGlobal(Offset.zero, ancestor: viewportBox).dy;
     final tTop =
-        _scroll.offset + tileBox.localToGlobal(Offset.zero, ancestor: viewportBox).dy;
+        _scroll.offset +
+        tileBox.localToGlobal(Offset.zero, ancestor: viewportBox).dy;
     final tBottom = tTop + tileBox.size.height;
     final viewH = _scroll.position.viewportDimension;
     final aligned = chTop - 8;
@@ -182,7 +186,8 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
       final box = ctx.findRenderObject();
       if (box is! RenderBox || !box.hasSize) continue;
       final real =
-          _scroll.offset + box.localToGlobal(Offset.zero, ancestor: viewportBox).dy;
+          _scroll.offset +
+          box.localToGlobal(Offset.zero, ancestor: viewportBox).dy;
       return _chapterTop(i) - real;
     }
     return null;
@@ -201,8 +206,9 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
   double? _estimateOffset(int levelId) {
     final viewportBox = _viewportKey.currentContext?.findRenderObject();
     if (viewportBox is! RenderBox || !viewportBox.hasSize) return null;
-    final chIdx = ParkingChapters.all
-        .indexWhere((c) => levelId >= c.startId && levelId <= c.endId);
+    final chIdx = ParkingChapters.all.indexWhere(
+      (c) => levelId >= c.startId && levelId <= c.endId,
+    );
     if (chIdx < 0) return null;
     final ch = ParkingChapters.all[chIdx];
     const columns = 5;
@@ -218,8 +224,7 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
   }
 
   /// 每日挑战卡整块高度（含上下间距的一半），首帧实测。
-  double get _dailyBlockH =>
-      _dailyKey.currentContext?.size?.height ?? 88.0;
+  double get _dailyBlockH => _dailyKey.currentContext?.size?.height ?? 88.0;
 
   /// 章节卡高度：解锁章按网格行数推，锁定章是固定提示条（估算）。
   ///
@@ -241,15 +246,19 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
   }
 
   /// 章节是否可进入（双向联动）。
-  bool _chapterAccessible(ParkingChapter c) =>
-      ParkingChapters.isAccessible(c, widget.data.collection, widget.data.parkingBestStars);
+  bool _chapterAccessible(ParkingChapter c) => ParkingChapters.isAccessible(
+    c,
+    widget.data.collection,
+    widget.data.parkingBestStars,
+  );
 
   @override
   Widget build(BuildContext context) {
     final l = L10n.value;
     final total = _levelIds.length;
-    final cleared =
-        _levelIds.where((id) => (widget.data.parkingBestStars[id] ?? 0) > 0).length;
+    final cleared = _levelIds
+        .where((id) => (widget.data.parkingBestStars[id] ?? 0) > 0)
+        .length;
     return Scaffold(
       backgroundColor: AppColors.bg1,
       body: GlowBackground(
@@ -306,8 +315,9 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
     final l = L10n.value;
     final levels = _byChapter[chapter]!;
     final accessible = _chapterAccessible(chapter);
-    final cleared =
-        levels.where((id) => (widget.data.parkingBestStars[id] ?? 0) > 0).length;
+    final cleared = levels
+        .where((id) => (widget.data.parkingBestStars[id] ?? 0) > 0)
+        .length;
     final tier = chapter.tier.color;
 
     return Container(
@@ -348,17 +358,26 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    gradient: accessible ? AppTheme.gradientFor(tier) : null,
                     color: accessible
-                        ? null
+                        ? Color.lerp(tier, Colors.white, 0.88)
                         : AppColors.ink3.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(15),
                   ),
                   child: Center(
+                    // 章节图标用通用交通标志，不再贴本章目标车的车模：
+                    // 一章 36 关全是同一款车，车模会退化成 36 份重复；
+                    // 换别的车当图标又会提前剧透未解锁车型。详见 TrafficSignKind。
                     child: accessible
-                        ? VehicleImage(vehicle: chapter.tier, size: 32)
-                        : const Icon(Icons.lock_person_rounded,
-                            color: AppColors.ink3, size: 20),
+                        ? TrafficSign(
+                            kind: chapter.sign,
+                            size: 32,
+                            color: AppTheme.deepen(tier, 0.18),
+                          )
+                        : const Icon(
+                            Icons.lock_person_rounded,
+                            color: AppColors.ink3,
+                            size: 20,
+                          ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -377,21 +396,27 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color:
-                                    accessible ? AppColors.ink1 : AppColors.ink2,
+                                color: accessible
+                                    ? AppColors.ink1
+                                    : AppColors.ink2,
                                 fontWeight: FontWeight.w900,
                                 fontSize: 16,
                               ),
                             ),
                           ),
-                          if (LevelProgression.isParkingDemon(chapter.startId)) ...[
+                          if (LevelProgression.isParkingDemon(
+                            chapter.startId,
+                          )) ...[
                             const SizedBox(width: 5),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 5, vertical: 1.5),
+                                horizontal: 5,
+                                vertical: 1.5,
+                              ),
                               decoration: BoxDecoration(
-                                color: AppColors.coralDeep
-                                    .withValues(alpha: accessible ? 0.16 : 0.08),
+                                color: AppColors.coralDeep.withValues(
+                                  alpha: accessible ? 0.16 : 0.08,
+                                ),
                                 borderRadius: BorderRadius.circular(7),
                               ),
                               child: Text(
@@ -407,18 +432,19 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                         ],
                       ),
                       const SizedBox(height: 2),
+                      // 锁定章也显示「阶段 · 副标题」：解锁方式由下方灰框说一次就够，
+                      // 在这里再写一遍会让同一句话在同一张卡上出现两次。
                       Text(
-                        accessible
-                            ? l.parkingChapterMeta(
-                                LevelProgression.displayStageName(
-                                  LevelProgression.stageOf(
-                                    LevelProgression.parkingChapterIndex(
-                                        chapter.startId),
-                                  ),
-                                ),
-                                chapter.subtitle,
-                              )
-                            : ParkingChapters.lockReason(chapter),
+                        l.parkingChapterMeta(
+                          LevelProgression.displayStageName(
+                            LevelProgression.stageOf(
+                              LevelProgression.parkingChapterIndex(
+                                chapter.startId,
+                              ),
+                            ),
+                          ),
+                          chapter.subtitle,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -430,10 +456,7 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                   ),
                 ),
                 if (accessible)
-                  SoftChip(
-                    label: '$cleared/${levels.length}',
-                    color: tier,
-                  ),
+                  SoftChip(label: '$cleared/${levels.length}', color: tier),
               ],
             ),
           ),
@@ -465,8 +488,11 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.lock_clock_rounded,
-                        color: AppColors.ink3, size: 20),
+                    const Icon(
+                      Icons.lock_clock_rounded,
+                      color: AppColors.ink3,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Flexible(
                       child: Text(
@@ -474,7 +500,9 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                            color: AppColors.ink3, fontSize: 12.5),
+                          color: AppColors.ink3,
+                          fontSize: 12.5,
+                        ),
                       ),
                     ),
                   ],
@@ -507,13 +535,15 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
         setState(() => _loadingId = null);
         // 等对局返回后强制重绘：ParkingScreen 直接改的是共享的 data，
         // 不 setState 的话本页仍显示旧星级，看起来像"通关没被记录"。
-        await Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => ParkingScreen(
-            level: level,
-            data: widget.data,
-            repo: widget.repo,
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ParkingScreen(
+              level: level,
+              data: widget.data,
+              repo: widget.repo,
+            ),
           ),
-        ));
+        );
         if (mounted) setState(() {});
       },
       child: Container(
@@ -521,20 +551,20 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Colors.white,
-              Color.lerp(accent, Colors.white, 0.88)!,
-            ],
+            colors: [Colors.white, Color.lerp(accent, Colors.white, 0.88)!],
           ),
           borderRadius: BorderRadius.circular(15),
           border: Border.all(
             color: accent.withValues(
-                alpha: current ? 1.0 : (cleared ? 0.42 : 0.24)),
+              alpha: current ? 1.0 : (cleared ? 0.42 : 0.24),
+            ),
             width: current ? 2.6 : (cleared ? 1.8 : 1),
           ),
           boxShadow: [
             BoxShadow(
-              color: accent.withValues(alpha: current ? 0.40 : (cleared ? 0.20 : 0.12)),
+              color: accent.withValues(
+                alpha: current ? 0.40 : (cleared ? 0.20 : 0.12),
+              ),
               blurRadius: current ? 16 : 9,
               offset: const Offset(0, 3),
             ),
@@ -562,9 +592,13 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                 const SizedBox(height: 2),
                 StarRow(stars: stars, size: 11),
                 const SizedBox(height: 1),
-                VehicleImage(
-                  vehicle: ParkingChapters.tierForId(levelId),
-                  size: 20,
+                // 格子统一用 P，不贴本章的车：36 格贴同一辆车是噪音，
+                // 随机换车又会提前剧透玩家还没解锁的车型。
+                TrafficSign(
+                  kind: TrafficSignKind.parking,
+                  size: 18,
+                  color: chapterColor.withValues(alpha: 0.55),
+                  face: Colors.transparent,
                 ),
               ],
             ),
@@ -593,7 +627,10 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                 top: 3,
                 left: 3,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 3,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.coralDeep.withValues(alpha: 0.92),
                     borderRadius: BorderRadius.circular(6),
@@ -618,8 +655,11 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 1.2),
                   ),
-                  child: const Icon(Icons.play_arrow_rounded,
-                      size: 10, color: Colors.white),
+                  child: const Icon(
+                    Icons.play_arrow_rounded,
+                    size: 10,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             // 生成中的加载态：盖住卡片内容 + 中央转圈，避免同步生成
@@ -637,8 +677,7 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                       height: 18,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.4,
-                        valueColor:
-                            AlwaysStoppedAnimation(AppColors.coralDeep),
+                        valueColor: AlwaysStoppedAnimation(AppColors.coralDeep),
                       ),
                     ),
                   ),
@@ -653,7 +692,8 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
 
   Widget _buildDailyChallengeCard() {
     final l = L10n.value;
-    final cleared = widget.data.dailyClearedDate == ParkingDailyChallenge.todayKey;
+    final cleared =
+        widget.data.dailyClearedDate == ParkingDailyChallenge.todayKey;
     final streak = widget.data.dailyStreak;
     final level = ParkingDailyChallenge.today();
     final accent = cleared ? AppColors.mint : level.targetTier.color;
@@ -689,36 +729,47 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(l.parkingDailyTitle,
-                    style: const TextStyle(
-                        color: AppColors.ink1,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16)),
+                Text(
+                  l.parkingDailyTitle,
+                  style: const TextStyle(
+                    color: AppColors.ink1,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                  ),
+                ),
                 const SizedBox(height: 3),
                 Text(
                   cleared
                       ? (streak > 0
-                          ? l.parkingDailyDone + l.parkingDailyStreakSuffix(streak)
-                          : l.parkingDailyDone)
+                            ? l.parkingDailyDone +
+                                  l.parkingDailyStreakSuffix(streak)
+                            : l.parkingDailyDone)
                       : streak >= 2
-                          ? l.parkingDailyStreakReward(streak,
-                              ParkingDailyChallenge.reward +
-                                  ParkingDailyChallenge.streakBonus(streak))
-                          : l.parkingDailyTodayReward(
-                              ParkingDailyChallenge.reward),
+                      ? l.parkingDailyStreakReward(
+                          streak,
+                          ParkingDailyChallenge.reward +
+                              ParkingDailyChallenge.streakBonus(streak),
+                        )
+                      : l.parkingDailyTodayReward(ParkingDailyChallenge.reward),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                      color: cleared ? AppColors.mint : AppColors.ink2,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w700),
+                    color: cleared ? AppColors.mint : AppColors.ink2,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 8),
           if (cleared)
-            SoftChip(label: l.parkingDoneChip, icon: Icons.check_circle, color: AppColors.mint, solid: true)
+            SoftChip(
+              label: l.parkingDoneChip,
+              icon: Icons.check_circle,
+              color: AppColors.mint,
+              solid: true,
+            )
           else
             CandyButton(
               label: l.parkingGo,

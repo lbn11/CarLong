@@ -1324,11 +1324,10 @@
       "subtitle": { "type": "String" }
     }
   },
-  "parkingLockReason": "Collect {icon} {name} in Merge to unlock",
+  "parkingLockReason": "Collect {name} in Merge to unlock",
   "@parkingLockReason": {
     "description": "停车章节锁定时提示解锁方式",
     "placeholders": {
-      "icon": { "type": "String" },
       "name": { "type": "String" }
     }
   },

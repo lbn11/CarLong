@@ -4552,8 +4552,8 @@ abstract class AppLocalizations {
   /// 停车章节锁定时提示解锁方式
   ///
   /// In en, this message translates to:
-  /// **'Collect {icon} {name} in Merge to unlock'**
-  String parkingLockReason(String icon, String name);
+  /// **'Collect {name} in Merge to unlock'**
+  String parkingLockReason(String name);
 
   /// 停车选关页顶部每日挑战卡标题
   ///

@@ -839,7 +839,7 @@
   "parkingSelectProgress": "已停稳 {cleared}/{total} 关 · 越停越顺手",
   "parkingDemonBadge": "👹 魔王章",
   "parkingChapterMeta": "{stage}阶段 · {subtitle}",
-  "parkingLockReason": "在合成中收集 {icon} {name} 解锁",
+  "parkingLockReason": "在合成中收集 {name} 解锁",
   "parkingDailyTitle": "每日停车挑战",
   "parkingDailyDone": "今天已经停好啦",
   "parkingDailyStreakSuffix": " · 连续 {streak} 天",

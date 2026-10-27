@@ -1,5 +1,6 @@
 import '../l10n/l10n.dart';
 import '../l10n/parking_texts.dart';
+import '../models/traffic_sign.dart';
 import '../models/vehicle.dart';
 
 /// 停车模式章节模型：按车型(VehicleType)把关卡分段，每段对应一个档位 + 主题。
@@ -22,12 +23,19 @@ class ParkingChapter {
   final String zhTitle;
   final String zhSubtitle;
 
+  /// 章节图标用的**通用交通标志**（见 [TrafficSignKind]）。
+  ///
+  /// 故意不用 [tier] 的车模当图标：一章 36 关的车是同一款，
+  /// 图标会退化成 36 份重复车影；而换别的车当图标等于提前剧透未解锁车型。
+  final TrafficSignKind sign;
+
   const ParkingChapter(
     this.tier,
     this.startId,
     this.endId, {
     required this.zhTitle,
     required this.zhSubtitle,
+    required this.sign,
   });
 
   int get count => endId - startId + 1;
@@ -86,28 +94,182 @@ class ParkingChapters {
   // i18n-data-block：章节名的中文原文（界面走 title/subtitle getter，
   // 导出与存档读 zhTitle/zhSubtitle，两者故意分开）
   static const List<ParkingChapter> all = [
-    ParkingChapter(VehicleType.bicycle, 1, 36, zhTitle: '单车街区', zhSubtitle: '新手上路，稳稳停好'),
-    ParkingChapter(VehicleType.scooter, 37, 72, zhTitle: '街头巷尾', zhSubtitle: '小巷穿梭，见缝插针'),
-    ParkingChapter(VehicleType.sedan, 73, 108, zhTitle: '城市街区', zhSubtitle: '车流渐密的市中心'),
-    ParkingChapter(VehicleType.taxi, 109, 144, zhTitle: '出租热点', zhSubtitle: '随时待命的出租车'),
-    ParkingChapter(VehicleType.bus, 145, 180, zhTitle: '公交枢纽', zhSubtitle: '大块头也要好停车'),
-    ParkingChapter(VehicleType.truck, 181, 216, zhTitle: '货运干线', zhSubtitle: '重卡物流的考验'),
-    ParkingChapter(VehicleType.highspeed, 217, 252, zhTitle: '铁轨编组', zhSubtitle: '列车进站的节奏'),
-    ParkingChapter(VehicleType.rocket, 253, 288, zhTitle: '发射台', zhSubtitle: '倒计时前的最后停车'),
-    ParkingChapter(VehicleType.ferry, 289, 324, zhTitle: '轮渡码头', zhSubtitle: '码头边的来回穿梭'),
-    ParkingChapter(VehicleType.subway, 325, 360, zhTitle: '地铁网络', zhSubtitle: '地下世界的调度'),
-    ParkingChapter(VehicleType.airliner, 361, 396, zhTitle: '机场跑道', zhSubtitle: '冲向云端之前'),
-    ParkingChapter(VehicleType.fighter, 397, 432, zhTitle: '空军基地', zhSubtitle: '战机的精准停放'),
-    ParkingChapter(VehicleType.spaceShuttle, 433, 468, zhTitle: '航天中心', zhSubtitle: '通往太空的走廊'),
-    ParkingChapter(VehicleType.cargo, 469, 504, zhTitle: '星港货运', zhSubtitle: '跨星际的快递航线'),
-    ParkingChapter(VehicleType.maglev, 505, 541, zhTitle: '磁浮走廊', zhSubtitle: '悬浮列车的停靠'),
-    ParkingChapter(VehicleType.spaceStation, 542, 578, zhTitle: '空间站', zhSubtitle: '轨道上的会合'),
-    ParkingChapter(VehicleType.starship, 579, 615, zhTitle: '彗星轨道', zhSubtitle: '追逐流星之尾'),
-    ParkingChapter(VehicleType.hyperloop, 616, 652, zhTitle: '音速管道', zhSubtitle: '真空管道里的一千公里'),
-    ParkingChapter(VehicleType.glider, 653, 689, zhTitle: '浮空滑翔', zhSubtitle: '没有引擎的降落'),
-    ParkingChapter(VehicleType.warship, 690, 726, zhTitle: '巡洋编队', zhSubtitle: '星际舰队的列队'),
-    ParkingChapter(VehicleType.crane, 727, 763, zhTitle: '巨械装配厂', zhSubtitle: '钢铁巨臂的归位'),
-    ParkingChapter(VehicleType.warpShip, 764, 800, zhTitle: '反重力区', zhSubtitle: '终极泊车大师'),
+    ParkingChapter(
+      VehicleType.bicycle,
+      1,
+      36,
+      zhTitle: '单车街区',
+      zhSubtitle: '新手上路，稳稳停好',
+      sign: TrafficSignKind.trafficLight,
+    ),
+    ParkingChapter(
+      VehicleType.scooter,
+      37,
+      72,
+      zhTitle: '街头巷尾',
+      zhSubtitle: '小巷穿梭，见缝插针',
+      sign: TrafficSignKind.turn,
+    ),
+    ParkingChapter(
+      VehicleType.sedan,
+      73,
+      108,
+      zhTitle: '城市街区',
+      zhSubtitle: '车流渐密的市中心',
+      sign: TrafficSignKind.trafficLight,
+    ),
+    ParkingChapter(
+      VehicleType.taxi,
+      109,
+      144,
+      zhTitle: '出租热点',
+      zhSubtitle: '随时待命的出租车',
+      sign: TrafficSignKind.parking,
+    ),
+    ParkingChapter(
+      VehicleType.bus,
+      145,
+      180,
+      zhTitle: '公交枢纽',
+      zhSubtitle: '大块头也要好停车',
+      sign: TrafficSignKind.parking,
+    ),
+    ParkingChapter(
+      VehicleType.truck,
+      181,
+      216,
+      zhTitle: '货运干线',
+      zhSubtitle: '重卡物流的考验',
+      sign: TrafficSignKind.warning,
+    ),
+    ParkingChapter(
+      VehicleType.highspeed,
+      217,
+      252,
+      zhTitle: '铁轨编组',
+      zhSubtitle: '列车进站的节奏',
+      sign: TrafficSignKind.crossing,
+    ),
+    ParkingChapter(
+      VehicleType.rocket,
+      253,
+      288,
+      zhTitle: '发射台',
+      zhSubtitle: '倒计时前的最后停车',
+      sign: TrafficSignKind.ramp,
+    ),
+    ParkingChapter(
+      VehicleType.ferry,
+      289,
+      324,
+      zhTitle: '轮渡码头',
+      zhSubtitle: '码头边的来回穿梭',
+      sign: TrafficSignKind.anchor,
+    ),
+    ParkingChapter(
+      VehicleType.subway,
+      325,
+      360,
+      zhTitle: '地铁网络',
+      zhSubtitle: '地下世界的调度',
+      sign: TrafficSignKind.tunnel,
+    ),
+    ParkingChapter(
+      VehicleType.airliner,
+      361,
+      396,
+      zhTitle: '机场跑道',
+      zhSubtitle: '冲向云端之前',
+      sign: TrafficSignKind.straight,
+    ),
+    ParkingChapter(
+      VehicleType.fighter,
+      397,
+      432,
+      zhTitle: '空军基地',
+      zhSubtitle: '战机的精准停放',
+      sign: TrafficSignKind.noEntry,
+    ),
+    ParkingChapter(
+      VehicleType.spaceShuttle,
+      433,
+      468,
+      zhTitle: '航天中心',
+      zhSubtitle: '通往太空的走廊',
+      sign: TrafficSignKind.ramp,
+    ),
+    ParkingChapter(
+      VehicleType.cargo,
+      469,
+      504,
+      zhTitle: '星港货运',
+      zhSubtitle: '跨星际的快递航线',
+      sign: TrafficSignKind.factory,
+    ),
+    ParkingChapter(
+      VehicleType.maglev,
+      505,
+      541,
+      zhTitle: '磁浮走廊',
+      zhSubtitle: '悬浮列车的停靠',
+      sign: TrafficSignKind.straight,
+    ),
+    ParkingChapter(
+      VehicleType.spaceStation,
+      542,
+      578,
+      zhTitle: '空间站',
+      zhSubtitle: '轨道上的会合',
+      sign: TrafficSignKind.orbit,
+    ),
+    ParkingChapter(
+      VehicleType.starship,
+      579,
+      615,
+      zhTitle: '彗星轨道',
+      zhSubtitle: '追逐流星之尾',
+      sign: TrafficSignKind.orbit,
+    ),
+    ParkingChapter(
+      VehicleType.hyperloop,
+      616,
+      652,
+      zhTitle: '音速管道',
+      zhSubtitle: '真空管道里的一千公里',
+      sign: TrafficSignKind.tunnel,
+    ),
+    ParkingChapter(
+      VehicleType.glider,
+      653,
+      689,
+      zhTitle: '浮空滑翔',
+      zhSubtitle: '没有引擎的降落',
+      sign: TrafficSignKind.glide,
+    ),
+    ParkingChapter(
+      VehicleType.warship,
+      690,
+      726,
+      zhTitle: '巡洋编队',
+      zhSubtitle: '星际舰队的列队',
+      sign: TrafficSignKind.noEntry,
+    ),
+    ParkingChapter(
+      VehicleType.crane,
+      727,
+      763,
+      zhTitle: '巨械装配厂',
+      zhSubtitle: '钢铁巨臂的归位',
+      sign: TrafficSignKind.factory,
+    ),
+    ParkingChapter(
+      VehicleType.warpShip,
+      764,
+      800,
+      zhTitle: '反重力区',
+      zhSubtitle: '终极泊车大师',
+      sign: TrafficSignKind.orbit,
+    ),
   ];
   // i18n-data-end
 
@@ -155,9 +317,8 @@ class ParkingChapters {
   /// 「Collect 🚗 Sedan in Merge to unlock」。
   static String lockReason(ParkingChapter c) {
     final l = L10n.current;
-    final icon = c.tier.icon;
     final name = c.tier.name;
-    if (l == null) return '在合成中收集 $icon $name 解锁'; // i18n-data
-    return l.parkingLockReason(icon, name);
+    if (l == null) return '在合成中收集 $name 解锁'; // i18n-data
+    return l.parkingLockReason(name);
   }
 }

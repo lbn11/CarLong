@@ -2513,8 +2513,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String parkingLockReason(String icon, String name) {
-    return 'Collect $icon $name in Merge to unlock';
+  String parkingLockReason(String name) {
+    return 'Collect $name in Merge to unlock';
   }
 
   @override

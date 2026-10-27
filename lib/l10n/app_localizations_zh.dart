@@ -2480,8 +2480,8 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String parkingLockReason(String icon, String name) {
-    return '在合成中收集 $icon $name 解锁';
+  String parkingLockReason(String name) {
+    return '在合成中收集 $name 解锁';
   }
 
   @override
