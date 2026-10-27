@@ -4212,6 +4212,660 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Peak'**
   String get phasePeak;
+
+  /// 停车第 1 章标题（起始关 L1）
+  ///
+  /// In en, this message translates to:
+  /// **'Bike Blocks'**
+  String get park01Title;
+
+  /// 停车第 1 章副标题（起始关 L1）
+  ///
+  /// In en, this message translates to:
+  /// **'First ride — slow and steady'**
+  String get park01Sub;
+
+  /// 停车第 2 章标题（起始关 L37）
+  ///
+  /// In en, this message translates to:
+  /// **'Back Alleys'**
+  String get park02Title;
+
+  /// 停车第 2 章副标题（起始关 L37）
+  ///
+  /// In en, this message translates to:
+  /// **'Squeeze through the narrow lanes'**
+  String get park02Sub;
+
+  /// 停车第 3 章标题（起始关 L73）
+  ///
+  /// In en, this message translates to:
+  /// **'Downtown'**
+  String get park03Title;
+
+  /// 停车第 3 章副标题（起始关 L73）
+  ///
+  /// In en, this message translates to:
+  /// **'The city centre, where traffic thickens'**
+  String get park03Sub;
+
+  /// 停车第 4 章标题（起始关 L109）
+  ///
+  /// In en, this message translates to:
+  /// **'Taxi Hotspot'**
+  String get park04Title;
+
+  /// 停车第 4 章副标题（起始关 L109）
+  ///
+  /// In en, this message translates to:
+  /// **'Taxis waiting on every corner'**
+  String get park04Sub;
+
+  /// 停车第 5 章标题（起始关 L145）
+  ///
+  /// In en, this message translates to:
+  /// **'Bus Terminal'**
+  String get park05Title;
+
+  /// 停车第 5 章副标题（起始关 L145）
+  ///
+  /// In en, this message translates to:
+  /// **'Even the big rigs need a spot'**
+  String get park05Sub;
+
+  /// 停车第 6 章标题（起始关 L181）
+  ///
+  /// In en, this message translates to:
+  /// **'Freight Line'**
+  String get park06Title;
+
+  /// 停车第 6 章副标题（起始关 L181）
+  ///
+  /// In en, this message translates to:
+  /// **'The heavy-haul test'**
+  String get park06Sub;
+
+  /// 停车第 7 章标题（起始关 L217）
+  ///
+  /// In en, this message translates to:
+  /// **'Rail Yard'**
+  String get park07Title;
+
+  /// 停车第 7 章副标题（起始关 L217）
+  ///
+  /// In en, this message translates to:
+  /// **'The rhythm of a train pulling in'**
+  String get park07Sub;
+
+  /// 停车第 8 章标题（起始关 L253）
+  ///
+  /// In en, this message translates to:
+  /// **'Launch Pad'**
+  String get park08Title;
+
+  /// 停车第 8 章副标题（起始关 L253）
+  ///
+  /// In en, this message translates to:
+  /// **'The last park before the countdown'**
+  String get park08Sub;
+
+  /// 停车第 9 章标题（起始关 L289）
+  ///
+  /// In en, this message translates to:
+  /// **'Ferry Pier'**
+  String get park09Title;
+
+  /// 停车第 9 章副标题（起始关 L289）
+  ///
+  /// In en, this message translates to:
+  /// **'Ferries weaving along the pier'**
+  String get park09Sub;
+
+  /// 停车第 10 章标题（起始关 L325）
+  ///
+  /// In en, this message translates to:
+  /// **'Metro Grid'**
+  String get park10Title;
+
+  /// 停车第 10 章副标题（起始关 L325）
+  ///
+  /// In en, this message translates to:
+  /// **'Dispatch work underground'**
+  String get park10Sub;
+
+  /// 停车第 11 章标题（起始关 L361）
+  ///
+  /// In en, this message translates to:
+  /// **'Airport Runway'**
+  String get park11Title;
+
+  /// 停车第 11 章副标题（起始关 L361）
+  ///
+  /// In en, this message translates to:
+  /// **'Before the climb to the clouds'**
+  String get park11Sub;
+
+  /// 停车第 12 章标题（起始关 L397）
+  ///
+  /// In en, this message translates to:
+  /// **'Air Base'**
+  String get park12Title;
+
+  /// 停车第 12 章副标题（起始关 L397）
+  ///
+  /// In en, this message translates to:
+  /// **'Precision parking for fighters'**
+  String get park12Sub;
+
+  /// 停车第 13 章标题（起始关 L433）
+  ///
+  /// In en, this message translates to:
+  /// **'Space Centre'**
+  String get park13Title;
+
+  /// 停车第 13 章副标题（起始关 L433）
+  ///
+  /// In en, this message translates to:
+  /// **'The corridor to space'**
+  String get park13Sub;
+
+  /// 停车第 14 章标题（起始关 L469）
+  ///
+  /// In en, this message translates to:
+  /// **'Starport Freight'**
+  String get park14Title;
+
+  /// 停车第 14 章副标题（起始关 L469）
+  ///
+  /// In en, this message translates to:
+  /// **'Interstellar courier routes'**
+  String get park14Sub;
+
+  /// 停车第 15 章标题（起始关 L505）
+  ///
+  /// In en, this message translates to:
+  /// **'Maglev Corridor'**
+  String get park15Title;
+
+  /// 停车第 15 章副标题（起始关 L505）
+  ///
+  /// In en, this message translates to:
+  /// **'Where levitating trains dock'**
+  String get park15Sub;
+
+  /// 停车第 16 章标题（起始关 L542）
+  ///
+  /// In en, this message translates to:
+  /// **'Orbital Station'**
+  String get park16Title;
+
+  /// 停车第 16 章副标题（起始关 L542）
+  ///
+  /// In en, this message translates to:
+  /// **'Rendezvous in orbit'**
+  String get park16Sub;
+
+  /// 停车第 17 章标题（起始关 L579）
+  ///
+  /// In en, this message translates to:
+  /// **'Comet Orbit'**
+  String get park17Title;
+
+  /// 停车第 17 章副标题（起始关 L579）
+  ///
+  /// In en, this message translates to:
+  /// **'Chasing a comet tail'**
+  String get park17Sub;
+
+  /// 停车第 18 章标题（起始关 L616）
+  ///
+  /// In en, this message translates to:
+  /// **'Sonic Tube'**
+  String get park18Title;
+
+  /// 停车第 18 章副标题（起始关 L616）
+  ///
+  /// In en, this message translates to:
+  /// **'A thousand kilometres in a vacuum tube'**
+  String get park18Sub;
+
+  /// 停车第 19 章标题（起始关 L653）
+  ///
+  /// In en, this message translates to:
+  /// **'Sky Glide'**
+  String get park19Title;
+
+  /// 停车第 19 章副标题（起始关 L653）
+  ///
+  /// In en, this message translates to:
+  /// **'Landing without an engine'**
+  String get park19Sub;
+
+  /// 停车第 20 章标题（起始关 L690）
+  ///
+  /// In en, this message translates to:
+  /// **'Cruiser Formation'**
+  String get park20Title;
+
+  /// 停车第 20 章副标题（起始关 L690）
+  ///
+  /// In en, this message translates to:
+  /// **'Forming up the fleet'**
+  String get park20Sub;
+
+  /// 停车第 21 章标题（起始关 L727）
+  ///
+  /// In en, this message translates to:
+  /// **'Mech Assembly'**
+  String get park21Title;
+
+  /// 停车第 21 章副标题（起始关 L727）
+  ///
+  /// In en, this message translates to:
+  /// **'Steel arms sliding home'**
+  String get park21Sub;
+
+  /// 停车第 22 章标题（起始关 L764）
+  ///
+  /// In en, this message translates to:
+  /// **'Anti-Gravity Zone'**
+  String get park22Title;
+
+  /// 停车第 22 章副标题（起始关 L764）
+  ///
+  /// In en, this message translates to:
+  /// **'The ultimate parking master'**
+  String get park22Sub;
+
+  /// 大阶段名 #1（每 3 章一个阶段）
+  ///
+  /// In en, this message translates to:
+  /// **'Set Sail'**
+  String get stage01;
+
+  /// 大阶段名 #2（每 3 章一个阶段）
+  ///
+  /// In en, this message translates to:
+  /// **'Charge Up'**
+  String get stage02;
+
+  /// 大阶段名 #3（每 3 章一个阶段）
+  ///
+  /// In en, this message translates to:
+  /// **'Push On'**
+  String get stage03;
+
+  /// 大阶段名 #4（每 3 章一个阶段）
+  ///
+  /// In en, this message translates to:
+  /// **'Mastery'**
+  String get stage04;
+
+  /// 大阶段名 #5（每 3 章一个阶段）
+  ///
+  /// In en, this message translates to:
+  /// **'Grandmaster'**
+  String get stage05;
+
+  /// 大阶段名 #6（每 3 章一个阶段）
+  ///
+  /// In en, this message translates to:
+  /// **'Legend'**
+  String get stage06;
+
+  /// 大阶段名 #7（每 3 章一个阶段）
+  ///
+  /// In en, this message translates to:
+  /// **'Apex'**
+  String get stage07;
+
+  /// 停车模式页标题 / 玩法说明弹窗标题
+  ///
+  /// In en, this message translates to:
+  /// **'Parking Mode'**
+  String get parkingMode;
+
+  /// 选关页顶栏副标题：一关都没过时
+  ///
+  /// In en, this message translates to:
+  /// **'Ease every car into its spot — no pressure'**
+  String get parkingSelectSubEmpty;
+
+  /// 选关页顶栏副标题：已有进度时
+  ///
+  /// In en, this message translates to:
+  /// **'{cleared}/{total} parked · smoother every time'**
+  String parkingSelectProgress(int cleared, int total);
+
+  /// 停车章节卡上的魔王章徽标
+  ///
+  /// In en, this message translates to:
+  /// **'👹 Demon'**
+  String get parkingDemonBadge;
+
+  /// 停车章节卡副行：阶段名 · 章节副标题 · 通关进度
+  ///
+  /// In en, this message translates to:
+  /// **'{stage} · {subtitle} · {done}/{total} cleared'**
+  String parkingChapterMeta(String stage, String subtitle, int done, int total);
+
+  /// 停车章节锁定时提示解锁方式
+  ///
+  /// In en, this message translates to:
+  /// **'Collect {icon} {name} in Merge to unlock'**
+  String parkingLockReason(String icon, String name);
+
+  /// 停车选关页顶部每日挑战卡标题
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Parking Challenge'**
+  String get parkingDailyTitle;
+
+  /// 每日停车挑战已完成的说明
+  ///
+  /// In en, this message translates to:
+  /// **'Parked for today'**
+  String get parkingDailyDone;
+
+  /// 每日停车挑战已完成 + 连胜天数后缀
+  ///
+  /// In en, this message translates to:
+  /// **' · {streak}-day streak'**
+  String parkingDailyStreakSuffix(int streak);
+
+  /// 每日停车挑战：连胜 ≥2 时的奖励说明
+  ///
+  /// In en, this message translates to:
+  /// **'{streak}-day streak · finish for +{reward} 🪙'**
+  String parkingDailyStreakReward(int streak, int reward);
+
+  /// 每日停车挑战：无连胜时的奖励说明
+  ///
+  /// In en, this message translates to:
+  /// **'One run today · finish for +{reward} 🪙'**
+  String parkingDailyTodayReward(int reward);
+
+  /// 每日停车挑战卡的开始按钮
+  ///
+  /// In en, this message translates to:
+  /// **'Park now'**
+  String get parkingGo;
+
+  /// 每日挑战完成后的状态标签
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get parkingDoneChip;
+
+  /// 重置本关按钮
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get reset;
+
+  /// 停车对局棋盘工具：标记模式
+  ///
+  /// In en, this message translates to:
+  /// **'Mark'**
+  String get parkingMark;
+
+  /// 广告说明的多行版本：正文 + 今日剩余次数
+  ///
+  /// In en, this message translates to:
+  /// **'{base}\n{count} left today'**
+  String parkingAdLeft(String base, int count);
+
+  /// 停车结算：步数与用时
+  ///
+  /// In en, this message translates to:
+  /// **'{moves} moves · {seconds}s'**
+  String parkingStats(int moves, int seconds);
+
+  /// 停车对局顶栏的关卡标签
+  ///
+  /// In en, this message translates to:
+  /// **'🚗 Parking #{id}'**
+  String parkingLevelHeader(int id);
+
+  /// 停车每日挑战对局顶栏的标签
+  ///
+  /// In en, this message translates to:
+  /// **'🚗 Daily'**
+  String get parkingDailyHeader;
+
+  /// 停车对局信息条：最少步数
+  ///
+  /// In en, this message translates to:
+  /// **'{n} moves min'**
+  String parkingMinMoves(int n);
+
+  /// 停车广告挑战关的信息条标签
+  ///
+  /// In en, this message translates to:
+  /// **'🎬 Challenge'**
+  String get parkingChallengeChip;
+
+  /// 点了横放长车但拖错方向时的提示
+  ///
+  /// In en, this message translates to:
+  /// **'↔️ Sideways cars only slide left or right'**
+  String get parkingSidewaysOnly;
+
+  /// 点了竖放长车但拖错方向时的提示
+  ///
+  /// In en, this message translates to:
+  /// **'↕️ Upright cars only slide up or down'**
+  String get parkingUprightOnly;
+
+  /// 滑行被障碍挡住时的飘字
+  ///
+  /// In en, this message translates to:
+  /// **'🚧 Something is in the way'**
+  String get parkingBlocked;
+
+  /// 撤销栈为空时的提示
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to undo'**
+  String get parkingNothingToUndo;
+
+  /// 用撤销卡回退成功后的提示
+  ///
+  /// In en, this message translates to:
+  /// **'↩️ Undo card · back {n} moves'**
+  String parkingUndoCardApplied(int n);
+
+  /// 看广告撤销成功后的提示
+  ///
+  /// In en, this message translates to:
+  /// **'🎬 Ad undo · back {n} moves'**
+  String parkingAdUndoApplied(int n);
+
+  /// 撤销卡用完时的弹窗标题
+  ///
+  /// In en, this message translates to:
+  /// **'🧯 Out of undo cards'**
+  String get parkingNoUndoCards;
+
+  /// 撤销按钮文案（带步数）
+  ///
+  /// In en, this message translates to:
+  /// **'Undo {n} moves'**
+  String parkingUndoSteps(int n);
+
+  /// 撤销卡不足弹窗的广告说明
+  ///
+  /// In en, this message translates to:
+  /// **'Watch an ad to step back 3 moves right away.'**
+  String get parkingUndoAdBody;
+
+  /// 提示弹窗标题
+  ///
+  /// In en, this message translates to:
+  /// **'💡 Get a hint'**
+  String get parkingHintTitle;
+
+  /// 提示弹窗的广告说明
+  ///
+  /// In en, this message translates to:
+  /// **'Watch an ad to reveal the best next move.'**
+  String get parkingHintAdBody;
+
+  /// 提示求解失败时的提示
+  ///
+  /// In en, this message translates to:
+  /// **'No solution found — try undo or reset'**
+  String get parkingNoSolution;
+
+  /// 停车死局弹窗标题
+  ///
+  /// In en, this message translates to:
+  /// **'No moves left'**
+  String get parkingNoMovesTitle;
+
+  /// 停车死局弹窗正文
+  ///
+  /// In en, this message translates to:
+  /// **'This one is stuck — three ways out:'**
+  String get parkingNoMovesBody;
+
+  /// 死局弹窗：打开道具栏
+  ///
+  /// In en, this message translates to:
+  /// **'Use an item'**
+  String get parkingUseItem;
+
+  /// 停车暂停弹窗标题
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get parkingPausedTitle;
+
+  /// 停车暂停弹窗副标题
+  ///
+  /// In en, this message translates to:
+  /// **'No rush, think about your next move'**
+  String get parkingPausedTip;
+
+  /// 停车重开确认弹窗标题
+  ///
+  /// In en, this message translates to:
+  /// **'Restart this level?'**
+  String get parkingRestartTitle;
+
+  /// 停车重开确认弹窗正文
+  ///
+  /// In en, this message translates to:
+  /// **'Moves and marks will be wiped.'**
+  String get parkingRestartBody;
+
+  /// 停车通关标题
+  ///
+  /// In en, this message translates to:
+  /// **'Parked!'**
+  String get parkingWin;
+
+  /// 停车失败标题
+  ///
+  /// In en, this message translates to:
+  /// **'Stuck this round'**
+  String get parkingStuck;
+
+  /// 停车失败时的引导文案
+  ///
+  /// In en, this message translates to:
+  /// **'No moves left · undo a step or try a new angle'**
+  String get parkingDeadEndHint;
+
+  /// 停车结算：金币奖励行
+  ///
+  /// In en, this message translates to:
+  /// **'+{reward} 🪙'**
+  String parkingCoinLine(int reward);
+
+  /// 停车结算：图鉴首次点亮奖励行
+  ///
+  /// In en, this message translates to:
+  /// **'📖 Collection lit up +{reward} 🪙'**
+  String parkingCollectionLine(int reward);
+
+  /// 停车每日挑战的连胜奖励行
+  ///
+  /// In en, this message translates to:
+  /// **'🔥 Streak +{reward} 🪙'**
+  String parkingStreakLine(int reward);
+
+  /// 挑战关失败时的高亮广告按钮
+  ///
+  /// In en, this message translates to:
+  /// **'🎬 Challenge boost · watch an ad to step back 3'**
+  String get parkingAdReviveHint;
+
+  /// 普通关失败时的广告撤销按钮
+  ///
+  /// In en, this message translates to:
+  /// **'Watch an ad to step back 3'**
+  String get parkingAdUndoPlain;
+
+  /// 停车玩法说明第一行
+  ///
+  /// In en, this message translates to:
+  /// **'Goal: drive the {icon} {name} into the dashed spot'**
+  String parkingHelpGoal(String icon, String name);
+
+  /// 停车玩法说明：幽灵车提示
+  ///
+  /// In en, this message translates to:
+  /// **'(The see-through twin sitting there is your car)'**
+  String get parkingHelpGhost;
+
+  /// 停车玩法说明：选中
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a car to select it (gold outline)'**
+  String get parkingHelpTap;
+
+  /// 停车玩法说明：滑行
+  ///
+  /// In en, this message translates to:
+  /// **'Tap an empty cell or the spot — it slides straight over'**
+  String get parkingHelpSlide;
+
+  /// 停车玩法说明：阻挡
+  ///
+  /// In en, this message translates to:
+  /// **'Blocks 🧱 and other cars stop it'**
+  String get parkingHelpBlocked;
+
+  /// 停车玩法说明：挪车
+  ///
+  /// In en, this message translates to:
+  /// **'Other cars are in the way — slide them aside'**
+  String get parkingHelpMoveOthers;
+
+  /// 停车玩法说明：长车
+  ///
+  /// In en, this message translates to:
+  /// **'Long cars only slide along their own axis'**
+  String get parkingHelpLongCar;
+
+  /// 停车玩法说明：试错成本
+  ///
+  /// In en, this message translates to:
+  /// **'Undo or reset anytime — no fear of mistakes'**
+  String get parkingHelpSafety;
+
+  /// 停车道具条：气球（合成侧叫「气球飞越」，这里受按钮宽度限制用短名）
+  ///
+  /// In en, this message translates to:
+  /// **'Balloon'**
+  String get parkingItemBalloon;
+
+  /// 停车道具条：双倍移动（合成侧叫「双倍移动」，这里用短名）
+  ///
+  /// In en, this message translates to:
+  /// **'Double'**
+  String get parkingItemDouble;
 }
 
 class _AppLocalizationsDelegate

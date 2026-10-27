@@ -72,7 +72,11 @@ class ParkingLevelGenerator {
   /// 心跳周期（关）。与合成模式（5）**故意不同**，见类注释。
   static const int rhythmPeriod = 6;
 
-  /// 相位名（0..5），供 UI 显示难度标记。
+  /// 相位名（0..5）的中文原文。
+  ///
+  /// 导出进 `shared/levels` 的 `phases` 字段，界面一律走
+  /// [LevelRhythm.displayNameOf]（按一轮内位置映射，见 level_rhythm.dart）。
+  // i18n-data-block
   static const List<String> phaseNames = [
     '轻松',
     '顺手',
@@ -81,6 +85,7 @@ class ParkingLevelGenerator {
     '硬仗',
     '尖峰',
   ];
+  // i18n-data-end
 
   /// 各相位相对基线的步数倍率。
   ///
@@ -272,7 +277,7 @@ class ParkingLevelGenerator {
 
     final lvl = ParkingLevel(
       id: id,
-      name: '停车 #$id',
+      name: '停车 #$id', // i18n-data
       rows: size,
       cols: size,
       grid: built.board.grid,
@@ -423,7 +428,7 @@ class ParkingLevelGenerator {
     ];
     return ParkingLevel(
       id: id,
-      name: '停车 #$id',
+      name: '停车 #$id', // i18n-data
       rows: size,
       cols: size,
       grid: grid,

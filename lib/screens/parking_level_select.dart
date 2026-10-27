@@ -3,6 +3,7 @@ import 'package:flutter/scheduler.dart';
 
 import '../game/audio_feedback.dart';
 import '../game/parking_daily_challenge.dart';
+import '../l10n/l10n.dart';
 import '../models/parking_level.dart';
 import '../save/save_repository.dart';
 import '../services/level_progression.dart';
@@ -245,6 +246,7 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = L10n.value;
     final total = _levelIds.length;
     final cleared =
         _levelIds.where((id) => (widget.data.parkingBestStars[id] ?? 0) > 0).length;
@@ -255,10 +257,10 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
           child: Column(
             children: [
               CandyAppBar(
-                title: '停车模式',
+                title: l.parkingMode,
                 subtitle: cleared == 0
-                    ? '把车轻轻停进格子就好，别有负担'
-                    : '已停稳 $cleared/$total 关 · 越停越顺手',
+                    ? l.parkingSelectSubEmpty
+                    : l.parkingSelectProgress(cleared, total),
                 accent: AppColors.mint,
                 onBack: () => Navigator.of(context).pop(),
                 actions: [
@@ -301,6 +303,7 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
   }
 
   Widget _chapterCard(ParkingChapter chapter) {
+    final l = L10n.value;
     final levels = _byChapter[chapter]!;
     final accessible = _chapterAccessible(chapter);
     final cleared =
@@ -391,9 +394,9 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                                     .withValues(alpha: accessible ? 0.16 : 0.08),
                                 borderRadius: BorderRadius.circular(7),
                               ),
-                              child: const Text(
-                                '👹 魔王章',
-                                style: TextStyle(
+                              child: Text(
+                                l.parkingDemonBadge,
+                                style: const TextStyle(
                                   color: AppColors.coralDeep,
                                   fontSize: 8.5,
                                   fontWeight: FontWeight.w800,
@@ -406,7 +409,17 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                       const SizedBox(height: 2),
                       Text(
                         accessible
-                            ? '${LevelProgression.stageName(LevelProgression.stageOf(LevelProgression.parkingChapterIndex(chapter.startId)))}阶段 · ${chapter.subtitle} · 已通关 $cleared/${levels.length}'
+                            ? l.parkingChapterMeta(
+                                LevelProgression.displayStageName(
+                                  LevelProgression.stageOf(
+                                    LevelProgression.parkingChapterIndex(
+                                        chapter.startId),
+                                  ),
+                                ),
+                                chapter.subtitle,
+                                cleared,
+                                levels.length,
+                              )
                             : ParkingChapters.lockReason(chapter),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -641,6 +654,7 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
   }
 
   Widget _buildDailyChallengeCard() {
+    final l = L10n.value;
     final cleared = widget.data.dailyClearedDate == ParkingDailyChallenge.todayKey;
     final streak = widget.data.dailyStreak;
     final level = ParkingDailyChallenge.today();
@@ -677,18 +691,23 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('每日停车挑战',
-                    style: TextStyle(
+                Text(l.parkingDailyTitle,
+                    style: const TextStyle(
                         color: AppColors.ink1,
                         fontWeight: FontWeight.w900,
                         fontSize: 16)),
                 const SizedBox(height: 3),
                 Text(
                   cleared
-                      ? '今天已经停好啦${streak > 0 ? ' · 连续 $streak 天' : ''}'
+                      ? (streak > 0
+                          ? l.parkingDailyDone + l.parkingDailyStreakSuffix(streak)
+                          : l.parkingDailyDone)
                       : streak >= 2
-                          ? '连续 $streak 天 · 完成领 +${ParkingDailyChallenge.reward + ParkingDailyChallenge.streakBonus(streak)} 🪙'
-                          : '今天的一局，完成领 +${ParkingDailyChallenge.reward} 🪙',
+                          ? l.parkingDailyStreakReward(streak,
+                              ParkingDailyChallenge.reward +
+                                  ParkingDailyChallenge.streakBonus(streak))
+                          : l.parkingDailyTodayReward(
+                              ParkingDailyChallenge.reward),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -701,10 +720,10 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
           ),
           const SizedBox(width: 8),
           if (cleared)
-            SoftChip(label: '已完成', icon: Icons.check_circle, color: AppColors.mint, solid: true)
+            SoftChip(label: l.parkingDoneChip, icon: Icons.check_circle, color: AppColors.mint, solid: true)
           else
             CandyButton(
-              label: '停车去',
+              label: l.parkingGo,
               icon: Icons.play_arrow_rounded,
               size: CandyButtonSize.small,
               dense: true,

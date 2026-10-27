@@ -2338,4 +2338,377 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get phasePeak => 'Peak';
+
+  @override
+  String get park01Title => 'Bike Blocks';
+
+  @override
+  String get park01Sub => 'First ride — slow and steady';
+
+  @override
+  String get park02Title => 'Back Alleys';
+
+  @override
+  String get park02Sub => 'Squeeze through the narrow lanes';
+
+  @override
+  String get park03Title => 'Downtown';
+
+  @override
+  String get park03Sub => 'The city centre, where traffic thickens';
+
+  @override
+  String get park04Title => 'Taxi Hotspot';
+
+  @override
+  String get park04Sub => 'Taxis waiting on every corner';
+
+  @override
+  String get park05Title => 'Bus Terminal';
+
+  @override
+  String get park05Sub => 'Even the big rigs need a spot';
+
+  @override
+  String get park06Title => 'Freight Line';
+
+  @override
+  String get park06Sub => 'The heavy-haul test';
+
+  @override
+  String get park07Title => 'Rail Yard';
+
+  @override
+  String get park07Sub => 'The rhythm of a train pulling in';
+
+  @override
+  String get park08Title => 'Launch Pad';
+
+  @override
+  String get park08Sub => 'The last park before the countdown';
+
+  @override
+  String get park09Title => 'Ferry Pier';
+
+  @override
+  String get park09Sub => 'Ferries weaving along the pier';
+
+  @override
+  String get park10Title => 'Metro Grid';
+
+  @override
+  String get park10Sub => 'Dispatch work underground';
+
+  @override
+  String get park11Title => 'Airport Runway';
+
+  @override
+  String get park11Sub => 'Before the climb to the clouds';
+
+  @override
+  String get park12Title => 'Air Base';
+
+  @override
+  String get park12Sub => 'Precision parking for fighters';
+
+  @override
+  String get park13Title => 'Space Centre';
+
+  @override
+  String get park13Sub => 'The corridor to space';
+
+  @override
+  String get park14Title => 'Starport Freight';
+
+  @override
+  String get park14Sub => 'Interstellar courier routes';
+
+  @override
+  String get park15Title => 'Maglev Corridor';
+
+  @override
+  String get park15Sub => 'Where levitating trains dock';
+
+  @override
+  String get park16Title => 'Orbital Station';
+
+  @override
+  String get park16Sub => 'Rendezvous in orbit';
+
+  @override
+  String get park17Title => 'Comet Orbit';
+
+  @override
+  String get park17Sub => 'Chasing a comet tail';
+
+  @override
+  String get park18Title => 'Sonic Tube';
+
+  @override
+  String get park18Sub => 'A thousand kilometres in a vacuum tube';
+
+  @override
+  String get park19Title => 'Sky Glide';
+
+  @override
+  String get park19Sub => 'Landing without an engine';
+
+  @override
+  String get park20Title => 'Cruiser Formation';
+
+  @override
+  String get park20Sub => 'Forming up the fleet';
+
+  @override
+  String get park21Title => 'Mech Assembly';
+
+  @override
+  String get park21Sub => 'Steel arms sliding home';
+
+  @override
+  String get park22Title => 'Anti-Gravity Zone';
+
+  @override
+  String get park22Sub => 'The ultimate parking master';
+
+  @override
+  String get stage01 => 'Set Sail';
+
+  @override
+  String get stage02 => 'Charge Up';
+
+  @override
+  String get stage03 => 'Push On';
+
+  @override
+  String get stage04 => 'Mastery';
+
+  @override
+  String get stage05 => 'Grandmaster';
+
+  @override
+  String get stage06 => 'Legend';
+
+  @override
+  String get stage07 => 'Apex';
+
+  @override
+  String get parkingMode => 'Parking Mode';
+
+  @override
+  String get parkingSelectSubEmpty =>
+      'Ease every car into its spot — no pressure';
+
+  @override
+  String parkingSelectProgress(int cleared, int total) {
+    return '$cleared/$total parked · smoother every time';
+  }
+
+  @override
+  String get parkingDemonBadge => '👹 Demon';
+
+  @override
+  String parkingChapterMeta(
+    String stage,
+    String subtitle,
+    int done,
+    int total,
+  ) {
+    return '$stage · $subtitle · $done/$total cleared';
+  }
+
+  @override
+  String parkingLockReason(String icon, String name) {
+    return 'Collect $icon $name in Merge to unlock';
+  }
+
+  @override
+  String get parkingDailyTitle => 'Daily Parking Challenge';
+
+  @override
+  String get parkingDailyDone => 'Parked for today';
+
+  @override
+  String parkingDailyStreakSuffix(int streak) {
+    return ' · $streak-day streak';
+  }
+
+  @override
+  String parkingDailyStreakReward(int streak, int reward) {
+    return '$streak-day streak · finish for +$reward 🪙';
+  }
+
+  @override
+  String parkingDailyTodayReward(int reward) {
+    return 'One run today · finish for +$reward 🪙';
+  }
+
+  @override
+  String get parkingGo => 'Park now';
+
+  @override
+  String get parkingDoneChip => 'Done';
+
+  @override
+  String get reset => 'Reset';
+
+  @override
+  String get parkingMark => 'Mark';
+
+  @override
+  String parkingAdLeft(String base, int count) {
+    return '$base\n$count left today';
+  }
+
+  @override
+  String parkingStats(int moves, int seconds) {
+    return '$moves moves · ${seconds}s';
+  }
+
+  @override
+  String parkingLevelHeader(int id) {
+    return '🚗 Parking #$id';
+  }
+
+  @override
+  String get parkingDailyHeader => '🚗 Daily';
+
+  @override
+  String parkingMinMoves(int n) {
+    return '$n moves min';
+  }
+
+  @override
+  String get parkingChallengeChip => '🎬 Challenge';
+
+  @override
+  String get parkingSidewaysOnly => '↔️ Sideways cars only slide left or right';
+
+  @override
+  String get parkingUprightOnly => '↕️ Upright cars only slide up or down';
+
+  @override
+  String get parkingBlocked => '🚧 Something is in the way';
+
+  @override
+  String get parkingNothingToUndo => 'Nothing to undo';
+
+  @override
+  String parkingUndoCardApplied(int n) {
+    return '↩️ Undo card · back $n moves';
+  }
+
+  @override
+  String parkingAdUndoApplied(int n) {
+    return '🎬 Ad undo · back $n moves';
+  }
+
+  @override
+  String get parkingNoUndoCards => '🧯 Out of undo cards';
+
+  @override
+  String parkingUndoSteps(int n) {
+    return 'Undo $n moves';
+  }
+
+  @override
+  String get parkingUndoAdBody =>
+      'Watch an ad to step back 3 moves right away.';
+
+  @override
+  String get parkingHintTitle => '💡 Get a hint';
+
+  @override
+  String get parkingHintAdBody => 'Watch an ad to reveal the best next move.';
+
+  @override
+  String get parkingNoSolution => 'No solution found — try undo or reset';
+
+  @override
+  String get parkingNoMovesTitle => 'No moves left';
+
+  @override
+  String get parkingNoMovesBody => 'This one is stuck — three ways out:';
+
+  @override
+  String get parkingUseItem => 'Use an item';
+
+  @override
+  String get parkingPausedTitle => 'Paused';
+
+  @override
+  String get parkingPausedTip => 'No rush, think about your next move';
+
+  @override
+  String get parkingRestartTitle => 'Restart this level?';
+
+  @override
+  String get parkingRestartBody => 'Moves and marks will be wiped.';
+
+  @override
+  String get parkingWin => 'Parked!';
+
+  @override
+  String get parkingStuck => 'Stuck this round';
+
+  @override
+  String get parkingDeadEndHint =>
+      'No moves left · undo a step or try a new angle';
+
+  @override
+  String parkingCoinLine(int reward) {
+    return '+$reward 🪙';
+  }
+
+  @override
+  String parkingCollectionLine(int reward) {
+    return '📖 Collection lit up +$reward 🪙';
+  }
+
+  @override
+  String parkingStreakLine(int reward) {
+    return '🔥 Streak +$reward 🪙';
+  }
+
+  @override
+  String get parkingAdReviveHint =>
+      '🎬 Challenge boost · watch an ad to step back 3';
+
+  @override
+  String get parkingAdUndoPlain => 'Watch an ad to step back 3';
+
+  @override
+  String parkingHelpGoal(String icon, String name) {
+    return 'Goal: drive the $icon $name into the dashed spot';
+  }
+
+  @override
+  String get parkingHelpGhost =>
+      '(The see-through twin sitting there is your car)';
+
+  @override
+  String get parkingHelpTap => 'Tap a car to select it (gold outline)';
+
+  @override
+  String get parkingHelpSlide =>
+      'Tap an empty cell or the spot — it slides straight over';
+
+  @override
+  String get parkingHelpBlocked => 'Blocks 🧱 and other cars stop it';
+
+  @override
+  String get parkingHelpMoveOthers =>
+      'Other cars are in the way — slide them aside';
+
+  @override
+  String get parkingHelpLongCar => 'Long cars only slide along their own axis';
+
+  @override
+  String get parkingHelpSafety => 'Undo or reset anytime — no fear of mistakes';
+
+  @override
+  String get parkingItemBalloon => 'Balloon';
+
+  @override
+  String get parkingItemDouble => 'Double';
 }

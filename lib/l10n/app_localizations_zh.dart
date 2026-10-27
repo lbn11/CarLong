@@ -2306,4 +2306,370 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get phasePeak => '尖峰';
+
+  @override
+  String get park01Title => '单车街区';
+
+  @override
+  String get park01Sub => '新手上路，稳稳停好';
+
+  @override
+  String get park02Title => '街头巷尾';
+
+  @override
+  String get park02Sub => '小巷穿梭，见缝插针';
+
+  @override
+  String get park03Title => '城市街区';
+
+  @override
+  String get park03Sub => '车流渐密的市中心';
+
+  @override
+  String get park04Title => '出租热点';
+
+  @override
+  String get park04Sub => '随时待命的出租车';
+
+  @override
+  String get park05Title => '公交枢纽';
+
+  @override
+  String get park05Sub => '大块头也要好停车';
+
+  @override
+  String get park06Title => '货运干线';
+
+  @override
+  String get park06Sub => '重卡物流的考验';
+
+  @override
+  String get park07Title => '铁轨编组';
+
+  @override
+  String get park07Sub => '列车进站的节奏';
+
+  @override
+  String get park08Title => '发射台';
+
+  @override
+  String get park08Sub => '倒计时前的最后停车';
+
+  @override
+  String get park09Title => '轮渡码头';
+
+  @override
+  String get park09Sub => '码头边的来回穿梭';
+
+  @override
+  String get park10Title => '地铁网络';
+
+  @override
+  String get park10Sub => '地下世界的调度';
+
+  @override
+  String get park11Title => '机场跑道';
+
+  @override
+  String get park11Sub => '冲向云端之前';
+
+  @override
+  String get park12Title => '空军基地';
+
+  @override
+  String get park12Sub => '战机的精准停放';
+
+  @override
+  String get park13Title => '航天中心';
+
+  @override
+  String get park13Sub => '通往太空的走廊';
+
+  @override
+  String get park14Title => '星港货运';
+
+  @override
+  String get park14Sub => '跨星际的快递航线';
+
+  @override
+  String get park15Title => '磁浮走廊';
+
+  @override
+  String get park15Sub => '悬浮列车的停靠';
+
+  @override
+  String get park16Title => '空间站';
+
+  @override
+  String get park16Sub => '轨道上的会合';
+
+  @override
+  String get park17Title => '彗星轨道';
+
+  @override
+  String get park17Sub => '追逐流星之尾';
+
+  @override
+  String get park18Title => '音速管道';
+
+  @override
+  String get park18Sub => '真空管道里的一千公里';
+
+  @override
+  String get park19Title => '浮空滑翔';
+
+  @override
+  String get park19Sub => '没有引擎的降落';
+
+  @override
+  String get park20Title => '巡洋编队';
+
+  @override
+  String get park20Sub => '星际舰队的列队';
+
+  @override
+  String get park21Title => '巨械装配厂';
+
+  @override
+  String get park21Sub => '钢铁巨臂的归位';
+
+  @override
+  String get park22Title => '反重力区';
+
+  @override
+  String get park22Sub => '终极泊车大师';
+
+  @override
+  String get stage01 => '启航';
+
+  @override
+  String get stage02 => '蓄力';
+
+  @override
+  String get stage03 => '进击';
+
+  @override
+  String get stage04 => '精通';
+
+  @override
+  String get stage05 => '大师';
+
+  @override
+  String get stage06 => '传奇';
+
+  @override
+  String get stage07 => '巅峰';
+
+  @override
+  String get parkingMode => '停车模式';
+
+  @override
+  String get parkingSelectSubEmpty => '把车轻轻停进格子就好，别有负担';
+
+  @override
+  String parkingSelectProgress(int cleared, int total) {
+    return '已停稳 $cleared/$total 关 · 越停越顺手';
+  }
+
+  @override
+  String get parkingDemonBadge => '👹 魔王章';
+
+  @override
+  String parkingChapterMeta(
+    String stage,
+    String subtitle,
+    int done,
+    int total,
+  ) {
+    return '$stage阶段 · $subtitle · 已通关 $done/$total';
+  }
+
+  @override
+  String parkingLockReason(String icon, String name) {
+    return '在合成中收集 $icon $name 解锁';
+  }
+
+  @override
+  String get parkingDailyTitle => '每日停车挑战';
+
+  @override
+  String get parkingDailyDone => '今天已经停好啦';
+
+  @override
+  String parkingDailyStreakSuffix(int streak) {
+    return ' · 连续 $streak 天';
+  }
+
+  @override
+  String parkingDailyStreakReward(int streak, int reward) {
+    return '连续 $streak 天 · 完成领 +$reward 🪙';
+  }
+
+  @override
+  String parkingDailyTodayReward(int reward) {
+    return '今天的一局，完成领 +$reward 🪙';
+  }
+
+  @override
+  String get parkingGo => '停车去';
+
+  @override
+  String get parkingDoneChip => '已完成';
+
+  @override
+  String get reset => '重置';
+
+  @override
+  String get parkingMark => '标记';
+
+  @override
+  String parkingAdLeft(String base, int count) {
+    return '$base\n今日还剩 $count 次';
+  }
+
+  @override
+  String parkingStats(int moves, int seconds) {
+    return '步数 $moves · 用时 ${seconds}s';
+  }
+
+  @override
+  String parkingLevelHeader(int id) {
+    return '🚗 停车 #$id';
+  }
+
+  @override
+  String get parkingDailyHeader => '🚗 每日挑战';
+
+  @override
+  String parkingMinMoves(int n) {
+    return '$n 步起';
+  }
+
+  @override
+  String get parkingChallengeChip => '🎬 挑战关';
+
+  @override
+  String get parkingSidewaysOnly => '↔️ 横车只能左右滑';
+
+  @override
+  String get parkingUprightOnly => '↕️ 竖车只能上下滑';
+
+  @override
+  String get parkingBlocked => '🚧 前方被挡住了';
+
+  @override
+  String get parkingNothingToUndo => '没有可撤销的操作';
+
+  @override
+  String parkingUndoCardApplied(int n) {
+    return '↩️ 撤销卡 · 回退 $n 步';
+  }
+
+  @override
+  String parkingAdUndoApplied(int n) {
+    return '🎬 广告撤销 · 回退 $n 步';
+  }
+
+  @override
+  String get parkingNoUndoCards => '🧯 撤销卡不足';
+
+  @override
+  String parkingUndoSteps(int n) {
+    return '撤销 $n 步';
+  }
+
+  @override
+  String get parkingUndoAdBody => '看一条广告，立即回退 3 步。';
+
+  @override
+  String get parkingHintTitle => '💡 获取提示';
+
+  @override
+  String get parkingHintAdBody => '看一条广告，解锁下一步最优走法。';
+
+  @override
+  String get parkingNoSolution => '暂时找不到解法，试试撤销或重置';
+
+  @override
+  String get parkingNoMovesTitle => '无车可动';
+
+  @override
+  String get parkingNoMovesBody => '这局卡住了，给你三条路：';
+
+  @override
+  String get parkingUseItem => '使用道具';
+
+  @override
+  String get parkingPausedTitle => '暂停中';
+
+  @override
+  String get parkingPausedTip => '不急，慢慢想下一步';
+
+  @override
+  String get parkingRestartTitle => '重新开始本关？';
+
+  @override
+  String get parkingRestartBody => '当前步数与标记会全部清空。';
+
+  @override
+  String get parkingWin => '停好啦！';
+
+  @override
+  String get parkingStuck => '这一局卡住了';
+
+  @override
+  String get parkingDeadEndHint => '没有可走的移动了 · 撤销一步或换个思路试试';
+
+  @override
+  String parkingCoinLine(int reward) {
+    return '金币 +$reward 🪙';
+  }
+
+  @override
+  String parkingCollectionLine(int reward) {
+    return '📖 图鉴点亮 +$reward 🪙';
+  }
+
+  @override
+  String parkingStreakLine(int reward) {
+    return '🔥 连续 +$reward 🪙';
+  }
+
+  @override
+  String get parkingAdReviveHint => '🎬 挑战支援 · 看广告回退 3 步';
+
+  @override
+  String get parkingAdUndoPlain => '看广告回退 3 步';
+
+  @override
+  String parkingHelpGoal(String icon, String name) {
+    return '目标：把 $icon $name 开进虚线车位';
+  }
+
+  @override
+  String get parkingHelpGhost => '（车位上停着同款半透明\"幽灵车\"，就是它）';
+
+  @override
+  String get parkingHelpTap => '点击一辆车选中（金色边框）';
+
+  @override
+  String get parkingHelpSlide => '点击空地或车位 — 直线滑行过去';
+
+  @override
+  String get parkingHelpBlocked => '碰到 🧱 障碍和其他车会停下';
+
+  @override
+  String get parkingHelpMoveOthers => '其他车是障碍，拖开它们让路';
+
+  @override
+  String get parkingHelpLongCar => '横/竖长车只能沿车身方向滑动';
+
+  @override
+  String get parkingHelpSafety => '可以撤销、重置，别怕试错';
+
+  @override
+  String get parkingItemBalloon => '气球';
+
+  @override
+  String get parkingItemDouble => '双倍';
 }

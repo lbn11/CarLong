@@ -10,6 +10,7 @@ import '../game/game_config.dart';
 import '../game/music_player.dart';
 import '../game/parking_daily_challenge.dart';
 import '../game/parking_game.dart';
+import '../l10n/l10n.dart';
 import '../models/parking_level.dart';
 import '../models/vehicle.dart';
 import '../save/save_repository.dart';
@@ -128,8 +129,8 @@ class _ParkingScreenState extends State<ParkingScreen>
   String _adNote(AdPlacement placement, String base) {
     final left = AdService.remainingToday(placement, widget.data);
     if (left == null) return base;
-    if (left <= 0) return '今天的广告次数已经用完啦，明天再来～';
-    return '$base\n今日还剩 $left 次';
+    if (left <= 0) return L10n.value.adUsedUp;
+    return L10n.value.parkingAdLeft(base, left);
   }
 
   @override
@@ -187,30 +188,31 @@ class _ParkingScreenState extends State<ParkingScreen>
 
   /// 死局弹窗：撤销 3 步 / 道具提示 / 重新开始。
   void _showDeadlockDialog() {
+    final l = L10n.value;
     // 死局弹窗打开时停表（限时关读选项不该被扣时间）。
     _game.pauseTimer();
     CandyChoiceDialog.show<String>(
       context,
       barrierDismissible: false,
       emoji: '🚧',
-      title: '无车可动',
-      message: '这局卡住了，给你三条路：',
+      title: l.parkingNoMovesTitle,
+      message: l.parkingNoMovesBody,
       accent: AppColors.sun,
       options: <CandyChoice<String>>[
         if (_game.canUndo)
-          const CandyChoice<String>(
-            label: '撤销 3 步',
+          CandyChoice<String>(
+            label: l.parkingUndoSteps(3),
             value: 'undo',
             icon: Icons.undo_rounded,
             highlight: true,
           ),
-        const CandyChoice<String>(
-          label: '使用道具',
+        CandyChoice<String>(
+          label: l.parkingUseItem,
           value: 'items',
           icon: Icons.construction_rounded,
         ),
-        const CandyChoice<String>(
-          label: '重新开始',
+        CandyChoice<String>(
+          label: l.restartRun,
           value: 'restart',
           icon: Icons.refresh_rounded,
         ),
@@ -319,10 +321,10 @@ class _ParkingScreenState extends State<ParkingScreen>
                     col != v.col));
         if (wrongAxis) {
           _showToast(v.orientation == ParkingOrientation.horizontal
-              ? '↔️ 横车只能左右滑'
-              : '↕️ 竖车只能上下滑');
+              ? L10n.value.parkingSidewaysOnly
+              : L10n.value.parkingUprightOnly);
         } else {
-          _showToast('🚧 前方被挡住了');
+          _showToast(L10n.value.parkingBlocked);
         }
         // 滑不动的失败反馈：error 音 + 拒绝触感，配合 toast 明确告知。
         _audio.play(Sfx.error);
@@ -359,11 +361,15 @@ class _ParkingScreenState extends State<ParkingScreen>
   /// 每日挑战连续通关额外奖励（>0 时显示在结果卡片）。
   int _dailyStreakBonus = 0;
 
-  static const Map<String, String> _boosterLabels = {
-    'time': '🕐 加时卡',
-    'cards': '📦 补卡卡',
-    'double': '🎲 双倍卡',
-  };
+  /// 3 星奖励道具卡的显示名（与合成模式的道具同名，共用 arb 词条）。
+  static String _boosterLabel(String key) {
+    final l = L10n.value;
+    return switch (key) {
+      'time' => l.boosterTimeCard,
+      'cards' => l.boosterExtraCards,
+      _ => l.boosterDoubleCoins,
+    };
+  }
 
   void _settleWin() {
     if (_settled) return;
@@ -456,7 +462,7 @@ class _ParkingScreenState extends State<ParkingScreen>
   void _useUndo() {
     if (_game.hasWon || _game.hasLost) return;
     if (!_game.canUndo) {
-      _showToast('没有可撤销的操作');
+      _showToast(L10n.value.parkingNothingToUndo);
       return;
     }
     _activeItem = null;
@@ -468,19 +474,20 @@ class _ParkingScreenState extends State<ParkingScreen>
       final n = _game.undoMoves(3);
       _analytics.toolUse('undo', 0, widget.data.coins);
       _audio.play(Sfx.undo);
-      _showToast('↩️ 撤销卡 · 回退 $n 步');
+      _showToast(L10n.value.parkingUndoCardApplied(n));
       return;
     }
     // 无撤销卡：看广告回退 3 步（模拟广告，接 SDK 后替换为真实播放）。
+    final l = L10n.value;
     final adLeft = AdService.remainingToday(AdPlacement.parkingUndo, widget.data);
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surfaceLight,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('🧯 撤销卡不足', textAlign: TextAlign.center),
+        title: Text(l.parkingNoUndoCards, textAlign: TextAlign.center),
         content: Text(
-          _adNote(AdPlacement.parkingUndo, '看一条广告，立即回退 3 步。'),
+          _adNote(AdPlacement.parkingUndo, l.parkingUndoAdBody),
           textAlign: TextAlign.center,
           style: const TextStyle(
               color: AppColors.ink2, fontSize: 14, height: 1.4),
@@ -488,7 +495,7 @@ class _ParkingScreenState extends State<ParkingScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('取消'),
+            child: Text(L10n.value.cancel),
           ),
           FilledButton.icon(
             onPressed: adLeft != null && adLeft <= 0
@@ -501,10 +508,10 @@ class _ParkingScreenState extends State<ParkingScreen>
                     _analytics.toolUse('ad_undo', 0, widget.data.coins);
                     final n = _game.undoMoves(3);
                     _audio.play(Sfx.undo);
-                    _showToast('🎬 广告撤销 · 回退 $n 步');
+                    _showToast(L10n.value.parkingAdUndoApplied(n));
                   },
             icon: const Icon(Icons.play_circle_fill),
-            label: const Text('🎬 看广告'),
+            label: Text('🎬 ${L10n.value.watchAd}'),
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.mint,
               foregroundColor: Colors.white,
@@ -518,15 +525,16 @@ class _ParkingScreenState extends State<ParkingScreen>
   /// 提示：每次都需看广告解锁。
   void _requestHint() {
     if (_game.hasWon || _game.hasLost) return;
+    final l = L10n.value;
     final adLeft = AdService.remainingToday(AdPlacement.parkingHint, widget.data);
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surfaceLight,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('💡 获取提示', textAlign: TextAlign.center),
+        title: Text(l.parkingHintTitle, textAlign: TextAlign.center),
         content: Text(
-          _adNote(AdPlacement.parkingHint, '看一条广告，解锁下一步最优走法。'),
+          _adNote(AdPlacement.parkingHint, l.parkingHintAdBody),
           textAlign: TextAlign.center,
           style: const TextStyle(
               color: AppColors.ink2, fontSize: 14, height: 1.4),
@@ -534,7 +542,7 @@ class _ParkingScreenState extends State<ParkingScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('取消'),
+            child: Text(L10n.value.cancel),
           ),
           FilledButton.icon(
             onPressed: adLeft != null && adLeft <= 0
@@ -547,7 +555,7 @@ class _ParkingScreenState extends State<ParkingScreen>
                     _applyHint();
                   },
             icon: const Icon(Icons.play_circle_fill),
-            label: const Text('🎬 看广告'),
+            label: Text('🎬 ${L10n.value.watchAd}'),
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.accent,
               foregroundColor: Colors.white,
@@ -580,39 +588,41 @@ class _ParkingScreenState extends State<ParkingScreen>
       _audio.play(Sfx.error);
       unawaited(_audio.reject());
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('暂时找不到解法，试试撤销或重置'),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text(L10n.value.parkingNoSolution),
+          duration: const Duration(seconds: 2),
         ),
       );
     }
   }
 
   void _showHelpDialog() {
+    final l = L10n.value;
     // 帮助弹窗打开时停表（用户在读说明，不该被扣时间）。
     _game.pauseTimer();
     CandyDialog.show<void>(
       context,
       emoji: '🅿️',
       color: AppColors.mint,
-      title: '停车模式',
-      confirmLabel: '知道了',
+      title: l.parkingMode,
+      confirmLabel: l.gotIt,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-              '目标：把 ${widget.level.targetTier.icon} ${widget.level.targetTier.name} 开进虚线车位',
+              l.parkingHelpGoal(widget.level.targetTier.icon,
+                  widget.level.targetTier.name),
               style: const TextStyle(
                   color: AppColors.ink1, fontWeight: FontWeight.w800)),
-          const Text('（车位上停着同款半透明"幽灵车"，就是它）',
-              style: TextStyle(color: AppColors.ink2, fontSize: 12)),
+          Text(l.parkingHelpGhost,
+              style: const TextStyle(color: AppColors.ink2, fontSize: 12)),
           const SizedBox(height: 10),
-          _helpLine('点击一辆车选中（金色边框）'),
-          _helpLine('点击空地或车位 — 直线滑行过去'),
-          _helpLine('碰到 🧱 障碍和其他车会停下'),
-          _helpLine('其他车是障碍，拖开它们让路'),
-          _helpLine('横/竖长车只能沿车身方向滑动'),
-          _helpLine('可以撤销、重置，别怕试错'),
+          _helpLine(l.parkingHelpTap),
+          _helpLine(l.parkingHelpSlide),
+          _helpLine(l.parkingHelpBlocked),
+          _helpLine(l.parkingHelpMoveOthers),
+          _helpLine(l.parkingHelpLongCar),
+          _helpLine(l.parkingHelpSafety),
         ],
       ),
     ).then((_) {
@@ -651,22 +661,23 @@ class _ParkingScreenState extends State<ParkingScreen>
   Future<void> _showPauseDialog() async {
     AudioFeedback.uiTap();
     _game.pauseTimer();
+    final l = L10n.value;
     final action = await CandyChoiceDialog.show<String>(
       context,
       emoji: '☕',
-      title: '暂停中',
-      message: '不急，慢慢想下一步',
+      title: l.parkingPausedTitle,
+      message: l.parkingPausedTip,
       accent: AppColors.grape,
       options: <CandyChoice<String>>[
-        const CandyChoice<String>(
-            label: '继续游戏',
+        CandyChoice<String>(
+            label: l.resumeGame,
             value: 'resume',
             icon: Icons.play_arrow_rounded,
             highlight: true),
-        const CandyChoice<String>(
-            label: '重新开始', value: 'restart', icon: Icons.refresh_rounded),
-        const CandyChoice<String>(
-            label: '返回主页', value: 'home', icon: Icons.home_rounded),
+        CandyChoice<String>(
+            label: l.restartRun, value: 'restart', icon: Icons.refresh_rounded),
+        CandyChoice<String>(
+            label: l.backHome, value: 'home', icon: Icons.home_rounded),
       ],
     );
     if (!mounted) return;
@@ -684,15 +695,16 @@ class _ParkingScreenState extends State<ParkingScreen>
   Future<void> _confirmReset() async {
     AudioFeedback.uiTap();
     _game.pauseTimer();
+    final l = L10n.value;
     final confirmed = await CandyDialog.show<bool>(
       context,
       emoji: '🔄',
       color: AppColors.grape,
-      title: '重新开始本关？',
-      message: '当前步数与标记会全部清空。',
-      confirmLabel: '重开',
+      title: l.parkingRestartTitle,
+      message: l.parkingRestartBody,
+      confirmLabel: l.restartRun,
       confirmValue: true,
-      cancelLabel: '取消',
+      cancelLabel: l.cancel,
       cancelValue: false,
     );
     if (!mounted) return;
@@ -710,15 +722,16 @@ class _ParkingScreenState extends State<ParkingScreen>
       return;
     }
     _game.pauseTimer();
+    final l = L10n.value;
     final quit = await CandyDialog.show<bool>(
       context,
       emoji: '🚪',
       color: AppColors.grape,
-      title: '退出本关？',
-      message: '这一局的进度会丢掉哦。',
-      confirmLabel: '继续玩',
+      title: l.exitTitle,
+      message: l.exitMessage,
+      confirmLabel: l.keepPlaying,
       confirmValue: false,
-      cancelLabel: '退出',
+      cancelLabel: l.exitRun,
       cancelValue: true,
     );
     if (!mounted) return;
@@ -799,6 +812,7 @@ class _ParkingScreenState extends State<ParkingScreen>
   /// 结算卡：胜/负共用一张糖卡，只在颜色与文案上区分。
   /// 失败不用红色警示——「这一局卡住了」比「失败」听起来更容易再来一次。
   Widget _buildResultCard(bool won, bool canNext) {
+    final l = L10n.value;
     final accent = won ? AppColors.mint : AppColors.grape;
     return Container(
       margin: const EdgeInsets.all(32),
@@ -849,7 +863,7 @@ class _ParkingScreenState extends State<ParkingScreen>
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
-                          won ? '停好啦！' : '这一局卡住了',
+                          won ? l.parkingWin : l.parkingStuck,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -872,12 +886,13 @@ class _ParkingScreenState extends State<ParkingScreen>
                   if (won)
                     _buildStarsRow()
                   else
-                    const Text('没有可走的移动了 · 撤销一步或换个思路试试',
+                    Text(l.parkingDeadEndHint,
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: AppColors.ink2, fontSize: 13)),
+                        style: const TextStyle(
+                            color: AppColors.ink2, fontSize: 13)),
                   const SizedBox(height: 10),
                   Text(
-                    '步数 ${_game.moves} · 用时 ${_game.elapsedSeconds}s',
+                    l.parkingStats(_game.moves, _game.elapsedSeconds),
                     style: const TextStyle(
                         color: AppColors.ink2,
                         fontSize: 12.5,
@@ -892,25 +907,27 @@ class _ParkingScreenState extends State<ParkingScreen>
                       alignment: WrapAlignment.center,
                       children: [
                         SoftChip(
-                          label: '金币 +$_lastReward 🪙',
+                          label: l.parkingCoinLine(_lastReward),
                           color: AppColors.sun,
                           solid: true,
                         ),
                         if (_collectionNew)
                           SoftChip(
-                            label: '📖 图鉴点亮 +$_collectionBonus 🪙',
+                            label: l.parkingCollectionLine(_collectionBonus),
                             color: AppColors.mint,
                             solid: true,
                           ),
                         if (_boosterKey != null)
                           SoftChip(
-                            label: '🎁 ${_boosterLabels[_boosterKey]!}',
+                            label: '🎁 ${_boosterLabel(_boosterKey!)}',
                             color: AppColors.grape,
                             solid: true,
                           ),
                         if (_dailyStreakBonus > 0)
                           SoftChip(
-                            label: '🔥 连续 +${ParkingDailyChallenge.reward + _dailyStreakBonus} 🪙',
+                            label: l.parkingStreakLine(
+                                ParkingDailyChallenge.reward +
+                                    _dailyStreakBonus),
                             color: AppColors.melon,
                             solid: true,
                           ),
@@ -924,8 +941,8 @@ class _ParkingScreenState extends State<ParkingScreen>
                   if (!won && _game.canUndo) ...[
                     CandyButton(
                       label: LevelProgression.isParkingAdGate(widget.level.id)
-                          ? '🎬 挑战支援 · 看广告回退 3 步'
-                          : '看广告回退 3 步',
+                          ? l.parkingAdReviveHint
+                          : l.parkingAdUndoPlain,
                       icon: Icons.play_circle_fill,
                       colors: AppTheme.gradientOf(AppColors.mint),
                       expand: true,
@@ -936,14 +953,14 @@ class _ParkingScreenState extends State<ParkingScreen>
                         _settled = false;
                         setState(() {});
                         _audio.play(Sfx.undo);
-                        _showToast('🎬 广告撤销 · 回退 $n 步');
+                        _showToast(l.parkingAdUndoApplied(n));
                       },
                     ),
                     const SizedBox(height: 9),
                   ],
                   if (canNext)
                     CandyButton(
-                      label: '下一关 ▶',
+                      label: l.nextLevelArrow,
                       icon: Icons.skip_next_rounded,
                       colors: AppTheme.gradientOf(AppColors.mint),
                       expand: true,
@@ -951,7 +968,7 @@ class _ParkingScreenState extends State<ParkingScreen>
                     )
                   else
                     CandyButton(
-                      label: won ? '再玩一次' : '重玩本关',
+                      label: won ? l.playAgain : l.retry,
                       icon: Icons.refresh_rounded,
                       colors: AppTheme.gradientOf(AppColors.coral),
                       expand: true,
@@ -959,7 +976,7 @@ class _ParkingScreenState extends State<ParkingScreen>
                     ),
                   const SizedBox(height: 9),
                   CandyButton(
-                    label: '返回',
+                    label: l.back,
                     icon: Icons.home_rounded,
                     colors: AppTheme.softGradient,
                     expand: true,
@@ -1076,6 +1093,7 @@ class _ParkingScreenState extends State<ParkingScreen>
   }
 
   Widget _buildHud() {
+    final l = L10n.value;
     return Padding(
       padding: const EdgeInsets.all(8),
       child: Row(
@@ -1095,7 +1113,10 @@ class _ParkingScreenState extends State<ParkingScreen>
               child: Row(
                 children: [
                   _buildInfoChip(
-                      '🚗 ${widget.isDaily ? '每日挑战' : widget.level.name}', AppColors.accent),
+                      widget.isDaily
+                          ? l.parkingDailyHeader
+                          : l.parkingLevelHeader(widget.level.id),
+                      AppColors.accent),
                   const SizedBox(width: 6),
                   // 常驻目标提示：把哪辆车开到车位（车型色底 + 真实车模，
                   // 与棋盘上的幽灵车位同一套视觉语言）。
@@ -1105,8 +1126,8 @@ class _ParkingScreenState extends State<ParkingScreen>
                   // 看到「尖峰」会下意识认真一点，看到「轻松」则放松点两下 ——
                   // 节奏被说破了才真正起作用。
                   _buildInfoChip(
-                    '${LevelRhythm.displayNameOf(RhythmMode.parking, _phase)} '
-                    '${widget.level.minMoves ?? 0} 步起',
+                    '${LevelRhythm.displayNameOf(RhythmMode.parking, _phase)} · '
+                    '${l.parkingMinMoves(widget.level.minMoves ?? 0)}',
                     LevelRhythm.colorOf(RhythmMode.parking, _phase),
                   ),
                   const SizedBox(width: 6),
@@ -1114,7 +1135,7 @@ class _ParkingScreenState extends State<ParkingScreen>
                   // 同时暗示「失败了有后路」——失败弹窗的看广告续命/撤销/提示
                   // 就是为它准备的降难支援。说破了，玩家才敢点进来。
                   if (LevelProgression.isParkingAdGate(widget.level.id)) ...[
-                    _buildInfoChip('🎬 挑战关', AppColors.coralDeep),
+                    _buildInfoChip(l.parkingChallengeChip, AppColors.coralDeep),
                     const SizedBox(width: 6),
                   ],
                   _buildInfoChip('👣 ${_game.moves}', AppColors.surfaceSoft),
@@ -1351,6 +1372,7 @@ class _ParkingScreenState extends State<ParkingScreen>
   }
 
   Widget _buildActionBar() {
+    final l = L10n.value;
     return Padding(
       padding: const EdgeInsets.all(8),
       child: SingleChildScrollView(
@@ -1381,9 +1403,9 @@ class _ParkingScreenState extends State<ParkingScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('🏷️', style: const TextStyle(fontSize: 16)),
+                    const Text('🏷️', style: TextStyle(fontSize: 16)),
                     Text(
-                      '标记',
+                      l.parkingMark,
                       style: TextStyle(
                         fontSize: 11,
                         color: _markMode ? const Color(0xFFFFCA28) : AppColors.ink2,
@@ -1396,21 +1418,21 @@ class _ParkingScreenState extends State<ParkingScreen>
             ),
             const SizedBox(width: 6),
             // 道具身份色与商店统一到糖果色板（原先是各自随手的 Material 原色）。
-            _buildItemButton('bomb', '💣', '炸弹', AppColors.melon),
+            _buildItemButton('bomb', '💣', l.boosterBomb, AppColors.melon),
             const SizedBox(width: 6),
-            _buildItemButton('spring', '🌀', '弹簧', AppColors.forest),
+            _buildItemButton('spring', '🌀', l.boosterSpring, AppColors.forest),
             const SizedBox(width: 6),
-            _buildItemButton('balloon', '🎈', '气球', AppColors.sky),
+            _buildItemButton('balloon', '🎈', l.parkingItemBalloon, AppColors.sky),
             const SizedBox(width: 6),
-            _buildItemButton('key', '🔑', '钥匙', AppColors.lemon),
+            _buildItemButton('key', '🔑', l.boosterKey, AppColors.lemon),
             const SizedBox(width: 6),
-            _buildItemButton('hammer', '🔨', '锤子', AppColors.cocoa),
+            _buildItemButton('hammer', '🔨', l.boosterHammer, AppColors.cocoa),
             const SizedBox(width: 6),
-            _buildItemButton('doubleMove', '↔️', '双倍', AppColors.taro),
+            _buildItemButton('doubleMove', '↔️', l.parkingItemDouble, AppColors.taro),
             const SizedBox(width: 12),
           ],
           CandyButton(
-            label: _game.canUndo ? '撤销 3 步' : '撤销',
+            label: _game.canUndo ? l.parkingUndoSteps(3) : l.undo,
             icon: Icons.undo_rounded,
             colors: AppTheme.softGradient,
             size: CandyButtonSize.small,
@@ -1419,7 +1441,7 @@ class _ParkingScreenState extends State<ParkingScreen>
           ),
           const SizedBox(width: 8),
           CandyButton(
-            label: '提示',
+            label: l.hint,
             icon: Icons.lightbulb_outlined,
             colors: AppTheme.gradientOf(AppColors.coral),
             size: CandyButtonSize.small,
@@ -1428,7 +1450,7 @@ class _ParkingScreenState extends State<ParkingScreen>
           ),
           const SizedBox(width: 8),
           CandyButton(
-            label: '重置',
+            label: l.reset,
             icon: Icons.refresh_rounded,
             colors: AppTheme.softGradient,
             size: CandyButtonSize.small,
@@ -1438,7 +1460,7 @@ class _ParkingScreenState extends State<ParkingScreen>
           if (_game.hasWon || _game.hasLost) ...[
             const SizedBox(width: 8),
             CandyButton(
-              label: '完成',
+              label: l.done,
               icon: Icons.check_rounded,
               colors: AppTheme.gradientOf(AppColors.mint),
               size: CandyButtonSize.small,

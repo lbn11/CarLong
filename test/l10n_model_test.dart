@@ -4,6 +4,8 @@ import 'package:merge_fleet/l10n/l10n.dart';
 import 'package:merge_fleet/models/achievement.dart';
 import 'package:merge_fleet/models/level.dart';
 import 'package:merge_fleet/models/vehicle.dart';
+import 'package:merge_fleet/services/level_progression.dart';
+import 'package:merge_fleet/services/parking_chapters.dart';
 
 import '../tool/export_levels.dart';
 import 'helpers/localized_app.dart';
@@ -183,6 +185,62 @@ void main() {
     }
     for (final g in AchievementGroup.values) {
       expect(g.displayLabel, g.label);
+    }
+  });
+
+  /// 停车 22 章的标题/副标题是**位置式数据**（写在章节表里），不像车型名
+  /// 那样有枚举兜底——漏一章就会在选关页露出中文，所以逐章过一遍。
+  testWidgets('英文 locale：停车 22 章标题与副标题全部英文化', (tester) async {
+    await tester.pumpWidget(
+      l10nHost(const SizedBox(), locale: const Locale('en')),
+    );
+    final cjk = RegExp(r'[\u4e00-\u9fff]');
+    expect(ParkingChapters.all.length, 22);
+    for (final c in ParkingChapters.all) {
+      expect(cjk.hasMatch(c.title), isFalse,
+          reason: '停车 L${c.startId} 章标题漏翻：${c.title}');
+      expect(cjk.hasMatch(c.subtitle), isFalse,
+          reason: '停车 L${c.startId} 章副标题漏翻：${c.subtitle}');
+      expect(cjk.hasMatch(ParkingChapters.lockReason(c)), isFalse,
+          reason: '停车 L${c.startId} 解锁提示漏翻');
+    }
+    // 首尾抽查，防止「全部映射到同一条」这种假绿。
+    expect(ParkingChapters.all.first.title, 'Bike Blocks');
+    expect(ParkingChapters.all.last.title, 'Anti-Gravity Zone');
+  });
+
+  testWidgets('中文 locale：停车章名回到 zhTitle', (tester) async {
+    await tester.pumpWidget(
+      l10nHost(const SizedBox(), locale: const Locale('zh')),
+    );
+    for (final c in ParkingChapters.all) {
+      expect(c.title, c.zhTitle, reason: '停车 L${c.startId} 中文标题与 zhTitle 不一致');
+      expect(c.subtitle, c.zhSubtitle, reason: '停车 L${c.startId} 中文副标题与 zhSubtitle 不一致');
+    }
+  });
+
+  /// 阶段名是 7 条静态表，界面读 displayStageName、落盘读 stageName。
+  testWidgets('英文 locale：7 个大阶段名全部英文化', (tester) async {
+    await tester.pumpWidget(
+      l10nHost(const SizedBox(), locale: const Locale('en')),
+    );
+    final cjk = RegExp(r'[\u4e00-\u9fff]');
+    for (var i = 0; i < LevelProgression.stageNames.length; i++) {
+      final name = LevelProgression.displayStageName(i);
+      expect(cjk.hasMatch(name), isFalse, reason: '阶段 $i 漏翻：$name');
+    }
+    expect(LevelProgression.displayStageName(0), 'Set Sail');
+    expect(LevelProgression.displayStageName(999), 'Apex');
+    // 越界必须钳到最后一段，不能 IndexError。
+    expect(LevelProgression.displayStageName(-5), 'Set Sail');
+  });
+
+  testWidgets('中文 locale：阶段名回到原文', (tester) async {
+    await tester.pumpWidget(
+      l10nHost(const SizedBox(), locale: const Locale('zh')),
+    );
+    for (var i = 0; i < LevelProgression.stageNames.length; i++) {
+      expect(LevelProgression.displayStageName(i), LevelProgression.stageName(i));
     }
   });
 }

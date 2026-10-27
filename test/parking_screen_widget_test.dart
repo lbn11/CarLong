@@ -7,6 +7,8 @@ import 'package:merge_fleet/models/parking_level.dart';
 import 'package:merge_fleet/save/save_repository.dart';
 import 'package:merge_fleet/screens/parking_screen.dart';
 
+import 'helpers/localized_app.dart';
+
 /// 构造 size×size 全 road 网格，停车位放在 (size-1, size-2)。
 List<List<ParkingCellType>> _grid(int size) {
   final g = List.generate(
@@ -40,12 +42,13 @@ void main() {
       targetTier: VehicleType.sedan,
     );
     final data = PlayerData();
-    await tester.pumpWidget(MaterialApp(
-      home: ParkingScreen(
+    await tester.pumpWidget(l10nHost(
+      ParkingScreen(
         level: level,
         data: data,
         repo: SaveRepository(),
       ),
+      locale: const Locale('zh'),
     ));
     await tester.pumpAndSettle();
     expect(find.byType(ParkingScreen), findsOneWidget);
@@ -67,12 +70,13 @@ void main() {
       targetTier: VehicleType.sedan,
     );
     final data = PlayerData();
-    await tester.pumpWidget(MaterialApp(
-      home: ParkingScreen(
+    await tester.pumpWidget(l10nHost(
+      ParkingScreen(
         level: level,
         data: data,
         repo: SaveRepository(),
       ),
+      locale: const Locale('zh'),
     ));
     await tester.pumpAndSettle();
 

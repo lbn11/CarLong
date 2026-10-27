@@ -1,3 +1,4 @@
+import '../l10n/l10n.dart';
 import '../models/level.dart';
 import 'level_data_generator.dart';
 import 'parking_chapters.dart';
@@ -101,6 +102,10 @@ class LevelProgression {
   static const int stageChapters = 3;
 
   /// 阶段名（按阶段序号，越界回退最后一个）。
+  ///
+  /// **这是落盘/稳定值**，界面请用 [displayStageName]——两个函数分开是
+  /// 因为 `shared/levels` 与测试断言都依赖这里的中文原文。
+  // i18n-data-block
   static const List<String> stageNames = [
     '启航',
     '蓄力',
@@ -110,6 +115,7 @@ class LevelProgression {
     '传奇',
     '巅峰',
   ];
+  // i18n-data-end
 
   /// 停车广告挑战关判定（章内偏移 % 5，前 15 关豁免）。
   static bool isParkingAdGate(int id) {
@@ -170,7 +176,23 @@ class LevelProgression {
   static bool isMergeDemon(int id) =>
       isDemonChapter(mergeChapterIndex(id), levelChapters.length);
 
-  /// 阶段名。
+  /// 阶段名（落盘用稳定中文，界面请用 [displayStageName]）。
   static String stageName(int stageIdx) =>
       stageNames[stageIdx.clamp(0, stageNames.length - 1)];
+
+  /// 阶段名的本地化版本（选关页章节卡副行）。拿不到文案表时回落中文。
+  static String displayStageName(int stageIdx) {
+    final i = stageIdx.clamp(0, stageNames.length - 1);
+    final l = L10n.current;
+    if (l == null) return stageNames[i];
+    return switch (i) {
+      0 => l.stage01,
+      1 => l.stage02,
+      2 => l.stage03,
+      3 => l.stage04,
+      4 => l.stage05,
+      5 => l.stage06,
+      _ => l.stage07,
+    };
+  }
 }

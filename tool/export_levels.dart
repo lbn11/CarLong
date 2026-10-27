@@ -297,8 +297,10 @@ Future<ExportResult> exportLevels({
           'tier': c.tier.id,
           'startId': c.startId,
           'endId': c.endId,
-          'title': c.title,
-          'subtitle': c.subtitle,
+          // 必须用 zhTitle/zhSubtitle（稳定原文）：title/subtitle 是
+          // 本地化 getter，用它们会让导出结果随系统语言变化。
+          'title': c.zhTitle,
+          'subtitle': c.zhSubtitle,
         },
     ],
     'phases': ParkingLevelGenerator.phaseNames,

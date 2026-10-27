@@ -1,3 +1,5 @@
+import '../l10n/l10n.dart';
+import '../l10n/parking_texts.dart';
 import '../models/vehicle.dart';
 
 /// 停车模式章节模型：按车型(VehicleType)把关卡分段，每段对应一个档位 + 主题。
@@ -12,18 +14,37 @@ class ParkingChapter {
   final VehicleType tier;
   final int startId;
   final int endId;
-  final String title;
-  final String subtitle;
+
+  /// 章节标题 / 副标题的**中文原文**。
+  ///
+  /// 与 [LevelChapter] 同一套约定：字段本身是落盘/导出用的稳定值，
+  /// 界面一律读 [title] / [subtitle] 这两个本地化 getter。
+  final String zhTitle;
+  final String zhSubtitle;
 
   const ParkingChapter(
     this.tier,
     this.startId,
     this.endId, {
-    required this.title,
-    required this.subtitle,
+    required this.zhTitle,
+    required this.zhSubtitle,
   });
 
   int get count => endId - startId + 1;
+
+  /// 界面标题。拿不到文案表（单测直接 new 模型）时回落中文原文。
+  String get title {
+    final l = L10n.current;
+    if (l == null) return zhTitle;
+    return parkingChapterTitleByStartId(l, startId) ?? zhTitle;
+  }
+
+  /// 界面副标题，回落策略同 [title]。
+  String get subtitle {
+    final l = L10n.current;
+    if (l == null) return zhSubtitle;
+    return parkingChapterSubtitleByStartId(l, startId) ?? zhSubtitle;
+  }
 }
 
 class ParkingChapters {
@@ -62,30 +83,33 @@ class ParkingChapters {
   /// 车型只决定**目标车外观 + 牌堆里车型的轮转**，棋盘几何由布局决定，
   /// 因此换车型不会改变难度结构；可解性由
   /// `test/parking_solvability_full_test.dart` 全量 1..800 把关。
+  // i18n-data-block：章节名的中文原文（界面走 title/subtitle getter，
+  // 导出与存档读 zhTitle/zhSubtitle，两者故意分开）
   static const List<ParkingChapter> all = [
-    ParkingChapter(VehicleType.bicycle, 1, 36, title: '单车街区', subtitle: '新手上路，稳稳停好'),
-    ParkingChapter(VehicleType.scooter, 37, 72, title: '街头巷尾', subtitle: '小巷穿梭，见缝插针'),
-    ParkingChapter(VehicleType.sedan, 73, 108, title: '城市街区', subtitle: '车流渐密的市中心'),
-    ParkingChapter(VehicleType.taxi, 109, 144, title: '出租热点', subtitle: '随时待命的出租车'),
-    ParkingChapter(VehicleType.bus, 145, 180, title: '公交枢纽', subtitle: '大块头也要好停车'),
-    ParkingChapter(VehicleType.truck, 181, 216, title: '货运干线', subtitle: '重卡物流的考验'),
-    ParkingChapter(VehicleType.highspeed, 217, 252, title: '铁轨编组', subtitle: '列车进站的节奏'),
-    ParkingChapter(VehicleType.rocket, 253, 288, title: '发射台', subtitle: '倒计时前的最后停车'),
-    ParkingChapter(VehicleType.ferry, 289, 324, title: '轮渡码头', subtitle: '码头边的来回穿梭'),
-    ParkingChapter(VehicleType.subway, 325, 360, title: '地铁网络', subtitle: '地下世界的调度'),
-    ParkingChapter(VehicleType.airliner, 361, 396, title: '机场跑道', subtitle: '冲向云端之前'),
-    ParkingChapter(VehicleType.fighter, 397, 432, title: '空军基地', subtitle: '战机的精准停放'),
-    ParkingChapter(VehicleType.spaceShuttle, 433, 468, title: '航天中心', subtitle: '通往太空的走廊'),
-    ParkingChapter(VehicleType.cargo, 469, 504, title: '星港货运', subtitle: '跨星际的快递航线'),
-    ParkingChapter(VehicleType.maglev, 505, 541, title: '磁浮走廊', subtitle: '悬浮列车的停靠'),
-    ParkingChapter(VehicleType.spaceStation, 542, 578, title: '空间站', subtitle: '轨道上的会合'),
-    ParkingChapter(VehicleType.starship, 579, 615, title: '彗星轨道', subtitle: '追逐流星之尾'),
-    ParkingChapter(VehicleType.hyperloop, 616, 652, title: '音速管道', subtitle: '真空管道里的一千公里'),
-    ParkingChapter(VehicleType.glider, 653, 689, title: '浮空滑翔', subtitle: '没有引擎的降落'),
-    ParkingChapter(VehicleType.warship, 690, 726, title: '巡洋编队', subtitle: '星际舰队的列队'),
-    ParkingChapter(VehicleType.crane, 727, 763, title: '巨械装配厂', subtitle: '钢铁巨臂的归位'),
-    ParkingChapter(VehicleType.warpShip, 764, 800, title: '反重力区', subtitle: '终极泊车大师'),
+    ParkingChapter(VehicleType.bicycle, 1, 36, zhTitle: '单车街区', zhSubtitle: '新手上路，稳稳停好'),
+    ParkingChapter(VehicleType.scooter, 37, 72, zhTitle: '街头巷尾', zhSubtitle: '小巷穿梭，见缝插针'),
+    ParkingChapter(VehicleType.sedan, 73, 108, zhTitle: '城市街区', zhSubtitle: '车流渐密的市中心'),
+    ParkingChapter(VehicleType.taxi, 109, 144, zhTitle: '出租热点', zhSubtitle: '随时待命的出租车'),
+    ParkingChapter(VehicleType.bus, 145, 180, zhTitle: '公交枢纽', zhSubtitle: '大块头也要好停车'),
+    ParkingChapter(VehicleType.truck, 181, 216, zhTitle: '货运干线', zhSubtitle: '重卡物流的考验'),
+    ParkingChapter(VehicleType.highspeed, 217, 252, zhTitle: '铁轨编组', zhSubtitle: '列车进站的节奏'),
+    ParkingChapter(VehicleType.rocket, 253, 288, zhTitle: '发射台', zhSubtitle: '倒计时前的最后停车'),
+    ParkingChapter(VehicleType.ferry, 289, 324, zhTitle: '轮渡码头', zhSubtitle: '码头边的来回穿梭'),
+    ParkingChapter(VehicleType.subway, 325, 360, zhTitle: '地铁网络', zhSubtitle: '地下世界的调度'),
+    ParkingChapter(VehicleType.airliner, 361, 396, zhTitle: '机场跑道', zhSubtitle: '冲向云端之前'),
+    ParkingChapter(VehicleType.fighter, 397, 432, zhTitle: '空军基地', zhSubtitle: '战机的精准停放'),
+    ParkingChapter(VehicleType.spaceShuttle, 433, 468, zhTitle: '航天中心', zhSubtitle: '通往太空的走廊'),
+    ParkingChapter(VehicleType.cargo, 469, 504, zhTitle: '星港货运', zhSubtitle: '跨星际的快递航线'),
+    ParkingChapter(VehicleType.maglev, 505, 541, zhTitle: '磁浮走廊', zhSubtitle: '悬浮列车的停靠'),
+    ParkingChapter(VehicleType.spaceStation, 542, 578, zhTitle: '空间站', zhSubtitle: '轨道上的会合'),
+    ParkingChapter(VehicleType.starship, 579, 615, zhTitle: '彗星轨道', zhSubtitle: '追逐流星之尾'),
+    ParkingChapter(VehicleType.hyperloop, 616, 652, zhTitle: '音速管道', zhSubtitle: '真空管道里的一千公里'),
+    ParkingChapter(VehicleType.glider, 653, 689, zhTitle: '浮空滑翔', zhSubtitle: '没有引擎的降落'),
+    ParkingChapter(VehicleType.warship, 690, 726, zhTitle: '巡洋编队', zhSubtitle: '星际舰队的列队'),
+    ParkingChapter(VehicleType.crane, 727, 763, zhTitle: '巨械装配厂', zhSubtitle: '钢铁巨臂的归位'),
+    ParkingChapter(VehicleType.warpShip, 764, 800, zhTitle: '反重力区', zhSubtitle: '终极泊车大师'),
   ];
+  // i18n-data-end
 
   /// 停车关卡 id → 车型（与生成器分段一致；超出预定义范围按最高档）。
   static VehicleType tierForId(int id) {
@@ -126,7 +150,14 @@ class ParkingChapters {
   }
 
   /// 锁定原因文案（选关界面提示玩家如何解锁）。
+  ///
+  /// 车型名走 [VehicleType.name]（本地化），所以英文包里会是
+  /// 「Collect 🚗 Sedan in Merge to unlock」。
   static String lockReason(ParkingChapter c) {
-    return '在合成中收集 ${c.tier.icon} ${c.tier.name} 解锁';
+    final l = L10n.current;
+    final icon = c.tier.icon;
+    final name = c.tier.name;
+    if (l == null) return '在合成中收集 $icon $name 解锁'; // i18n-data
+    return l.parkingLockReason(icon, name);
   }
 }

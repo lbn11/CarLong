@@ -1198,5 +1198,319 @@
   "phaseHard": "Hard",
   "@phaseHard": { "description": "节奏相位：第二波峰" },
   "phasePeak": "Peak",
-  "@phasePeak": { "description": "节奏相位：全压力（仅停车）" }
+  "@phasePeak": { "description": "节奏相位：全压力（仅停车）" },
+
+  "park01Title": "Bike Blocks",
+  "@park01Title": { "description": "停车第 1 章标题（起始关 L1）" },
+  "park01Sub": "First ride — slow and steady",
+  "@park01Sub": { "description": "停车第 1 章副标题（起始关 L1）" },
+  "park02Title": "Back Alleys",
+  "@park02Title": { "description": "停车第 2 章标题（起始关 L37）" },
+  "park02Sub": "Squeeze through the narrow lanes",
+  "@park02Sub": { "description": "停车第 2 章副标题（起始关 L37）" },
+  "park03Title": "Downtown",
+  "@park03Title": { "description": "停车第 3 章标题（起始关 L73）" },
+  "park03Sub": "The city centre, where traffic thickens",
+  "@park03Sub": { "description": "停车第 3 章副标题（起始关 L73）" },
+  "park04Title": "Taxi Hotspot",
+  "@park04Title": { "description": "停车第 4 章标题（起始关 L109）" },
+  "park04Sub": "Taxis waiting on every corner",
+  "@park04Sub": { "description": "停车第 4 章副标题（起始关 L109）" },
+  "park05Title": "Bus Terminal",
+  "@park05Title": { "description": "停车第 5 章标题（起始关 L145）" },
+  "park05Sub": "Even the big rigs need a spot",
+  "@park05Sub": { "description": "停车第 5 章副标题（起始关 L145）" },
+  "park06Title": "Freight Line",
+  "@park06Title": { "description": "停车第 6 章标题（起始关 L181）" },
+  "park06Sub": "The heavy-haul test",
+  "@park06Sub": { "description": "停车第 6 章副标题（起始关 L181）" },
+  "park07Title": "Rail Yard",
+  "@park07Title": { "description": "停车第 7 章标题（起始关 L217）" },
+  "park07Sub": "The rhythm of a train pulling in",
+  "@park07Sub": { "description": "停车第 7 章副标题（起始关 L217）" },
+  "park08Title": "Launch Pad",
+  "@park08Title": { "description": "停车第 8 章标题（起始关 L253）" },
+  "park08Sub": "The last park before the countdown",
+  "@park08Sub": { "description": "停车第 8 章副标题（起始关 L253）" },
+  "park09Title": "Ferry Pier",
+  "@park09Title": { "description": "停车第 9 章标题（起始关 L289）" },
+  "park09Sub": "Ferries weaving along the pier",
+  "@park09Sub": { "description": "停车第 9 章副标题（起始关 L289）" },
+  "park10Title": "Metro Grid",
+  "@park10Title": { "description": "停车第 10 章标题（起始关 L325）" },
+  "park10Sub": "Dispatch work underground",
+  "@park10Sub": { "description": "停车第 10 章副标题（起始关 L325）" },
+  "park11Title": "Airport Runway",
+  "@park11Title": { "description": "停车第 11 章标题（起始关 L361）" },
+  "park11Sub": "Before the climb to the clouds",
+  "@park11Sub": { "description": "停车第 11 章副标题（起始关 L361）" },
+  "park12Title": "Air Base",
+  "@park12Title": { "description": "停车第 12 章标题（起始关 L397）" },
+  "park12Sub": "Precision parking for fighters",
+  "@park12Sub": { "description": "停车第 12 章副标题（起始关 L397）" },
+  "park13Title": "Space Centre",
+  "@park13Title": { "description": "停车第 13 章标题（起始关 L433）" },
+  "park13Sub": "The corridor to space",
+  "@park13Sub": { "description": "停车第 13 章副标题（起始关 L433）" },
+  "park14Title": "Starport Freight",
+  "@park14Title": { "description": "停车第 14 章标题（起始关 L469）" },
+  "park14Sub": "Interstellar courier routes",
+  "@park14Sub": { "description": "停车第 14 章副标题（起始关 L469）" },
+  "park15Title": "Maglev Corridor",
+  "@park15Title": { "description": "停车第 15 章标题（起始关 L505）" },
+  "park15Sub": "Where levitating trains dock",
+  "@park15Sub": { "description": "停车第 15 章副标题（起始关 L505）" },
+  "park16Title": "Orbital Station",
+  "@park16Title": { "description": "停车第 16 章标题（起始关 L542）" },
+  "park16Sub": "Rendezvous in orbit",
+  "@park16Sub": { "description": "停车第 16 章副标题（起始关 L542）" },
+  "park17Title": "Comet Orbit",
+  "@park17Title": { "description": "停车第 17 章标题（起始关 L579）" },
+  "park17Sub": "Chasing a comet tail",
+  "@park17Sub": { "description": "停车第 17 章副标题（起始关 L579）" },
+  "park18Title": "Sonic Tube",
+  "@park18Title": { "description": "停车第 18 章标题（起始关 L616）" },
+  "park18Sub": "A thousand kilometres in a vacuum tube",
+  "@park18Sub": { "description": "停车第 18 章副标题（起始关 L616）" },
+  "park19Title": "Sky Glide",
+  "@park19Title": { "description": "停车第 19 章标题（起始关 L653）" },
+  "park19Sub": "Landing without an engine",
+  "@park19Sub": { "description": "停车第 19 章副标题（起始关 L653）" },
+  "park20Title": "Cruiser Formation",
+  "@park20Title": { "description": "停车第 20 章标题（起始关 L690）" },
+  "park20Sub": "Forming up the fleet",
+  "@park20Sub": { "description": "停车第 20 章副标题（起始关 L690）" },
+  "park21Title": "Mech Assembly",
+  "@park21Title": { "description": "停车第 21 章标题（起始关 L727）" },
+  "park21Sub": "Steel arms sliding home",
+  "@park21Sub": { "description": "停车第 21 章副标题（起始关 L727）" },
+  "park22Title": "Anti-Gravity Zone",
+  "@park22Title": { "description": "停车第 22 章标题（起始关 L764）" },
+  "park22Sub": "The ultimate parking master",
+  "@park22Sub": { "description": "停车第 22 章副标题（起始关 L764）" },
+  "stage01": "Set Sail",
+  "@stage01": { "description": "大阶段名 #1（每 3 章一个阶段）" },
+  "stage02": "Charge Up",
+  "@stage02": { "description": "大阶段名 #2（每 3 章一个阶段）" },
+  "stage03": "Push On",
+  "@stage03": { "description": "大阶段名 #3（每 3 章一个阶段）" },
+  "stage04": "Mastery",
+  "@stage04": { "description": "大阶段名 #4（每 3 章一个阶段）" },
+  "stage05": "Grandmaster",
+  "@stage05": { "description": "大阶段名 #5（每 3 章一个阶段）" },
+  "stage06": "Legend",
+  "@stage06": { "description": "大阶段名 #6（每 3 章一个阶段）" },
+  "stage07": "Apex",
+  "@stage07": { "description": "大阶段名 #7（每 3 章一个阶段）" },
+  "parkingMode": "Parking Mode",
+  "@parkingMode": { "description": "停车模式页标题 / 玩法说明弹窗标题" },
+  "parkingSelectSubEmpty": "Ease every car into its spot — no pressure",
+  "@parkingSelectSubEmpty": { "description": "选关页顶栏副标题：一关都没过时" },
+  "parkingSelectProgress": "{cleared}/{total} parked · smoother every time",
+  "@parkingSelectProgress": {
+    "description": "选关页顶栏副标题：已有进度时",
+    "placeholders": {
+      "cleared": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "parkingDemonBadge": "👹 Demon",
+  "@parkingDemonBadge": { "description": "停车章节卡上的魔王章徽标" },
+  "parkingChapterMeta": "{stage} · {subtitle} · {done}/{total} cleared",
+  "@parkingChapterMeta": {
+    "description": "停车章节卡副行：阶段名 · 章节副标题 · 通关进度",
+    "placeholders": {
+      "stage": { "type": "String" },
+      "subtitle": { "type": "String" },
+      "done": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "parkingLockReason": "Collect {icon} {name} in Merge to unlock",
+  "@parkingLockReason": {
+    "description": "停车章节锁定时提示解锁方式",
+    "placeholders": {
+      "icon": { "type": "String" },
+      "name": { "type": "String" }
+    }
+  },
+  "parkingDailyTitle": "Daily Parking Challenge",
+  "@parkingDailyTitle": { "description": "停车选关页顶部每日挑战卡标题" },
+  "parkingDailyDone": "Parked for today",
+  "@parkingDailyDone": { "description": "每日停车挑战已完成的说明" },
+  "parkingDailyStreakSuffix": " · {streak}-day streak",
+  "@parkingDailyStreakSuffix": {
+    "description": "每日停车挑战已完成 + 连胜天数后缀",
+    "placeholders": {
+      "streak": { "type": "int" }
+    }
+  },
+  "parkingDailyStreakReward": "{streak}-day streak · finish for +{reward} 🪙",
+  "@parkingDailyStreakReward": {
+    "description": "每日停车挑战：连胜 ≥2 时的奖励说明",
+    "placeholders": {
+      "streak": { "type": "int" },
+      "reward": { "type": "int" }
+    }
+  },
+  "parkingDailyTodayReward": "One run today · finish for +{reward} 🪙",
+  "@parkingDailyTodayReward": {
+    "description": "每日停车挑战：无连胜时的奖励说明",
+    "placeholders": {
+      "reward": { "type": "int" }
+    }
+  },
+  "parkingGo": "Park now",
+  "@parkingGo": { "description": "每日停车挑战卡的开始按钮" },
+  "parkingDoneChip": "Done",
+  "@parkingDoneChip": { "description": "每日挑战完成后的状态标签" },
+  "reset": "Reset",
+  "@reset": { "description": "重置本关按钮" },
+  "parkingMark": "Mark",
+  "@parkingMark": { "description": "停车对局棋盘工具：标记模式" },
+  "parkingAdLeft": "{base}\n{count} left today",
+  "@parkingAdLeft": {
+    "description": "广告说明的多行版本：正文 + 今日剩余次数",
+    "placeholders": {
+      "base": { "type": "String" },
+      "count": { "type": "int" }
+    }
+  },
+  "parkingStats": "{moves} moves · {seconds}s",
+  "@parkingStats": {
+    "description": "停车结算：步数与用时",
+    "placeholders": {
+      "moves": { "type": "int" },
+      "seconds": { "type": "int" }
+    }
+  },
+  "parkingLevelHeader": "🚗 Parking #{id}",
+  "@parkingLevelHeader": {
+    "description": "停车对局顶栏的关卡标签",
+    "placeholders": {
+      "id": { "type": "int" }
+    }
+  },
+  "parkingDailyHeader": "🚗 Daily",
+  "@parkingDailyHeader": { "description": "停车每日挑战对局顶栏的标签" },
+  "parkingMinMoves": "{n} moves min",
+  "@parkingMinMoves": {
+    "description": "停车对局信息条：最少步数",
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
+  "parkingChallengeChip": "🎬 Challenge",
+  "@parkingChallengeChip": { "description": "停车广告挑战关的信息条标签" },
+  "parkingSidewaysOnly": "↔️ Sideways cars only slide left or right",
+  "@parkingSidewaysOnly": { "description": "点了横放长车但拖错方向时的提示" },
+  "parkingUprightOnly": "↕️ Upright cars only slide up or down",
+  "@parkingUprightOnly": { "description": "点了竖放长车但拖错方向时的提示" },
+  "parkingBlocked": "🚧 Something is in the way",
+  "@parkingBlocked": { "description": "滑行被障碍挡住时的飘字" },
+  "parkingNothingToUndo": "Nothing to undo",
+  "@parkingNothingToUndo": { "description": "撤销栈为空时的提示" },
+  "parkingUndoCardApplied": "↩️ Undo card · back {n} moves",
+  "@parkingUndoCardApplied": {
+    "description": "用撤销卡回退成功后的提示",
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
+  "parkingAdUndoApplied": "🎬 Ad undo · back {n} moves",
+  "@parkingAdUndoApplied": {
+    "description": "看广告撤销成功后的提示",
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
+  "parkingNoUndoCards": "🧯 Out of undo cards",
+  "@parkingNoUndoCards": { "description": "撤销卡用完时的弹窗标题" },
+  "parkingUndoSteps": "Undo {n} moves",
+  "@parkingUndoSteps": {
+    "description": "撤销按钮文案（带步数）",
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
+  "parkingUndoAdBody": "Watch an ad to step back 3 moves right away.",
+  "@parkingUndoAdBody": { "description": "撤销卡不足弹窗的广告说明" },
+  "parkingHintTitle": "💡 Get a hint",
+  "@parkingHintTitle": { "description": "提示弹窗标题" },
+  "parkingHintAdBody": "Watch an ad to reveal the best next move.",
+  "@parkingHintAdBody": { "description": "提示弹窗的广告说明" },
+  "parkingNoSolution": "No solution found — try undo or reset",
+  "@parkingNoSolution": { "description": "提示求解失败时的提示" },
+  "parkingNoMovesTitle": "No moves left",
+  "@parkingNoMovesTitle": { "description": "停车死局弹窗标题" },
+  "parkingNoMovesBody": "This one is stuck — three ways out:",
+  "@parkingNoMovesBody": { "description": "停车死局弹窗正文" },
+  "parkingUseItem": "Use an item",
+  "@parkingUseItem": { "description": "死局弹窗：打开道具栏" },
+  "parkingPausedTitle": "Paused",
+  "@parkingPausedTitle": { "description": "停车暂停弹窗标题" },
+  "parkingPausedTip": "No rush, think about your next move",
+  "@parkingPausedTip": { "description": "停车暂停弹窗副标题" },
+  "parkingRestartTitle": "Restart this level?",
+  "@parkingRestartTitle": { "description": "停车重开确认弹窗标题" },
+  "parkingRestartBody": "Moves and marks will be wiped.",
+  "@parkingRestartBody": { "description": "停车重开确认弹窗正文" },
+  "parkingWin": "Parked!",
+  "@parkingWin": { "description": "停车通关标题" },
+  "parkingStuck": "Stuck this round",
+  "@parkingStuck": { "description": "停车失败标题" },
+  "parkingDeadEndHint": "No moves left · undo a step or try a new angle",
+  "@parkingDeadEndHint": { "description": "停车失败时的引导文案" },
+  "parkingCoinLine": "+{reward} 🪙",
+  "@parkingCoinLine": {
+    "description": "停车结算：金币奖励行",
+    "placeholders": {
+      "reward": { "type": "int" }
+    }
+  },
+  "parkingCollectionLine": "📖 Collection lit up +{reward} 🪙",
+  "@parkingCollectionLine": {
+    "description": "停车结算：图鉴首次点亮奖励行",
+    "placeholders": {
+      "reward": { "type": "int" }
+    }
+  },
+  "parkingStreakLine": "🔥 Streak +{reward} 🪙",
+  "@parkingStreakLine": {
+    "description": "停车每日挑战的连胜奖励行",
+    "placeholders": {
+      "reward": { "type": "int" }
+    }
+  },
+  "parkingAdReviveHint": "🎬 Challenge boost · watch an ad to step back 3",
+  "@parkingAdReviveHint": { "description": "挑战关失败时的高亮广告按钮" },
+  "parkingAdUndoPlain": "Watch an ad to step back 3",
+  "@parkingAdUndoPlain": { "description": "普通关失败时的广告撤销按钮" },
+  "parkingHelpGoal": "Goal: drive the {icon} {name} into the dashed spot",
+  "@parkingHelpGoal": {
+    "description": "停车玩法说明第一行",
+    "placeholders": {
+      "icon": { "type": "String" },
+      "name": { "type": "String" }
+    }
+  },
+  "parkingHelpGhost": "(The see-through twin sitting there is your car)",
+  "@parkingHelpGhost": { "description": "停车玩法说明：幽灵车提示" },
+  "parkingHelpTap": "Tap a car to select it (gold outline)",
+  "@parkingHelpTap": { "description": "停车玩法说明：选中" },
+  "parkingHelpSlide": "Tap an empty cell or the spot — it slides straight over",
+  "@parkingHelpSlide": { "description": "停车玩法说明：滑行" },
+  "parkingHelpBlocked": "Blocks 🧱 and other cars stop it",
+  "@parkingHelpBlocked": { "description": "停车玩法说明：阻挡" },
+  "parkingHelpMoveOthers": "Other cars are in the way — slide them aside",
+  "@parkingHelpMoveOthers": { "description": "停车玩法说明：挪车" },
+  "parkingHelpLongCar": "Long cars only slide along their own axis",
+  "@parkingHelpLongCar": { "description": "停车玩法说明：长车" },
+  "parkingHelpSafety": "Undo or reset anytime — no fear of mistakes",
+  "@parkingHelpSafety": { "description": "停车玩法说明：试错成本" },
+
+  "parkingItemBalloon": "Balloon",
+  "@parkingItemBalloon": { "description": "停车道具条：气球（合成侧叫「气球飞越」，这里受按钮宽度限制用短名）" },
+  "parkingItemDouble": "Double",
+  "@parkingItemDouble": { "description": "停车道具条：双倍移动（合成侧叫「双倍移动」，这里用短名）" }
 }
