@@ -46,7 +46,11 @@ void main() {
   testWidgets('图鉴：点击卡片弹出车型详情', (tester) async {
     final data = PlayerData(collection: {VehicleType.bicycle.index});
     final repo = SaveRepository();
-    await tester.pumpWidget(l10nHost(CollectionScreen(data: data, repo: repo)));
+    // 断言用中文文案当定位器（「已收集」），宿主固定 zh。
+    await tester.pumpWidget(l10nHost(
+      CollectionScreen(data: data, repo: repo),
+      locale: const Locale('zh'),
+    ));
     await tester.pumpAndSettle();
     // Boss 徽章墙是第一个 section（56 格，桌面视口下总高 3000+px），
     // 车辆卡在 ListView 懒加载区外——滚到位之前 widget 根本不存在，

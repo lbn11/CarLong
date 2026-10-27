@@ -2672,4 +2672,215 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get parkingItemDouble => '双倍';
+
+  @override
+  String get collectionTitle => '车辆图鉴';
+
+  @override
+  String get collectionSubtitle => '每一辆都值得被收藏';
+
+  @override
+  String get bossWallTitle => '👑 Boss 徽章墙';
+
+  @override
+  String bossWallSub(int done, int total) {
+    return '每章四位守关者 · 已击败 $done/$total';
+  }
+
+  @override
+  String get bossBeatenBadge => '已击败 · 徽章已点亮';
+
+  @override
+  String bossUnbeaten(int chapter) {
+    return '未击败 · 在第 $chapter 章 Boss 关取胜';
+  }
+
+  @override
+  String collectionFamilyHeader(String icon, String family) {
+    return '$icon $family系';
+  }
+
+  @override
+  String collectionFamilyMeta(String desc, int done, int total) {
+    return '$desc · 已收 $done/$total';
+  }
+
+  @override
+  String collectionFamilyChip(String family, String desc) {
+    return '$family系 · $desc';
+  }
+
+  @override
+  String collectionIndex(int index, int total) {
+    return '已收集 · 第 $index/$total 号';
+  }
+
+  @override
+  String get collectionLocked => '未发现 · 合成或停车解锁';
+
+  @override
+  String get collectionLockedShort => '未发现';
+
+  @override
+  String get catDescLand => '马路上的日常出行';
+
+  @override
+  String get catDescHeavy => '重量级的物流主力';
+
+  @override
+  String get catDescRail => '奔跑在钢铁轨道上';
+
+  @override
+  String get catDescMaritime => '乘风破浪的水上交通';
+
+  @override
+  String get catDescAir => '划破云层的钢铁之翼';
+
+  @override
+  String get catDescSpace => '飞向星辰大海';
+
+  @override
+  String get attackFreeze => '冰封';
+
+  @override
+  String get attackSteal => '拖车';
+
+  @override
+  String get attackRubble => '塌方';
+
+  @override
+  String get attackImpound => '扣押';
+
+  @override
+  String get attackDevolve => '退化';
+
+  @override
+  String get attackTaint => '污染';
+
+  @override
+  String get attackLock => '锁牌堆';
+
+  @override
+  String get attackGlue => '胶水';
+
+  @override
+  String get attackHole => '黑洞';
+
+  @override
+  String get attackBan => '禁合';
+
+  @override
+  String get attackFog => '迷雾';
+
+  @override
+  String get attackShuffle => '洗牌';
+
+  @override
+  String get attackStealGoal => '抢目标';
+
+  @override
+  String get attackShield => '护盾';
+
+  @override
+  String get attackIce => '冰块';
+
+  @override
+  String get adOutcomeSkipped => '广告还没看完，奖励先不发放';
+
+  @override
+  String get adOutcomeFailed => '广告暂时没加载出来，稍后再试';
+
+  @override
+  String get adOutcomeUnavailable => '当前环境暂时无法播放广告';
+
+  @override
+  String get adOutcomeCapped => '今天的次数已经用完啦';
+
+  @override
+  String get adOutcomeCooldown => '刚看过一条广告，等几秒再来';
+
+  @override
+  String get adPlacementShop => '商店每日福利';
+
+  @override
+  String get adPlacementRevive => '合成续命';
+
+  @override
+  String get adPlacementDouble => '合成金币翻倍';
+
+  @override
+  String get adPlacementUndo => '停车广告撤销';
+
+  @override
+  String get adPlacementHint => '停车广告提示';
+
+  @override
+  String get adPlacementShopShort => '商店';
+
+  @override
+  String get adPlacementReviveShort => '续命';
+
+  @override
+  String get adPlacementDoubleShort => '翻倍';
+
+  @override
+  String get adPlacementUndoShort => '撤销';
+
+  @override
+  String get adPlacementHintShort => '提示';
+
+  @override
+  String get adDiagChannel => '通道';
+
+  @override
+  String get adDiagSdkNotInit => '未初始化（首次点击时再试）';
+
+  @override
+  String get adDiagSdkReady => '已就绪';
+
+  @override
+  String get adDiagSdkFailed => '初始化失败，广告位会静默降级';
+
+  @override
+  String get adDiagGlobalTotal => '今日总量';
+
+  @override
+  String adDiagCountLine(int used, int cap) {
+    return '$used / $cap 条';
+  }
+
+  @override
+  String get adDiagAdsOff => '（广告已全局关闭）';
+
+  @override
+  String get adDiagSingleLeft => '单点剩余';
+
+  @override
+  String adDiagMock(String provider) {
+    return '演示通道 · 无 SDK，点击即发奖（$provider）';
+  }
+
+  @override
+  String adDiagTest(String provider) {
+    return '测试广告 · 真 SDK，测试 unit，零收入（$provider）';
+  }
+
+  @override
+  String adDiagLive(String provider) {
+    return '正式广告 · 真实库存，会计费（$provider）';
+  }
+
+  @override
+  String adDiagLog(String channel, String state) {
+    return '[ads] $channel · 初始化$state';
+  }
+
+  @override
+  String get adDiagStateOk => '成功';
+
+  @override
+  String get adDiagStateFail => '失败';
+
+  @override
+  String get floatStealBack => '🏆 抢回 1 血！';
 }

@@ -1512,5 +1512,195 @@
   "parkingItemBalloon": "Balloon",
   "@parkingItemBalloon": { "description": "停车道具条：气球（合成侧叫「气球飞越」，这里受按钮宽度限制用短名）" },
   "parkingItemDouble": "Double",
-  "@parkingItemDouble": { "description": "停车道具条：双倍移动（合成侧叫「双倍移动」，这里用短名）" }
+  "@parkingItemDouble": { "description": "停车道具条：双倍移动（合成侧叫「双倍移动」，这里用短名）" },
+
+  "collectionTitle": "Vehicle Collection",
+  "@collectionTitle": { "description": "图鉴页标题" },
+  "collectionSubtitle": "Every one of them is worth keeping",
+  "@collectionSubtitle": { "description": "图鉴页副标题" },
+  "bossWallTitle": "👑 Boss Badge Wall",
+  "@bossWallTitle": { "description": "图鉴页 Boss 徽章墙小节标题" },
+  "bossWallSub": "Four guardians a chapter · {done}/{total} beaten",
+  "@bossWallSub": {
+    "description": "Boss 徽章墙副标题",
+    "placeholders": {
+      "done": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "bossBeatenBadge": "Beaten · badge lit",
+  "@bossBeatenBadge": { "description": "Boss 详情：已击败状态" },
+  "bossUnbeaten": "Not beaten · win the Boss of chapter {chapter}",
+  "@bossUnbeaten": {
+    "description": "Boss 详情：未击败状态",
+    "placeholders": {
+      "chapter": { "type": "int" }
+    }
+  },
+  "collectionFamilyHeader": "{icon} {family}",
+  "@collectionFamilyHeader": {
+    "description": "图鉴页车系小节标题（中文带「系」后缀，英文不带）",
+    "placeholders": {
+      "icon": { "type": "String" },
+      "family": { "type": "String" }
+    }
+  },
+  "collectionFamilyMeta": "{desc} · {done}/{total} collected",
+  "@collectionFamilyMeta": {
+    "description": "图鉴页车系小节副标题",
+    "placeholders": {
+      "desc": { "type": "String" },
+      "done": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "collectionFamilyChip": "{family} · {desc}",
+  "@collectionFamilyChip": {
+    "description": "车型详情抽屉里的车系标签",
+    "placeholders": {
+      "family": { "type": "String" },
+      "desc": { "type": "String" }
+    }
+  },
+  "collectionIndex": "Collected · #{index}/{total}",
+  "@collectionIndex": {
+    "description": "车型详情：已收集状态与图鉴编号",
+    "placeholders": {
+      "index": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "collectionLocked": "Undiscovered · merge or park to unlock",
+  "@collectionLocked": { "description": "车型详情：未解锁状态" },
+  "collectionLockedShort": "Undiscovered",
+  "@collectionLockedShort": { "description": "图鉴卡未点亮时的一行小字" },
+  "catDescLand": "Everyday traffic on the road",
+  "@catDescLand": { "description": "车系一句话（陆地）" },
+  "catDescHeavy": "The heavyweight end of logistics",
+  "@catDescHeavy": { "description": "车系一句话（重装）" },
+  "catDescRail": "Running on steel rails",
+  "@catDescRail": { "description": "车系一句话（轨道）" },
+  "catDescMaritime": "Riding the waves",
+  "@catDescMaritime": { "description": "车系一句话（水上）" },
+  "catDescAir": "Steel wings cutting the clouds",
+  "@catDescAir": { "description": "车系一句话（航空）" },
+  "catDescSpace": "Out to the stars",
+  "@catDescSpace": { "description": "车系一句话（太空）" },
+  "attackFreeze": "Freeze",
+  "@attackFreeze": { "description": "Boss 技能名：冻住关键车" },
+  "attackSteal": "Tow",
+  "@attackSteal": { "description": "Boss 技能名：拖走最高档车" },
+  "attackRubble": "Rubble",
+  "@attackRubble": { "description": "Boss 技能名：落石占格" },
+  "attackImpound": "Impound",
+  "@attackImpound": { "description": "Boss 技能名：临时扣车" },
+  "attackDevolve": "Degrade",
+  "@attackDevolve": { "description": "Boss 技能名：降一档" },
+  "attackTaint": "Poison",
+  "@attackTaint": { "description": "Boss 技能名：牌堆降档" },
+  "attackLock": "Deck Lock",
+  "@attackLock": { "description": "Boss 技能名：锁牌堆几秒" },
+  "attackGlue": "Glue",
+  "@attackGlue": { "description": "Boss 技能名：粘住车辆" },
+  "attackHole": "Black Hole",
+  "@attackHole": { "description": "Boss 技能名：开黑洞占格" },
+  "attackBan": "Merge Ban",
+  "@attackBan": { "description": "Boss 技能名：某档禁合" },
+  "attackFog": "Fog",
+  "@attackFog": { "description": "Boss 技能名：盖住车辆" },
+  "attackShuffle": "Shuffle",
+  "@attackShuffle": { "description": "Boss 技能名：全场重排" },
+  "attackStealGoal": "Steal Target",
+  "@attackStealGoal": { "description": "Boss 技能名：抢回目标车补血" },
+  "attackShield": "Shield",
+  "@attackShield": { "description": "Boss 被动：护盾周期" },
+  "attackIce": "Ice Block",
+  "@attackIce": { "description": "Boss 技能名：冻整块冰" },
+  "adOutcomeSkipped": "You didn't finish the ad, so no reward this time",
+  "@adOutcomeSkipped": { "description": "广告结果：玩家中途关掉" },
+  "adOutcomeFailed": "The ad didn't load — try again in a moment",
+  "@adOutcomeFailed": { "description": "广告结果：加载/播放失败" },
+  "adOutcomeUnavailable": "Ads aren't available here right now",
+  "@adOutcomeUnavailable": { "description": "广告结果：无 SDK / 无填充" },
+  "adOutcomeCapped": "That's all for today",
+  "@adOutcomeCapped": { "description": "广告结果：达每日上限" },
+  "adOutcomeCooldown": "Just watched one — give it a few seconds",
+  "@adOutcomeCooldown": { "description": "广告结果：冷却中" },
+  "adPlacementShop": "Daily shop bonus",
+  "@adPlacementShop": { "description": "广告位全名：商店每日福利" },
+  "adPlacementRevive": "Merge revive",
+  "@adPlacementRevive": { "description": "广告位全名：合成续命" },
+  "adPlacementDouble": "Merge coin doubler",
+  "@adPlacementDouble": { "description": "广告位全名：合成金币翻倍" },
+  "adPlacementUndo": "Parking undo",
+  "@adPlacementUndo": { "description": "广告位全名：停车撤销" },
+  "adPlacementHint": "Parking hint",
+  "@adPlacementHint": { "description": "广告位全名：停车提示" },
+  "adPlacementShopShort": "Shop",
+  "@adPlacementShopShort": { "description": "广告诊断里的短名：商店" },
+  "adPlacementReviveShort": "Revive",
+  "@adPlacementReviveShort": { "description": "广告诊断里的短名：续命" },
+  "adPlacementDoubleShort": "x2",
+  "@adPlacementDoubleShort": { "description": "广告诊断里的短名：翻倍" },
+  "adPlacementUndoShort": "Undo",
+  "@adPlacementUndoShort": { "description": "广告诊断里的短名：撤销" },
+  "adPlacementHintShort": "Hint",
+  "@adPlacementHintShort": { "description": "广告诊断里的短名：提示" },
+  "adDiagChannel": "Channel",
+  "@adDiagChannel": { "description": "广告诊断行标签：通道" },
+  "adDiagSdkNotInit": "Not initialised (retries on first tap)",
+  "@adDiagSdkNotInit": { "description": "广告诊断：SDK 尚未初始化" },
+  "adDiagSdkReady": "Ready",
+  "@adDiagSdkReady": { "description": "广告诊断：SDK 正常" },
+  "adDiagSdkFailed": "Init failed — placements fall back silently",
+  "@adDiagSdkFailed": { "description": "广告诊断：SDK 初始化失败" },
+  "adDiagGlobalTotal": "Daily total",
+  "@adDiagGlobalTotal": { "description": "广告诊断行标签：今日总量" },
+  "adDiagCountLine": "{used} / {cap}",
+  "@adDiagCountLine": {
+    "description": "广告诊断：今日已用/上限",
+    "placeholders": {
+      "used": { "type": "int" },
+      "cap": { "type": "int" }
+    }
+  },
+  "adDiagAdsOff": " (ads disabled globally)",
+  "@adDiagAdsOff": { "description": "广告诊断：全局广告开关关闭时的后缀" },
+  "adDiagSingleLeft": "Left per placement",
+  "@adDiagSingleLeft": { "description": "广告诊断行标签：单点剩余" },
+  "adDiagMock": "Demo channel · no SDK, rewards instantly ({provider})",
+  "@adDiagMock": {
+    "description": "广告通道三态：演示通道",
+    "placeholders": {
+      "provider": { "type": "String" }
+    }
+  },
+  "adDiagTest": "Test ads · real SDK, test units, zero revenue ({provider})",
+  "@adDiagTest": {
+    "description": "广告通道三态：测试广告",
+    "placeholders": {
+      "provider": { "type": "String" }
+    }
+  },
+  "adDiagLive": "Live ads · real inventory, billed ({provider})",
+  "@adDiagLive": {
+    "description": "广告通道三态：正式广告",
+    "placeholders": {
+      "provider": { "type": "String" }
+    }
+  },
+  "adDiagLog": "[ads] {channel} · init {state}",
+  "@adDiagLog": {
+    "description": "广告启动日志一行（调试用，同时用于通道自检）",
+    "placeholders": {
+      "channel": { "type": "String" },
+      "state": { "type": "String" }
+    }
+  },
+  "adDiagStateOk": "OK",
+  "@adDiagStateOk": { "description": "广告初始化成功" },
+  "adDiagStateFail": "failed",
+  "@adDiagStateFail": { "description": "广告初始化失败" },
+  "floatStealBack": "🏆 Stole 1 HP back!",
+  "@floatStealBack": { "description": "Boss 抢目标技能的飘字（Boss 回血）" }
 }

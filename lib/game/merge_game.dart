@@ -1249,7 +1249,7 @@ class MergeGame extends FlameGame {
     bossHp.value = boss.hp;
     bossMaxHp.value = boss.maxHp;
     add(FloatText(
-      '🏆 抢回 1 血！',
+      L10n.value.floatStealBack,
       position: boss.position.clone() + Vector2(0, -_cellSize * 0.5),
       color: const Color(0xFFFFD700),
       fontSize: 20,

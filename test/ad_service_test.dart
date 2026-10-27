@@ -9,6 +9,8 @@ import 'package:merge_fleet/services/ads/ad_service.dart';
 import 'package:merge_fleet/services/ads/ad_types.dart';
 import 'package:merge_fleet/services/ads/mock_ad_provider.dart';
 
+import 'helpers/localized_app.dart';
+
 /// 只存在内存里的仓库：广告计数是纯本地逻辑，测试不该依赖 SharedPreferences。
 class _MemoryRepo extends SaveRepository {
   PlayerData? stored;
@@ -71,6 +73,9 @@ void main() {
   }
 
   setUp(() {
+    // 断言里用中文提示语当定位器（「没看完」「等几秒」必须说清原因），
+    // 而 L10n.value 在未同步时回落英文——先切到 zh 包。
+    useZhL10n();
     data = PlayerData();
     repo.stored = data;
     repo.saveCount = 0;

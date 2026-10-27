@@ -1,4 +1,5 @@
 import '../../game/game_config.dart';
+import '../../l10n/l10n.dart';
 
 /// 广告位（placement）。
 ///
@@ -57,10 +58,20 @@ class AdPlacementMeta {
 }
 
 extension AdPlacementX on AdPlacement {
+  /// 广告位**展示名**（本地化）。[AdPlacementMeta.label] 是稳定原文，只给
+  /// 日志/诊断用，界面一律走这里，否则英文包里会露出中文。
+  String get displayLabel => switch (this) {
+        AdPlacement.shopDaily => L10n.value.adPlacementShop,
+        AdPlacement.mergeRevive => L10n.value.adPlacementRevive,
+        AdPlacement.mergeDouble => L10n.value.adPlacementDouble,
+        AdPlacement.parkingUndo => L10n.value.adPlacementUndo,
+        AdPlacement.parkingHint => L10n.value.adPlacementHint,
+      };
+
   AdPlacementMeta get meta => switch (this) {
         AdPlacement.shopDaily => AdPlacementMeta(
             key: 'shop',
-            label: '商店每日福利',
+            label: '商店每日福利', // i18n-data
             // 与改造前一致：每日 3 次（GameConfig 可远程覆盖）。
             dailyCap: GameConfig.dailyAdLimit,
             // 商店是玩家最容易连点的地方：留一点间隔，也避免连续两条广告
@@ -70,13 +81,13 @@ extension AdPlacementX on AdPlacement {
           ),
         AdPlacement.mergeRevive => const AdPlacementMeta(
             key: 'merge_revive',
-            label: '合成续命',
+            label: '合成续命', // i18n-data
             cooldown: Duration(seconds: 3),
             envKey: 'REVIVE',
           ),
         AdPlacement.mergeDouble => const AdPlacementMeta(
             key: 'merge_double',
-            label: '合成金币翻倍',
+            label: '合成金币翻倍', // i18n-data
             cooldown: Duration(seconds: 3),
             envKey: 'DOUBLE',
           ),
@@ -84,14 +95,14 @@ extension AdPlacementX on AdPlacement {
         // 单点每日 10 次 + 12 秒冷却，既够用又不至于一天几十条。
         AdPlacement.parkingUndo => const AdPlacementMeta(
             key: 'parking_undo',
-            label: '停车广告撤销',
+            label: '停车广告撤销', // i18n-data
             dailyCap: 10,
             cooldown: Duration(seconds: 12),
             envKey: 'UNDO',
           ),
         AdPlacement.parkingHint => const AdPlacementMeta(
             key: 'parking_hint',
-            label: '停车广告提示',
+            label: '停车广告提示', // i18n-data
             dailyCap: 10,
             cooldown: Duration(seconds: 12),
             envKey: 'HINT',
@@ -149,10 +160,10 @@ class AdResult {
   /// 给玩家看的失败原因（区分「你自己的问题」和「广告没加载出来」）。
   String get userMessage => switch (outcome) {
         AdOutcome.rewarded => '',
-        AdOutcome.skipped => '广告还没看完，奖励先不发放',
-        AdOutcome.failed => '广告暂时没加载出来，稍后再试',
-        AdOutcome.unavailable => '当前环境暂时无法播放广告',
-        AdOutcome.capped => '今天的次数已经用完啦',
-        AdOutcome.cooldown => '刚看过一条广告，等几秒再来',
+        AdOutcome.skipped => L10n.value.adOutcomeSkipped,
+        AdOutcome.failed => L10n.value.adOutcomeFailed,
+        AdOutcome.unavailable => L10n.value.adOutcomeUnavailable,
+        AdOutcome.capped => L10n.value.adOutcomeCapped,
+        AdOutcome.cooldown => L10n.value.adOutcomeCooldown,
       };
 }

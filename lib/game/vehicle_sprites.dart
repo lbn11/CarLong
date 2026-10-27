@@ -63,7 +63,7 @@ class VehicleSprites {
         ok++;
       } catch (err) {
         // 车模缺失只降级成 emoji，绝不阻塞启动
-        debugPrint('[VehicleSprites] 车模缺失 $name: $err');
+        debugPrint('[VehicleSprites] sprite missing $name: $err');
       }
     }
     if (ok > 0) revision.value++;

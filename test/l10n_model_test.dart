@@ -5,6 +5,9 @@ import 'package:merge_fleet/models/achievement.dart';
 import 'package:merge_fleet/models/level.dart';
 import 'package:merge_fleet/models/vehicle.dart';
 import 'package:merge_fleet/services/level_progression.dart';
+import 'package:merge_fleet/screens/collection_screen.dart';
+import 'package:merge_fleet/services/ads/ad_diagnostics.dart';
+import 'package:merge_fleet/services/ads/ad_types.dart';
 import 'package:merge_fleet/services/parking_chapters.dart';
 
 import '../tool/export_levels.dart';
@@ -242,5 +245,57 @@ void main() {
     for (var i = 0; i < LevelProgression.stageNames.length; i++) {
       expect(LevelProgression.displayStageName(i), LevelProgression.stageName(i));
     }
+  });
+
+  /// 图鉴页与广告文案的漏翻守门。
+  ///
+  /// 这两块都是**查表式文案**（switch 里一条一条写），漏一条不会编译错，
+  /// 只会在英文界面上冒出一个中文词——只能靠逐条遍历才抓得住。
+  testWidgets('英文 locale：Boss 技能 / 车系一句话全部英文化', (tester) async {
+    await tester.pumpWidget(
+      l10nHost(const SizedBox(), locale: const Locale('en')),
+    );
+    final cjk = RegExp(r'[\u4e00-\u9fff]');
+    for (final k in BossAttackKind.values) {
+      final label = bossSkillLabel(k);
+      expect(cjk.hasMatch(label), isFalse, reason: 'Boss 技能 ${k.name} 漏翻：$label');
+    }
+    for (final c in VehicleCategory.values) {
+      final desc = familySub(c);
+      expect(cjk.hasMatch(desc), isFalse, reason: '车系 ${c.name} 一句话漏翻：$desc');
+      expect(cjk.hasMatch(c.displayLabel), isFalse);
+    }
+    expect(bossSkillLabel(BossAttackKind.lock), 'Deck Lock');
+    expect(familySub(VehicleCategory.space), 'Out to the stars');
+  });
+
+  testWidgets('英文 locale：广告结果语 / 广告位名 / 诊断行全部英文化',
+      (tester) async {
+    await tester.pumpWidget(
+      l10nHost(const SizedBox(), locale: const Locale('en')),
+    );
+    final cjk = RegExp(r'[\u4e00-\u9fff]');
+    for (final o in AdOutcome.values) {
+      final msg = AdResult(o).userMessage;
+      // rewarded 是空串（成功不给失败原因），只查有文案的那几个。
+      if (msg.isEmpty) continue;
+      expect(cjk.hasMatch(msg), isFalse, reason: '广告结果 ${o.name} 漏翻：$msg');
+    }
+    for (final p in AdPlacement.values) {
+      expect(cjk.hasMatch(p.displayLabel), isFalse,
+          reason: '广告位 ${p.name} 全名漏翻：${p.displayLabel}');
+      expect(cjk.hasMatch(AdDiagnostics.slotText(p, 0)), isFalse,
+          reason: '广告位 ${p.name} 诊断短名漏翻');
+    }
+    for (final isMock in const [true, false]) {
+      for (final test in const [true, false]) {
+        final text = AdDiagnostics.channelText(
+            provider: 'admob', isMock: isMock, testInventory: test);
+        expect(cjk.hasMatch(text), isFalse, reason: '通道三态漏翻：$text');
+      }
+    }
+    expect(AdDiagnostics.channelText(
+            provider: 'admob', isMock: true, testInventory: true),
+        contains('Demo channel'));
   });
 }

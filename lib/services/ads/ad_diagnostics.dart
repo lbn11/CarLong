@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../l10n/l10n.dart';
 import 'ad_types.dart';
 
 /// 诊断行的语气（只影响颜色，不影响逻辑）。
@@ -63,9 +64,10 @@ class AdDiagnostics {
     required bool isMock,
     required bool testInventory,
   }) {
-    if (isMock) return '演示通道 · 无 SDK，点击即发奖（$provider）';
-    if (testInventory) return '测试广告 · 真 SDK，测试 unit，零收入（$provider）';
-    return '正式广告 · 真实库存，会计费（$provider）';
+    final l = L10n.value;
+    if (isMock) return l.adDiagMock(provider);
+    if (testInventory) return l.adDiagTest(provider);
+    return l.adDiagLive(provider);
   }
 
   /// 启动时打一行，方便在 `flutter run` / `adb logcat` 里第一眼确认环境。
@@ -80,7 +82,8 @@ class AdDiagnostics {
       isMock: isMock,
       testInventory: testInventory,
     );
-    return '[ads] $channel · 初始化${initialized ? '成功' : '失败'}';
+    final l = L10n.value;
+    return l.adDiagLog(channel, initialized ? l.adDiagStateOk : l.adDiagStateFail);
   }
 
   /// 单点剩余次数文案：`商店 1/3`。
@@ -91,10 +94,10 @@ class AdDiagnostics {
   }
 
   static String _shortLabel(AdPlacement placement) => switch (placement) {
-        AdPlacement.shopDaily => '商店',
-        AdPlacement.mergeRevive => '续命',
-        AdPlacement.mergeDouble => '翻倍',
-        AdPlacement.parkingUndo => '撤销',
-        AdPlacement.parkingHint => '提示',
+        AdPlacement.shopDaily => L10n.value.adPlacementShopShort,
+        AdPlacement.mergeRevive => L10n.value.adPlacementReviveShort,
+        AdPlacement.mergeDouble => L10n.value.adPlacementDoubleShort,
+        AdPlacement.parkingUndo => L10n.value.adPlacementUndoShort,
+        AdPlacement.parkingHint => L10n.value.adPlacementHintShort,
       };
 }

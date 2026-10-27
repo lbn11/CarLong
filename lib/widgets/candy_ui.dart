@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/l10n.dart';
 import '../theme/app_theme.dart';
 import 'pressable.dart';
 
@@ -817,7 +818,7 @@ class CandyDialog extends StatelessWidget {
     required this.title,
     this.message,
     this.color,
-    this.confirmLabel = '好',
+    this.confirmLabel,
     this.onConfirm,
     this.cancelLabel,
     this.confirmValue,
@@ -831,7 +832,8 @@ class CandyDialog extends StatelessWidget {
   final String? message;
   final Color? color;
 
-  final String confirmLabel;
+  /// 主按钮文案；null = 用当前语言的「好 / OK」。
+  final String? confirmLabel;
   final VoidCallback? onConfirm;
   final String? cancelLabel;
 
@@ -850,7 +852,7 @@ class CandyDialog extends StatelessWidget {
     required String title,
     String? message,
     Color? color,
-    String confirmLabel = '好',
+    String? confirmLabel,
     VoidCallback? onConfirm,
     String? cancelLabel,
     Widget? child,
@@ -968,7 +970,7 @@ class CandyDialog extends StatelessWidget {
                 ],
                 Expanded(
                   child: CandyButton(
-                    label: confirmLabel,
+                    label: confirmLabel ?? L10n.value.ok,
                     size: CandyButtonSize.medium,
                     colors: [c, AppTheme.deepen(c)],
                     onTap: () {

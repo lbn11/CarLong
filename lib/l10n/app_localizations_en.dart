@@ -2711,4 +2711,216 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get parkingItemDouble => 'Double';
+
+  @override
+  String get collectionTitle => 'Vehicle Collection';
+
+  @override
+  String get collectionSubtitle => 'Every one of them is worth keeping';
+
+  @override
+  String get bossWallTitle => '👑 Boss Badge Wall';
+
+  @override
+  String bossWallSub(int done, int total) {
+    return 'Four guardians a chapter · $done/$total beaten';
+  }
+
+  @override
+  String get bossBeatenBadge => 'Beaten · badge lit';
+
+  @override
+  String bossUnbeaten(int chapter) {
+    return 'Not beaten · win the Boss of chapter $chapter';
+  }
+
+  @override
+  String collectionFamilyHeader(String icon, String family) {
+    return '$icon $family';
+  }
+
+  @override
+  String collectionFamilyMeta(String desc, int done, int total) {
+    return '$desc · $done/$total collected';
+  }
+
+  @override
+  String collectionFamilyChip(String family, String desc) {
+    return '$family · $desc';
+  }
+
+  @override
+  String collectionIndex(int index, int total) {
+    return 'Collected · #$index/$total';
+  }
+
+  @override
+  String get collectionLocked => 'Undiscovered · merge or park to unlock';
+
+  @override
+  String get collectionLockedShort => 'Undiscovered';
+
+  @override
+  String get catDescLand => 'Everyday traffic on the road';
+
+  @override
+  String get catDescHeavy => 'The heavyweight end of logistics';
+
+  @override
+  String get catDescRail => 'Running on steel rails';
+
+  @override
+  String get catDescMaritime => 'Riding the waves';
+
+  @override
+  String get catDescAir => 'Steel wings cutting the clouds';
+
+  @override
+  String get catDescSpace => 'Out to the stars';
+
+  @override
+  String get attackFreeze => 'Freeze';
+
+  @override
+  String get attackSteal => 'Tow';
+
+  @override
+  String get attackRubble => 'Rubble';
+
+  @override
+  String get attackImpound => 'Impound';
+
+  @override
+  String get attackDevolve => 'Degrade';
+
+  @override
+  String get attackTaint => 'Poison';
+
+  @override
+  String get attackLock => 'Deck Lock';
+
+  @override
+  String get attackGlue => 'Glue';
+
+  @override
+  String get attackHole => 'Black Hole';
+
+  @override
+  String get attackBan => 'Merge Ban';
+
+  @override
+  String get attackFog => 'Fog';
+
+  @override
+  String get attackShuffle => 'Shuffle';
+
+  @override
+  String get attackStealGoal => 'Steal Target';
+
+  @override
+  String get attackShield => 'Shield';
+
+  @override
+  String get attackIce => 'Ice Block';
+
+  @override
+  String get adOutcomeSkipped =>
+      'You didn\'t finish the ad, so no reward this time';
+
+  @override
+  String get adOutcomeFailed => 'The ad didn\'t load — try again in a moment';
+
+  @override
+  String get adOutcomeUnavailable => 'Ads aren\'t available here right now';
+
+  @override
+  String get adOutcomeCapped => 'That\'s all for today';
+
+  @override
+  String get adOutcomeCooldown => 'Just watched one — give it a few seconds';
+
+  @override
+  String get adPlacementShop => 'Daily shop bonus';
+
+  @override
+  String get adPlacementRevive => 'Merge revive';
+
+  @override
+  String get adPlacementDouble => 'Merge coin doubler';
+
+  @override
+  String get adPlacementUndo => 'Parking undo';
+
+  @override
+  String get adPlacementHint => 'Parking hint';
+
+  @override
+  String get adPlacementShopShort => 'Shop';
+
+  @override
+  String get adPlacementReviveShort => 'Revive';
+
+  @override
+  String get adPlacementDoubleShort => 'x2';
+
+  @override
+  String get adPlacementUndoShort => 'Undo';
+
+  @override
+  String get adPlacementHintShort => 'Hint';
+
+  @override
+  String get adDiagChannel => 'Channel';
+
+  @override
+  String get adDiagSdkNotInit => 'Not initialised (retries on first tap)';
+
+  @override
+  String get adDiagSdkReady => 'Ready';
+
+  @override
+  String get adDiagSdkFailed => 'Init failed — placements fall back silently';
+
+  @override
+  String get adDiagGlobalTotal => 'Daily total';
+
+  @override
+  String adDiagCountLine(int used, int cap) {
+    return '$used / $cap';
+  }
+
+  @override
+  String get adDiagAdsOff => ' (ads disabled globally)';
+
+  @override
+  String get adDiagSingleLeft => 'Left per placement';
+
+  @override
+  String adDiagMock(String provider) {
+    return 'Demo channel · no SDK, rewards instantly ($provider)';
+  }
+
+  @override
+  String adDiagTest(String provider) {
+    return 'Test ads · real SDK, test units, zero revenue ($provider)';
+  }
+
+  @override
+  String adDiagLive(String provider) {
+    return 'Live ads · real inventory, billed ($provider)';
+  }
+
+  @override
+  String adDiagLog(String channel, String state) {
+    return '[ads] $channel · init $state';
+  }
+
+  @override
+  String get adDiagStateOk => 'OK';
+
+  @override
+  String get adDiagStateFail => 'failed';
+
+  @override
+  String get floatStealBack => '🏆 Stole 1 HP back!';
 }

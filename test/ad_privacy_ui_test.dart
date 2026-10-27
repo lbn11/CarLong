@@ -97,7 +97,9 @@ void main() {
 
     await openSettings(tester);
     expect(find.text(l10n.adDiagnostics), findsOneWidget);
-    expect(find.textContaining('演示通道'), findsOneWidget);
+    // 通道三态现在跟着 locale 走：断言语义片段而不是整句
+    // （整句里有 provider 占位符，拼空串对不上）。
+    expect(find.textContaining('Demo channel'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

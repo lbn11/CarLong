@@ -1,4 +1,5 @@
 import '../../analytics/analytics.dart';
+import '../../l10n/l10n.dart';
 import '../../save/save_repository.dart';
 import 'ad_diagnostics.dart';
 import 'ad_policy.dart';
@@ -255,7 +256,7 @@ class AdService {
     final test = usingTestInventory;
     final rows = <AdDiagRow>[
       AdDiagRow(
-        '通道',
+        L10n.value.adDiagChannel,
         AdDiagnostics.channelText(
           provider: providerName,
           isMock: mock,
@@ -266,20 +267,23 @@ class AdService {
       AdDiagRow(
         'SDK',
         !_initialized
-            ? '未初始化（首次点击时再试）'
-            : (_supported ? '已就绪' : '初始化失败，广告位会静默降级'),
+            ? L10n.value.adDiagSdkNotInit
+            : (_supported
+                ? L10n.value.adDiagSdkReady
+                : L10n.value.adDiagSdkFailed),
         level: !_initialized
             ? AdDiagLevel.info
             : (_supported ? AdDiagLevel.info : AdDiagLevel.warn),
       ),
       AdDiagRow(
-        '今日总量',
-        '${usedTodayTotal(data)} / ${policy.globalDailyCap} 条'
-        '${policy.adsEnabled ? '' : '（广告已全局关闭）'}',
+        L10n.value.adDiagGlobalTotal,
+        L10n.value.adDiagCountLine(
+                usedTodayTotal(data), policy.globalDailyCap) +
+            (policy.adsEnabled ? '' : L10n.value.adDiagAdsOff),
         level: policy.adsEnabled ? AdDiagLevel.info : AdDiagLevel.warn,
       ),
       AdDiagRow(
-        '单点剩余',
+        L10n.value.adDiagSingleLeft,
         AdPlacement.values
             .where((p) => p.dailyCap != null)
             .map((p) => AdDiagnostics.slotText(p, usedToday(p, data)))

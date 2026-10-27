@@ -8,6 +8,8 @@ import 'package:merge_fleet/services/ads/ad_service.dart';
 import 'package:merge_fleet/services/ads/ad_types.dart';
 import 'package:merge_fleet/services/ads/mock_ad_provider.dart';
 
+import 'helpers/localized_app.dart';
+
 /// 真实库存的 provider（isMock=false 且非测试 unit）。
 class _RealProvider extends AdProvider {
   @override
@@ -42,6 +44,8 @@ class _TestInventoryProvider extends AdProvider {
 }
 
 void main() {
+  setUp(useZhL10n);
+
   tearDown(() {
     AdService.provider = MockAdProvider(playback: Duration.zero);
     AdService.policy = AdPolicy.standard;

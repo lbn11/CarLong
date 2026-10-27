@@ -65,12 +65,14 @@ class _HomeScreenState extends State<HomeScreen>
     _analytics = AnalyticsService(widget.data, widget.repo);
     _analytics.appLaunch(isFirst: widget.data.analyticsEvents.isEmpty);
     _enter = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1000))
-      ..forward();
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..forward();
     _enterAnim = CurvedAnimation(parent: _enter, curve: Curves.easeOutCubic);
     _ambient = AnimationController(
-        vsync: this, duration: const Duration(seconds: 16))
-      ..repeat();
+      vsync: this,
+      duration: const Duration(seconds: 16),
+    )..repeat();
     // 离线收益：进入首页即结算并更新在线时间戳。
     _checkOfflineReward();
     // 首页 BGM（跟随音效开关）。
@@ -223,104 +225,145 @@ class _HomeScreenState extends State<HomeScreen>
               children: [
                 Row(
                   children: [
-                    Text(l10n.settings,
-                        style: const TextStyle(
-                            color: AppColors.ink1,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900)),
+                    Text(
+                      l10n.settings,
+                      style: const TextStyle(
+                        color: AppColors.ink1,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                     const Spacer(),
                     GestureDetector(
                       onTap: () => Navigator.of(ctx).pop(),
-                      child: const Icon(Icons.close_rounded,
-                          color: AppColors.ink3, size: 20),
+                      child: const Icon(
+                        Icons.close_rounded,
+                        color: AppColors.ink3,
+                        size: 20,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                SwitchListTile(
-                  value: data.soundOn,
-                  title: Text(l10n.soundAndMusic,
-                      style: const TextStyle(color: AppColors.ink1)),
-                  activeThumbColor: AppColors.coral,
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                  onChanged: (v) {
-                    // 开关本身吃掉一次点击反馈：这里不再叠加音效。
-                    setDialogState(() => data.soundOn = v);
-                    widget.repo.save(data);
-                    // BGM 跟随音效开关。
-                    MusicPlayer.instance.syncEnabled(v, MusicPlayer.home);
-                    setState(() {});
-                  },
-                ),
-                SwitchListTile(
-                  value: data.vibrateOn,
-                  title: Text(l10n.haptics,
-                      style: const TextStyle(color: AppColors.ink1)),
-                  activeThumbColor: AppColors.coral,
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                  onChanged: (v) {
-                    // 振动总开关：切换时立即给一次确认触感（开着才振动时，
-                    // 关掉前给最后一次，打开后从此有了）。
-                    HapticFeedback.selectionClick();
-                    AudioFeedback.globalVibrateOn = v;
-                    setDialogState(() => data.vibrateOn = v);
-                    widget.repo.save(data);
-                    setState(() {});
-                  },
-                ),
-                const SizedBox(height: 4),
-                // 隐私设置入口：UMP 的 PrivacyOptionsRequirementStatus.required
-                // 时这里是**必须存在**的（欧盟用户要能随时撤回广告同意）。
-                // 放在设置里而不是首页第 5 个方块：不占首屏权重，但永远可达。
-                InkWell(
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    _openAdPrivacy();
-                  },
-                  borderRadius: BorderRadius.circular(14),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 4, vertical: 12),
-                    child: Row(
+                // 余下内容放进可滚动区：英文文案比中文长 30-50%，
+                // 320×640 的小屏上「诊断块 4 行 + 两个开关 + 隐私入口」
+                // 会顶穿弹窗（实测溢出 63px）。滚动比裁字更体面。
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.privacy_tip_rounded,
-                            size: 19, color: AppColors.grape),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(l10n.privacyAdPreferences,
-                                  style: const TextStyle(
-                                      color: AppColors.ink1,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700)),
-                              const SizedBox(height: 2),
-                              Text(l10n.privacyAdPreferencesSub,
-                                  style: const TextStyle(
-                                      color: AppColors.ink3, fontSize: 11.5)),
-                            ],
+                        const SizedBox(height: 6),
+                        SwitchListTile(
+                          value: data.soundOn,
+                          title: Text(
+                            l10n.soundAndMusic,
+                            style: const TextStyle(color: AppColors.ink1),
+                          ),
+                          activeThumbColor: AppColors.coral,
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          onChanged: (v) {
+                            // 开关本身吃掉一次点击反馈：这里不再叠加音效。
+                            setDialogState(() => data.soundOn = v);
+                            widget.repo.save(data);
+                            // BGM 跟随音效开关。
+                            MusicPlayer.instance.syncEnabled(
+                              v,
+                              MusicPlayer.home,
+                            );
+                            setState(() {});
+                          },
+                        ),
+                        SwitchListTile(
+                          value: data.vibrateOn,
+                          title: Text(
+                            l10n.haptics,
+                            style: const TextStyle(color: AppColors.ink1),
+                          ),
+                          activeThumbColor: AppColors.coral,
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          onChanged: (v) {
+                            // 振动总开关：切换时立即给一次确认触感（开着才振动时，
+                            // 关掉前给最后一次，打开后从此有了）。
+                            HapticFeedback.selectionClick();
+                            AudioFeedback.globalVibrateOn = v;
+                            setDialogState(() => data.vibrateOn = v);
+                            widget.repo.save(data);
+                            setState(() {});
+                          },
+                        ),
+                        const SizedBox(height: 4),
+                        // 隐私设置入口：UMP 的 PrivacyOptionsRequirementStatus.required
+                        // 时这里是**必须存在**的（欧盟用户要能随时撤回广告同意）。
+                        // 放在设置里而不是首页第 5 个方块：不占首屏权重，但永远可达。
+                        InkWell(
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            _openAdPrivacy();
+                          },
+                          borderRadius: BorderRadius.circular(14),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 12,
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.privacy_tip_rounded,
+                                  size: 19,
+                                  color: AppColors.grape,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        l10n.privacyAdPreferences,
+                                        style: const TextStyle(
+                                          color: AppColors.ink1,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        l10n.privacyAdPreferencesSub,
+                                        style: const TextStyle(
+                                          color: AppColors.ink3,
+                                          fontSize: 11.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: AppColors.ink3,
+                                  size: 20,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        const Icon(Icons.chevron_right_rounded,
-                            color: AppColors.ink3, size: 20),
+                        if (AdDiagnostics.enabled) ...[
+                          const SizedBox(height: 10),
+                          _buildAdDiagBlock(data),
+                        ],
+                        const SizedBox(height: 8),
+                        CandyButton(
+                          label: l10n.done,
+                          colors: AppTheme.gradientOf(AppColors.grape),
+                          expand: true,
+                          size: CandyButtonSize.medium,
+                          onTap: () => Navigator.of(ctx).pop(),
+                        ),
                       ],
                     ),
                   ),
-                ),
-                if (AdDiagnostics.enabled) ...[
-                  const SizedBox(height: 10),
-                  _buildAdDiagBlock(data),
-                ],
-                const SizedBox(height: 8),
-                CandyButton(
-                  label: l10n.done,
-                  colors: AppTheme.gradientOf(AppColors.grape),
-                  expand: true,
-                  size: CandyButtonSize.medium,
-                  onTap: () => Navigator.of(ctx).pop(),
                 ),
               ],
             ),
@@ -440,8 +483,9 @@ class _HomeScreenState extends State<HomeScreen>
       icon: Icons.info_outline,
       color: AppColors.ink3,
       title: l10n.privacyOpenFailed,
-      message:
-          AdService.usingMock ? l10n.privacyDemoForm : l10n.privacyNetworkRetry,
+      message: AdService.usingMock
+          ? l10n.privacyDemoForm
+          : l10n.privacyNetworkRetry,
       confirmLabel: l10n.gotIt,
     );
   }
@@ -499,23 +543,31 @@ class _HomeScreenState extends State<HomeScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.emoji_events_rounded,
-                      color: AppColors.sun, size: 26),
+                  const Icon(
+                    Icons.emoji_events_rounded,
+                    color: AppColors.sun,
+                    size: 26,
+                  ),
                   const SizedBox(width: 8),
-                  Text(l10n.endlessLeaderboard,
-                      style: const TextStyle(
-                          color: AppColors.ink1,
-                          fontSize: 19,
-                          fontWeight: FontWeight.w900)),
+                  Text(
+                    l10n.endlessLeaderboard,
+                    style: const TextStyle(
+                      color: AppColors.ink1,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 14),
               if (list.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  child: Text(l10n.endlessNoScores,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.ink2)),
+                  child: Text(
+                    l10n.endlessNoScores,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppColors.ink2),
+                  ),
                 )
               else
                 for (var i = 0; i < list.length; i++)
@@ -531,17 +583,20 @@ class _HomeScreenState extends State<HomeScreen>
                               i == 0
                                   ? AppColors.sun
                                   : (i == 1
-                                      ? AppColors.blossom
-                                      : AppColors.taro),
+                                        ? AppColors.blossom
+                                        : AppColors.taro),
                             ),
                             shape: BoxShape.circle,
                           ),
                           child: Center(
-                            child: Text('${i + 1}',
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w900)),
+                            child: Text(
+                              '${i + 1}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -553,11 +608,14 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                         ),
                         const SizedBox(width: 10),
-                        Text(l10n.pointsUnit('${list[i]}'),
-                            style: const TextStyle(
-                                color: AppColors.ink1,
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w800)),
+                        Text(
+                          l10n.pointsUnit('${list[i]}'),
+                          style: const TextStyle(
+                            color: AppColors.ink1,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -583,16 +641,16 @@ class _HomeScreenState extends State<HomeScreen>
       body: Stack(
         children: [
           Container(
-            decoration:
-                const BoxDecoration(gradient: AppTheme.backgroundGradientLight),
+            decoration: const BoxDecoration(
+              gradient: AppTheme.backgroundGradientLight,
+            ),
           ),
           Positioned.fill(
             child: IgnorePointer(
               child: AnimatedBuilder(
                 animation: _ambient,
-                builder: (_, _) => CustomPaint(
-                  painter: _AmbientPainter(_ambient.value),
-                ),
+                builder: (_, _) =>
+                    CustomPaint(painter: _AmbientPainter(_ambient.value)),
               ),
             ),
           ),
@@ -608,7 +666,10 @@ class _HomeScreenState extends State<HomeScreen>
                       children: [
                         // ===== L1 主行动：唯一的 Hero 大卡（继续挑战）=====
                         _Reveal(
-                            anim: _enterAnim, start: 0.08, child: _buildHero()),
+                          anim: _enterAnim,
+                          start: 0.08,
+                          child: _buildHero(),
+                        ),
                         const SizedBox(height: 12),
                         // ===== L2 玩法入口：双列半宽，视觉重量减半 =====
                         _Reveal(
@@ -706,7 +767,8 @@ class _HomeScreenState extends State<HomeScreen>
               AudioFeedback.uiTap();
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => CollectionScreen(data: data, repo: widget.repo),
+                  builder: (_) =>
+                      CollectionScreen(data: data, repo: widget.repo),
                 ),
               );
             },
@@ -732,8 +794,9 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// 关卡选择入口（半宽玩法卡）。
   Widget _buildLevelListCard() {
-    final completed =
-        levels.where((l) => (data.bestStars[l.id] ?? 0) > 0).length;
+    final completed = levels
+        .where((l) => (data.bestStars[l.id] ?? 0) > 0)
+        .length;
     final l10n = AppLocalizations.of(context);
     return _buildModeCard(
       icon: Icons.grid_view_rounded,
@@ -765,8 +828,8 @@ class _HomeScreenState extends State<HomeScreen>
       subtitle: cleared
           ? l10n.dailyDoneToday(streak)
           : (streak >= 2
-              ? l10n.dailyStreakBonus(streak, DailyChallenge.reward + 50)
-              : l10n.dailyFinishReward(DailyChallenge.reward)),
+                ? l10n.dailyStreakBonus(streak, DailyChallenge.reward + 50)
+                : l10n.dailyFinishReward(DailyChallenge.reward)),
       onTap: _openDaily,
       trailing: Icon(
         cleared ? Icons.check_circle_rounded : Icons.play_circle_fill_rounded,
@@ -836,19 +899,23 @@ class _HomeScreenState extends State<HomeScreen>
             ],
           ),
           const SizedBox(height: 10),
-          Text(title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                  color: AppColors.ink1,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 14.5)),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.ink1,
+              fontWeight: FontWeight.w900,
+              fontSize: 14.5,
+            ),
+          ),
           const SizedBox(height: 2),
-          Text(subtitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style:
-                  const TextStyle(color: AppColors.ink2, fontSize: 11)),
+          Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: AppColors.ink2, fontSize: 11),
+          ),
         ],
       ),
     );
@@ -912,17 +979,22 @@ class _HomeScreenState extends State<HomeScreen>
           // 会硬裁成「Achieveme」，所以这里允许等比缩小。
           FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(title,
-                maxLines: 1,
-                style: const TextStyle(
-                    color: AppColors.ink1,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 12.5)),
-          ),
-          Text(subtitle,
+            child: Text(
+              title,
               maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppColors.ink3, fontSize: 9.5)),
+              style: const TextStyle(
+                color: AppColors.ink1,
+                fontWeight: FontWeight.w900,
+                fontSize: 12.5,
+              ),
+            ),
+          ),
+          Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: AppColors.ink3, fontSize: 9.5),
+          ),
         ],
       ),
     );
@@ -936,8 +1008,9 @@ class _HomeScreenState extends State<HomeScreen>
     final nextIndex = (data.unlockedLevel - 1).clamp(0, levels.length - 1);
     final level = levels[nextIndex];
     final accent = level.targetTier?.color ?? AppColors.coral;
-    final completed =
-        levels.where((l) => (data.bestStars[l.id] ?? 0) > 0).length;
+    final completed = levels
+        .where((l) => (data.bestStars[l.id] ?? 0) > 0)
+        .length;
     final progress = completed / levels.length;
     final best = data.bestScores[level.id] ?? 0;
     final isFresh = completed == 0;
@@ -950,10 +1023,7 @@ class _HomeScreenState extends State<HomeScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Colors.white,
-              Color.lerp(accent, Colors.white, 0.80)!,
-            ],
+            colors: [Colors.white, Color.lerp(accent, Colors.white, 0.80)!],
           ),
           borderRadius: BorderRadius.circular(28),
           border: Border.all(color: accent.withValues(alpha: 0.40), width: 2),
@@ -990,7 +1060,9 @@ class _HomeScreenState extends State<HomeScreen>
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(0, 26, 18, 0),
                             child: VehicleImage(
-                                vehicle: level.targetTier!, size: 62),
+                              vehicle: level.targetTier!,
+                              size: 62,
+                            ),
                           ),
                         )
                       : null,
@@ -1005,8 +1077,9 @@ class _HomeScreenState extends State<HomeScreen>
                   Row(
                     children: [
                       SoftChip(
-                        label:
-                            isFresh ? l10n.heroTitleNew : l10n.heroTitleResume,
+                        label: isFresh
+                            ? l10n.heroTitleNew
+                            : l10n.heroTitleResume,
                         color: accent,
                         solid: true,
                       ),
@@ -1020,20 +1093,28 @@ class _HomeScreenState extends State<HomeScreen>
                     ],
                   ),
                   const SizedBox(height: 10),
-                  Text(level.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          color: AppColors.ink1,
-                          fontSize: 25,
-                          height: 1.1,
-                          fontWeight: FontWeight.w900)),
+                  Text(
+                    level.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.ink1,
+                      fontSize: 25,
+                      height: 1.1,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text(level.goalText,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          color: AppColors.ink2, fontSize: 13, height: 1.4)),
+                  Text(
+                    level.goalText,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.ink2,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
                   const SizedBox(height: 14),
                   Row(
                     children: [
@@ -1047,28 +1128,40 @@ class _HomeScreenState extends State<HomeScreen>
                             Row(
                               children: [
                                 Flexible(
-                                  child: Text(l10n.overallProgress,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                          color: AppColors.ink2, fontSize: 11)),
+                                  child: Text(
+                                    l10n.overallProgress,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: AppColors.ink2,
+                                      fontSize: 11,
+                                    ),
+                                  ),
                                 ),
                                 const Spacer(),
                                 Flexible(
                                   child: Text(
-                                      l10n.levelsCleared(
-                                          completed, levels.length),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                          color: AppColors.ink2,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w800)),
+                                    l10n.levelsCleared(
+                                      completed,
+                                      levels.length,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: AppColors.ink2,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 5),
-                            CandyProgress(value: progress, color: accent, height: 7),
+                            CandyProgress(
+                              value: progress,
+                              color: accent,
+                              height: 7,
+                            ),
                           ],
                         ),
                       ),
@@ -1113,20 +1206,26 @@ class _HomeScreenState extends State<HomeScreen>
                           AppColors.grape,
                         ],
                       ).createShader(rect),
-                      child: Text(l10n.appName,
-                          style: const TextStyle(
-                              fontSize: 30,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                              letterSpacing: 0.5,
-                              height: 1.1)),
+                      child: Text(
+                        l10n.appName,
+                        style: const TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                          height: 1.1,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 1),
-                    Text(l10n.homeTagline,
-                        style: const TextStyle(
-                            color: AppColors.ink3,
-                            fontSize: 11.5,
-                            letterSpacing: 0.6)),
+                    Text(
+                      l10n.homeTagline,
+                      style: const TextStyle(
+                        color: AppColors.ink3,
+                        fontSize: 11.5,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
                     const SizedBox(height: 3),
                     // 成长标尺行：跨关卡的技巧纪录 + Boss 徽章墙进度。
                     // 有值才显示对应段——0 纪录的玩家只看到 Boss 目标，
@@ -1140,9 +1239,10 @@ class _HomeScreenState extends State<HomeScreen>
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          color: AppColors.ink2,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700),
+                        color: AppColors.ink2,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
@@ -1184,16 +1284,15 @@ class _HomeScreenState extends State<HomeScreen>
     final claimed = achievements
         .where((a) => data.claimedAchievements.contains(a.id))
         .length;
-    final claimable = achievements.any((a) =>
-        !data.claimedAchievements.contains(a.id) && a.achieved(data));
+    final claimable = achievements.any(
+      (a) => !data.claimedAchievements.contains(a.id) && a.achieved(data),
+    );
     final l10n = AppLocalizations.of(context);
     return _buildSquareEntry(
       icon: Icons.emoji_events_rounded,
       color: AppColors.sun,
       title: l10n.achievements,
-      subtitle: claimable
-          ? l10n.claimable
-          : '$claimed/${achievements.length}',
+      subtitle: claimable ? l10n.claimable : '$claimed/${achievements.length}',
       dot: claimable,
       onTap: () {
         AudioFeedback.uiTap();
@@ -1234,13 +1333,15 @@ class _HomeScreenState extends State<HomeScreen>
           icon: Icons.auto_awesome_rounded,
           accent: AppColors.taro,
           title: l10n.endlessMode,
-          subtitle:
-              best > 0 ? l10n.bestScore('$best') : l10n.endlessTagline,
+          subtitle: best > 0 ? l10n.bestScore('$best') : l10n.endlessTagline,
           onTap: () => _openLevel(endlessLevel),
           trailing: GestureDetector(
             onTap: _showEndlessRank,
-            child: const Icon(Icons.emoji_events_rounded,
-                color: AppColors.sun, size: 22),
+            child: const Icon(
+              Icons.emoji_events_rounded,
+              color: AppColors.sun,
+              size: 22,
+            ),
           ),
         ),
       ],
@@ -1250,8 +1351,7 @@ class _HomeScreenState extends State<HomeScreen>
 
 /// 入场仪式：从下方淡入上浮的区块。
 class _Reveal extends StatelessWidget {
-  const _Reveal(
-      {required this.anim, required this.start, required this.child});
+  const _Reveal({required this.anim, required this.start, required this.child});
 
   final Animation<double> anim;
   final double start;
@@ -1261,14 +1361,19 @@ class _Reveal extends StatelessWidget {
   Widget build(BuildContext context) {
     final a = CurvedAnimation(
       parent: anim,
-      curve: Interval(start, (start + 0.26).clamp(0.0, 1.0),
-          curve: Curves.easeOutCubic),
+      curve: Interval(
+        start,
+        (start + 0.26).clamp(0.0, 1.0),
+        curve: Curves.easeOutCubic,
+      ),
     );
     return FadeTransition(
       opacity: a,
       child: SlideTransition(
-        position:
-            Tween(begin: const Offset(0, 0.1), end: Offset.zero).animate(a),
+        position: Tween(
+          begin: const Offset(0, 0.1),
+          end: Offset.zero,
+        ).animate(a),
         child: child,
       ),
     );
@@ -1288,10 +1393,7 @@ class _FloatingIcon extends StatelessWidget {
       animation: ambient,
       builder: (context, _) {
         final dy = math.sin(ambient.value * math.pi * 4) * 6.0;
-        return Transform.translate(
-          offset: Offset(0, dy),
-          child: child,
-        );
+        return Transform.translate(offset: Offset(0, dy), child: child);
       },
     );
   }

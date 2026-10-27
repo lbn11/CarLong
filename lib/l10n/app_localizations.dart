@@ -4866,6 +4866,384 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Double'**
   String get parkingItemDouble;
+
+  /// 图鉴页标题
+  ///
+  /// In en, this message translates to:
+  /// **'Vehicle Collection'**
+  String get collectionTitle;
+
+  /// 图鉴页副标题
+  ///
+  /// In en, this message translates to:
+  /// **'Every one of them is worth keeping'**
+  String get collectionSubtitle;
+
+  /// 图鉴页 Boss 徽章墙小节标题
+  ///
+  /// In en, this message translates to:
+  /// **'👑 Boss Badge Wall'**
+  String get bossWallTitle;
+
+  /// Boss 徽章墙副标题
+  ///
+  /// In en, this message translates to:
+  /// **'Four guardians a chapter · {done}/{total} beaten'**
+  String bossWallSub(int done, int total);
+
+  /// Boss 详情：已击败状态
+  ///
+  /// In en, this message translates to:
+  /// **'Beaten · badge lit'**
+  String get bossBeatenBadge;
+
+  /// Boss 详情：未击败状态
+  ///
+  /// In en, this message translates to:
+  /// **'Not beaten · win the Boss of chapter {chapter}'**
+  String bossUnbeaten(int chapter);
+
+  /// 图鉴页车系小节标题（中文带「系」后缀，英文不带）
+  ///
+  /// In en, this message translates to:
+  /// **'{icon} {family}'**
+  String collectionFamilyHeader(String icon, String family);
+
+  /// 图鉴页车系小节副标题
+  ///
+  /// In en, this message translates to:
+  /// **'{desc} · {done}/{total} collected'**
+  String collectionFamilyMeta(String desc, int done, int total);
+
+  /// 车型详情抽屉里的车系标签
+  ///
+  /// In en, this message translates to:
+  /// **'{family} · {desc}'**
+  String collectionFamilyChip(String family, String desc);
+
+  /// 车型详情：已收集状态与图鉴编号
+  ///
+  /// In en, this message translates to:
+  /// **'Collected · #{index}/{total}'**
+  String collectionIndex(int index, int total);
+
+  /// 车型详情：未解锁状态
+  ///
+  /// In en, this message translates to:
+  /// **'Undiscovered · merge or park to unlock'**
+  String get collectionLocked;
+
+  /// 图鉴卡未点亮时的一行小字
+  ///
+  /// In en, this message translates to:
+  /// **'Undiscovered'**
+  String get collectionLockedShort;
+
+  /// 车系一句话（陆地）
+  ///
+  /// In en, this message translates to:
+  /// **'Everyday traffic on the road'**
+  String get catDescLand;
+
+  /// 车系一句话（重装）
+  ///
+  /// In en, this message translates to:
+  /// **'The heavyweight end of logistics'**
+  String get catDescHeavy;
+
+  /// 车系一句话（轨道）
+  ///
+  /// In en, this message translates to:
+  /// **'Running on steel rails'**
+  String get catDescRail;
+
+  /// 车系一句话（水上）
+  ///
+  /// In en, this message translates to:
+  /// **'Riding the waves'**
+  String get catDescMaritime;
+
+  /// 车系一句话（航空）
+  ///
+  /// In en, this message translates to:
+  /// **'Steel wings cutting the clouds'**
+  String get catDescAir;
+
+  /// 车系一句话（太空）
+  ///
+  /// In en, this message translates to:
+  /// **'Out to the stars'**
+  String get catDescSpace;
+
+  /// Boss 技能名：冻住关键车
+  ///
+  /// In en, this message translates to:
+  /// **'Freeze'**
+  String get attackFreeze;
+
+  /// Boss 技能名：拖走最高档车
+  ///
+  /// In en, this message translates to:
+  /// **'Tow'**
+  String get attackSteal;
+
+  /// Boss 技能名：落石占格
+  ///
+  /// In en, this message translates to:
+  /// **'Rubble'**
+  String get attackRubble;
+
+  /// Boss 技能名：临时扣车
+  ///
+  /// In en, this message translates to:
+  /// **'Impound'**
+  String get attackImpound;
+
+  /// Boss 技能名：降一档
+  ///
+  /// In en, this message translates to:
+  /// **'Degrade'**
+  String get attackDevolve;
+
+  /// Boss 技能名：牌堆降档
+  ///
+  /// In en, this message translates to:
+  /// **'Poison'**
+  String get attackTaint;
+
+  /// Boss 技能名：锁牌堆几秒
+  ///
+  /// In en, this message translates to:
+  /// **'Deck Lock'**
+  String get attackLock;
+
+  /// Boss 技能名：粘住车辆
+  ///
+  /// In en, this message translates to:
+  /// **'Glue'**
+  String get attackGlue;
+
+  /// Boss 技能名：开黑洞占格
+  ///
+  /// In en, this message translates to:
+  /// **'Black Hole'**
+  String get attackHole;
+
+  /// Boss 技能名：某档禁合
+  ///
+  /// In en, this message translates to:
+  /// **'Merge Ban'**
+  String get attackBan;
+
+  /// Boss 技能名：盖住车辆
+  ///
+  /// In en, this message translates to:
+  /// **'Fog'**
+  String get attackFog;
+
+  /// Boss 技能名：全场重排
+  ///
+  /// In en, this message translates to:
+  /// **'Shuffle'**
+  String get attackShuffle;
+
+  /// Boss 技能名：抢回目标车补血
+  ///
+  /// In en, this message translates to:
+  /// **'Steal Target'**
+  String get attackStealGoal;
+
+  /// Boss 被动：护盾周期
+  ///
+  /// In en, this message translates to:
+  /// **'Shield'**
+  String get attackShield;
+
+  /// Boss 技能名：冻整块冰
+  ///
+  /// In en, this message translates to:
+  /// **'Ice Block'**
+  String get attackIce;
+
+  /// 广告结果：玩家中途关掉
+  ///
+  /// In en, this message translates to:
+  /// **'You didn\'t finish the ad, so no reward this time'**
+  String get adOutcomeSkipped;
+
+  /// 广告结果：加载/播放失败
+  ///
+  /// In en, this message translates to:
+  /// **'The ad didn\'t load — try again in a moment'**
+  String get adOutcomeFailed;
+
+  /// 广告结果：无 SDK / 无填充
+  ///
+  /// In en, this message translates to:
+  /// **'Ads aren\'t available here right now'**
+  String get adOutcomeUnavailable;
+
+  /// 广告结果：达每日上限
+  ///
+  /// In en, this message translates to:
+  /// **'That\'s all for today'**
+  String get adOutcomeCapped;
+
+  /// 广告结果：冷却中
+  ///
+  /// In en, this message translates to:
+  /// **'Just watched one — give it a few seconds'**
+  String get adOutcomeCooldown;
+
+  /// 广告位全名：商店每日福利
+  ///
+  /// In en, this message translates to:
+  /// **'Daily shop bonus'**
+  String get adPlacementShop;
+
+  /// 广告位全名：合成续命
+  ///
+  /// In en, this message translates to:
+  /// **'Merge revive'**
+  String get adPlacementRevive;
+
+  /// 广告位全名：合成金币翻倍
+  ///
+  /// In en, this message translates to:
+  /// **'Merge coin doubler'**
+  String get adPlacementDouble;
+
+  /// 广告位全名：停车撤销
+  ///
+  /// In en, this message translates to:
+  /// **'Parking undo'**
+  String get adPlacementUndo;
+
+  /// 广告位全名：停车提示
+  ///
+  /// In en, this message translates to:
+  /// **'Parking hint'**
+  String get adPlacementHint;
+
+  /// 广告诊断里的短名：商店
+  ///
+  /// In en, this message translates to:
+  /// **'Shop'**
+  String get adPlacementShopShort;
+
+  /// 广告诊断里的短名：续命
+  ///
+  /// In en, this message translates to:
+  /// **'Revive'**
+  String get adPlacementReviveShort;
+
+  /// 广告诊断里的短名：翻倍
+  ///
+  /// In en, this message translates to:
+  /// **'x2'**
+  String get adPlacementDoubleShort;
+
+  /// 广告诊断里的短名：撤销
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get adPlacementUndoShort;
+
+  /// 广告诊断里的短名：提示
+  ///
+  /// In en, this message translates to:
+  /// **'Hint'**
+  String get adPlacementHintShort;
+
+  /// 广告诊断行标签：通道
+  ///
+  /// In en, this message translates to:
+  /// **'Channel'**
+  String get adDiagChannel;
+
+  /// 广告诊断：SDK 尚未初始化
+  ///
+  /// In en, this message translates to:
+  /// **'Not initialised (retries on first tap)'**
+  String get adDiagSdkNotInit;
+
+  /// 广告诊断：SDK 正常
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get adDiagSdkReady;
+
+  /// 广告诊断：SDK 初始化失败
+  ///
+  /// In en, this message translates to:
+  /// **'Init failed — placements fall back silently'**
+  String get adDiagSdkFailed;
+
+  /// 广告诊断行标签：今日总量
+  ///
+  /// In en, this message translates to:
+  /// **'Daily total'**
+  String get adDiagGlobalTotal;
+
+  /// 广告诊断：今日已用/上限
+  ///
+  /// In en, this message translates to:
+  /// **'{used} / {cap}'**
+  String adDiagCountLine(int used, int cap);
+
+  /// 广告诊断：全局广告开关关闭时的后缀
+  ///
+  /// In en, this message translates to:
+  /// **' (ads disabled globally)'**
+  String get adDiagAdsOff;
+
+  /// 广告诊断行标签：单点剩余
+  ///
+  /// In en, this message translates to:
+  /// **'Left per placement'**
+  String get adDiagSingleLeft;
+
+  /// 广告通道三态：演示通道
+  ///
+  /// In en, this message translates to:
+  /// **'Demo channel · no SDK, rewards instantly ({provider})'**
+  String adDiagMock(String provider);
+
+  /// 广告通道三态：测试广告
+  ///
+  /// In en, this message translates to:
+  /// **'Test ads · real SDK, test units, zero revenue ({provider})'**
+  String adDiagTest(String provider);
+
+  /// 广告通道三态：正式广告
+  ///
+  /// In en, this message translates to:
+  /// **'Live ads · real inventory, billed ({provider})'**
+  String adDiagLive(String provider);
+
+  /// 广告启动日志一行（调试用，同时用于通道自检）
+  ///
+  /// In en, this message translates to:
+  /// **'[ads] {channel} · init {state}'**
+  String adDiagLog(String channel, String state);
+
+  /// 广告初始化成功
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get adDiagStateOk;
+
+  /// 广告初始化失败
+  ///
+  /// In en, this message translates to:
+  /// **'failed'**
+  String get adDiagStateFail;
+
+  /// Boss 抢目标技能的飘字（Boss 回血）
+  ///
+  /// In en, this message translates to:
+  /// **'🏆 Stole 1 HP back!'**
+  String get floatStealBack;
 }
 
 class _AppLocalizationsDelegate

@@ -27,8 +27,8 @@ AdProvider createAdProvider({AdMobConfig? config}) {
     // 不直接抛异常（会把演示包砸掉），但要在日志里喊出来，别静默发出去。
     if (kReleaseMode) {
       debugPrint('================ ADS: MOCK PROVIDER IN RELEASE BUILD ================');
-      debugPrint('构建时带了 --dart-define=MOCK_ADS=true，全部广告位都在模拟播放。');
-      debugPrint('这是给渠道/审核演示用的包，**不能用于上架**。');
+      debugPrint('Built with --dart-define=MOCK_ADS=true: every placement is faked.');
+      debugPrint('This build is for channel/review demos only — DO NOT SHIP.');
       debugPrint('==================================================================');
     }
     return MockAdProvider(

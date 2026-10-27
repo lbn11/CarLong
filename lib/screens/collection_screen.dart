@@ -23,6 +23,7 @@ class CollectionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = L10n.value;
     final total = VehicleType.values.length;
     final owned = data.collection.length;
     return Scaffold(
@@ -32,8 +33,8 @@ class CollectionScreen extends StatelessWidget {
           child: Column(
             children: [
               CandyAppBar(
-                title: '车辆图鉴',
-                subtitle: '每一辆都值得被收藏',
+                title: l.collectionTitle,
+                subtitle: l.collectionSubtitle,
                 accent: AppColors.grape,
                 onBack: () => Navigator.of(context).pop(),
                 actions: [
@@ -78,14 +79,15 @@ class CollectionScreen extends StatelessWidget {
   /// 未击败是问号剪影。Boss 卡组已全部做成确定性生成（同章同序号永远
   /// 同一只），差的只是"打过"这个事实被记住。
   Widget _buildBossWallSection(BuildContext context) {
+    final l = L10n.value;
     final total = LevelDataGenerator.bossTotal;
     final done = data.defeatedBosses.length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionTitle(
-          title: '👑 Boss 徽章墙',
-          subtitle: '每章四位守关者 · 已击败 $done/$total',
+          title: l.bossWallTitle,
+          subtitle: l.bossWallSub(done, total),
           accent: AppColors.grape,
         ),
         const SizedBox(height: 10),
@@ -185,16 +187,16 @@ class CollectionScreen extends StatelessWidget {
                       const SizedBox(width: 8),
                     ],
                     if (spec.enrageAtHalf) ...[
-                      const SoftChip(
-                        label: '💢 狂怒',
+                      SoftChip(
+                        label: '💢 ${l.enraged}',
                         color: AppColors.blossom,
                         solid: true,
                       ),
                       const SizedBox(width: 8),
                     ],
                     if (spec.shieldCycle > 0) ...[
-                      const SoftChip(
-                        label: '🛡️ 护盾',
+                      SoftChip(
+                        label: '🛡️ ${l.shield}',
                         color: AppColors.lemon,
                         solid: true,
                       ),
@@ -205,15 +207,15 @@ class CollectionScreen extends StatelessWidget {
                 const SizedBox(height: 14),
                 SoftChip(
                   label: defeated
-                      ? '已击败 · 徽章已点亮'
-                      : '未击败 · 在第 ${c + 1} 章 Boss 关取胜',
+                      ? l.bossBeatenBadge
+                      : l.bossUnbeaten(c + 1),
                   icon: defeated ? Icons.check_circle : Icons.search,
                   color: defeated ? AppColors.mint : AppColors.ink3,
                   solid: defeated,
                 ),
                 const SizedBox(height: 16),
                 CandyButton(
-                  label: '收好了',
+                  label: L10n.value.done,
                   size: CandyButtonSize.medium,
                   colors: AppTheme.gradientOf(AppColors.grape),
                   onTap: () {
@@ -230,6 +232,7 @@ class CollectionScreen extends StatelessWidget {
   }
 
   Widget _buildFamilySection(BuildContext context, VehicleCategory family) {
+    final l = L10n.value;
     final tiers = VehicleType.values.where((t) => t.category == family).toList();
     final done = tiers.where((t) => data.collection.contains(t.id)).length;
     final color = familyColor(family);
@@ -237,8 +240,9 @@ class CollectionScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionTitle(
-          title: '${familyIcon(family)} ${family.label}系',
-          subtitle: '${familySub(family)} · 已收 $done/${tiers.length}',
+          title: l.collectionFamilyHeader(familyIcon(family), family.displayLabel),
+          subtitle: l.collectionFamilyMeta(
+              familySub(family), done, tiers.length),
           accent: color,
         ),
         const SizedBox(height: 10),
@@ -264,6 +268,7 @@ class CollectionScreen extends StatelessWidget {
 
   /// 车型详情糖果抽屉（大图 + 名称 + 车系 + 解锁状态）。
   void _showDetail(BuildContext context, VehicleType vehicle) {
+    final l = L10n.value;
     final unlocked = data.collection.contains(vehicle.id);
     final family = vehicle.category;
     showModalBottomSheet<void>(
@@ -351,21 +356,23 @@ class CollectionScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 SoftChip(
-                  label: '${family.label}系 · ${familySub(family)}',
+                  label: l.collectionFamilyChip(
+                      family.displayLabel, familySub(family)),
                   color: familyColor(family),
                 ),
                 const SizedBox(height: 12),
                 SoftChip(
                   label: unlocked
-                      ? '已收集 · 第 ${vehicle.id + 1}/${VehicleType.values.length} 号'
-                      : '未发现 · 合成或停车解锁',
+                      ? l.collectionIndex(
+                          vehicle.id + 1, VehicleType.values.length)
+                      : l.collectionLocked,
                   icon: unlocked ? Icons.check_circle : Icons.search,
                   color: unlocked ? AppColors.mint : AppColors.ink3,
                   solid: unlocked,
                 ),
                 const SizedBox(height: 16),
                 CandyButton(
-                  label: '收好了',
+                  label: L10n.value.done,
                   size: CandyButtonSize.medium,
                   colors: AppTheme.gradientOf(vehicle.color),
                   onTap: () {
@@ -401,14 +408,18 @@ String familyIcon(VehicleCategory family) => switch (family) {
       VehicleCategory.space => '🚀',
     };
 
-String familySub(VehicleCategory family) => switch (family) {
-      VehicleCategory.land => '马路上的日常出行',
-      VehicleCategory.heavy => '重量级的物流主力',
-      VehicleCategory.rail => '奔跑在钢铁轨道上',
-      VehicleCategory.maritime => '乘风破浪的水上交通',
-      VehicleCategory.air => '划破云层的钢铁之翼',
-      VehicleCategory.space => '飞向星辰大海',
-    };
+/// 车系一句话（图鉴小节副标题 / 详情抽屉标签）。
+String familySub(VehicleCategory family) {
+  final l = L10n.value;
+  return switch (family) {
+    VehicleCategory.land => l.catDescLand,
+    VehicleCategory.heavy => l.catDescHeavy,
+    VehicleCategory.rail => l.catDescRail,
+    VehicleCategory.maritime => l.catDescMaritime,
+    VehicleCategory.air => l.catDescAir,
+    VehicleCategory.space => l.catDescSpace,
+  };
+}
 
 /// 单辆车的图鉴卡：点亮显示真实 3D 车模，未点亮显示去色剪影。
 class _CollectionCard extends StatelessWidget {
@@ -492,7 +503,7 @@ class _CollectionCard extends StatelessWidget {
             ),
             const SizedBox(height: 1),
             Text(
-              unlocked ? vehicle.icon : '未发现',
+              unlocked ? vehicle.icon : L10n.value.collectionLockedShort,
               style: TextStyle(
                 color: unlocked ? AppColors.ink2 : AppColors.ink3,
                 fontSize: 11,
@@ -524,23 +535,29 @@ String bossSkillIcon(BossAttackKind k) => switch (k) {
       BossAttackKind.ice => '❄️',
     };
 
-String bossSkillLabel(BossAttackKind k) => switch (k) {
-      BossAttackKind.freeze => '冰封',
-      BossAttackKind.steal => '拖车',
-      BossAttackKind.rubble => '塌方',
-      BossAttackKind.impound => '扣押',
-      BossAttackKind.devolve => '退化',
-      BossAttackKind.taint => '污染',
-      BossAttackKind.lock => '锁牌堆',
-      BossAttackKind.glue => '胶水',
-      BossAttackKind.hole => '黑洞',
-      BossAttackKind.ban => '禁合',
-      BossAttackKind.fog => '迷雾',
-      BossAttackKind.shuffle => '洗牌',
-      BossAttackKind.stealGoal => '抢目标',
-      BossAttackKind.shield => '护盾',
-      BossAttackKind.ice => '冰块',
-    };
+/// Boss 技能名（徽章墙与详情抽屉共用）。
+///
+/// 与 [bossSkillIcon] 成对：图标是语言无关的 emoji，名字走 arb。
+String bossSkillLabel(BossAttackKind k) {
+  final l = L10n.value;
+  return switch (k) {
+    BossAttackKind.freeze => l.attackFreeze,
+    BossAttackKind.steal => l.attackSteal,
+    BossAttackKind.rubble => l.attackRubble,
+    BossAttackKind.impound => l.attackImpound,
+    BossAttackKind.devolve => l.attackDevolve,
+    BossAttackKind.taint => l.attackTaint,
+    BossAttackKind.lock => l.attackLock,
+    BossAttackKind.glue => l.attackGlue,
+    BossAttackKind.hole => l.attackHole,
+    BossAttackKind.ban => l.attackBan,
+    BossAttackKind.fog => l.attackFog,
+    BossAttackKind.shuffle => l.attackShuffle,
+    BossAttackKind.stealGoal => l.attackStealGoal,
+    BossAttackKind.shield => l.attackShield,
+    BossAttackKind.ice => l.attackIce,
+  };
+}
 
 /// 徽章墙单格：已击败 = 主技能 + 绰号/章号；未击败 = 剪影问号。
 class _BossBadge extends StatelessWidget {

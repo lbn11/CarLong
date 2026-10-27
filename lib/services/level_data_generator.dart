@@ -73,7 +73,9 @@ class LevelDataGenerator {
   static const int rhythmPeriod = 5;
 
   /// 相位名（0..4），供 UI 显示难度标记。
+  // i18n-data-block：相位名原文（界面走 LevelRhythm.displayNameOf）
   static const List<String> phaseNames = ['轻松', '顺手', '动脑', '顺手', '硬仗'];
+  // i18n-data-end
 
   /// 难度心跳相位（0..4）：章内偏移取模。
   ///
@@ -542,6 +544,6 @@ class LevelDataGenerator {
     for (final ch in generatedChapters.reversed) {
       if (id >= ch.startId) return ch.zhShortTitle;
     }
-    return '街区';
+    return '街区'; // i18n-data（不可达兜底）
   }
 }
