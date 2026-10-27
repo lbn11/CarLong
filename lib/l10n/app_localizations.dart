@@ -4543,11 +4543,11 @@ abstract class AppLocalizations {
   /// **'👹 Demon'**
   String get parkingDemonBadge;
 
-  /// 停车章节卡副行：阶段名 · 章节副标题 · 通关进度
+  /// 停车章节卡副行：阶段名 · 章节副标题（通关进度由右侧 chip 显示，不在这行重复）
   ///
   /// In en, this message translates to:
-  /// **'{stage} · {subtitle} · {done}/{total} cleared'**
-  String parkingChapterMeta(String stage, String subtitle, int done, int total);
+  /// **'{stage} · {subtitle}'**
+  String parkingChapterMeta(String stage, String subtitle);
 
   /// 停车章节锁定时提示解锁方式
   ///

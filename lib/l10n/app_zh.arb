@@ -838,7 +838,7 @@
   "parkingSelectSubEmpty": "把车轻轻停进格子就好，别有负担",
   "parkingSelectProgress": "已停稳 {cleared}/{total} 关 · 越停越顺手",
   "parkingDemonBadge": "👹 魔王章",
-  "parkingChapterMeta": "{stage}阶段 · {subtitle} · 已通关 {done}/{total}",
+  "parkingChapterMeta": "{stage}阶段 · {subtitle}",
   "parkingLockReason": "在合成中收集 {icon} {name} 解锁",
   "parkingDailyTitle": "每日停车挑战",
   "parkingDailyDone": "今天已经停好啦",

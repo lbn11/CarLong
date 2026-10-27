@@ -2508,13 +2508,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get parkingDemonBadge => '👹 Demon';
 
   @override
-  String parkingChapterMeta(
-    String stage,
-    String subtitle,
-    int done,
-    int total,
-  ) {
-    return '$stage · $subtitle · $done/$total cleared';
+  String parkingChapterMeta(String stage, String subtitle) {
+    return '$stage · $subtitle';
   }
 
   @override

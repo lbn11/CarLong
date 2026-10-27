@@ -1316,14 +1316,12 @@
   },
   "parkingDemonBadge": "👹 Demon",
   "@parkingDemonBadge": { "description": "停车章节卡上的魔王章徽标" },
-  "parkingChapterMeta": "{stage} · {subtitle} · {done}/{total} cleared",
+  "parkingChapterMeta": "{stage} · {subtitle}",
   "@parkingChapterMeta": {
-    "description": "停车章节卡副行：阶段名 · 章节副标题 · 通关进度",
+    "description": "停车章节卡副行：阶段名 · 章节副标题（通关进度由右侧 chip 显示，不在这行重复）",
     "placeholders": {
       "stage": { "type": "String" },
-      "subtitle": { "type": "String" },
-      "done": { "type": "int" },
-      "total": { "type": "int" }
+      "subtitle": { "type": "String" }
     }
   },
   "parkingLockReason": "Collect {icon} {name} in Merge to unlock",

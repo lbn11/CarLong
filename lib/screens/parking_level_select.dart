@@ -417,8 +417,6 @@ class _ParkingLevelSelectScreenState extends State<ParkingLevelSelectScreen> {
                                   ),
                                 ),
                                 chapter.subtitle,
-                                cleared,
-                                levels.length,
                               )
                             : ParkingChapters.lockReason(chapter),
                         maxLines: 1,

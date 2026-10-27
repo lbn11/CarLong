@@ -2475,13 +2475,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get parkingDemonBadge => '👹 魔王章';
 
   @override
-  String parkingChapterMeta(
-    String stage,
-    String subtitle,
-    int done,
-    int total,
-  ) {
-    return '$stage阶段 · $subtitle · 已通关 $done/$total';
+  String parkingChapterMeta(String stage, String subtitle) {
+    return '$stage阶段 · $subtitle';
   }
 
   @override
