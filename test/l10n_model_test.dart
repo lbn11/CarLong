@@ -77,4 +77,75 @@ void main() {
     final tier = VehicleType.fromId(json['target'] as int);
     expect(json['targetName'], tier.zhName);
   });
+
+  /// 关名/章节名/绰号是"数据里带中文"的三块。它们能本地化的前提是
+  /// **落盘值单独存一份**（zhName / zhTitle / epithet），所以这里既查
+  /// 界面侧不出中文，也查数据侧不出英文。
+  testWidgets('英文 locale：关名/章节名/Boss 绰号全部英文化', (tester) async {
+    await tester.pumpWidget(
+      l10nHost(const SizedBox(), locale: const Locale('en')),
+    );
+    final cjk = RegExp(r'[\u4e00-\u9fff]');
+
+    // 主线 700 关逐关过一遍：手写段查表、生成段拼章节名，两条路径都要
+    // 干净。漏一条就会在 HUD「第 X 关 · 名字」里露出中文。
+    for (final lv in levels) {
+      expect(cjk.hasMatch(lv.name), isFalse,
+          reason: '第 ${lv.id} 关英文名下仍含中文：${lv.name}');
+      expect(lv.zhName, isNotEmpty);
+    }
+    expect(levels.first.name, 'Morning Run');
+    expect(endlessLevel.name, 'Endless');
+
+    // Boss 关：`👑 Boss · <章节短名>`，两部分都不能有中文。
+    final bossLevels = levels.where((l) => l.boss != null).toList();
+    expect(bossLevels, isNotEmpty);
+    for (final lv in bossLevels.take(20)) {
+      expect(cjk.hasMatch(lv.name), isFalse, reason: 'Boss 关名漏翻：${lv.name}');
+      expect(lv.name, contains('Boss'));
+    }
+
+    // 章节标题/短名/副标题。
+    for (final ch in levelChapters) {
+      expect(cjk.hasMatch(ch.title), isFalse, reason: '章节标题漏翻：${ch.title}');
+      expect(cjk.hasMatch(ch.shortTitle), isFalse,
+          reason: '章节短名漏翻：${ch.shortTitle}');
+      expect(cjk.hasMatch(ch.subtitle), isFalse,
+          reason: '章节副标题漏翻：${ch.subtitle}');
+    }
+    expect(levelChapters.first.title, 'Chapter 1 · Street Start');
+    expect(levelChapters.first.shortTitle, 'Street Start');
+
+    // 招牌 Boss 绰号（14 章 × 尖峰位）。
+    for (var c = 0; c < 14; c++) {
+      final spec = BossSpec.forLevel(c, 3, 6);
+      final label = spec.epithetLabel;
+      expect(label, isNotNull);
+      expect(cjk.hasMatch(label!), isFalse, reason: '第 ${c + 1} 章绰号漏翻：$label');
+    }
+  });
+
+  testWidgets('中文 locale：关名与章节名回到原文', (tester) async {
+    await tester.pumpWidget(
+      l10nHost(const SizedBox(), locale: const Locale('zh')),
+    );
+    for (final lv in levels) {
+      expect(lv.name, lv.zhName, reason: '第 ${lv.id} 关中文显示名与 zhName 不一致');
+    }
+    for (final ch in levelChapters) {
+      expect(ch.title, ch.zhTitle);
+      expect(ch.shortTitle, ch.zhShortTitle);
+      expect(ch.subtitle, ch.zhSubtitle);
+    }
+  });
+
+  testWidgets('关卡数据导出不受 locale 影响（关名仍是中文）', (tester) async {
+    await tester.pumpWidget(
+      l10nHost(const SizedBox(), locale: const Locale('en')),
+    );
+    expect(levels.first.name, 'Morning Run');
+    // 导出的是 zhName，不能跟着界面走。
+    expect(mergeLevelToJson(levels.first)['name'], '清晨路段');
+    expect(mergeLevelToJson(levels[699])['name'], levels[699].zhName);
+  });
 }

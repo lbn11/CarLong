@@ -6,7 +6,7 @@ import 'package:merge_fleet/models/vehicle.dart';
 /// 测试关：5x5、produce 目标、无干扰项，专测冰封规则本身。
 LevelDefinition _lv({VehicleType? target}) => LevelDefinition(
       id: 9001,
-      name: '冰封测试',
+      zhName: '冰封测试',
       cols: 5,
       rows: 5,
       stockSize: 40,

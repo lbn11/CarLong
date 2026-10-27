@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../game/audio_feedback.dart';
+import '../l10n/l10n.dart';
 import '../models/level.dart';
 import '../models/vehicle.dart';
 import '../save/save_repository.dart';
@@ -119,6 +120,7 @@ class CollectionScreen extends StatelessWidget {
   /// 收藏墙的意义一半是"还没打过的那些长什么样"。
   void _showBossDetail(
       BuildContext context, BossSpec spec, int c, int b) {
+    final l = L10n.value;
     final defeated = data.defeatedBosses.contains('$c.$b');
     final skills = <BossAttackKind>[
       spec.primary,
@@ -160,14 +162,14 @@ class CollectionScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
-                Text(spec.epithet ?? '第 ${c + 1} 章 · 守关者 ${b + 1}',
+                Text(spec.epithetLabel ?? l.bossGuardian(c + 1, b + 1),
                     style: const TextStyle(
                         color: AppColors.ink1,
                         fontSize: 22,
                         fontWeight: FontWeight.w900)),
                 const SizedBox(height: 4),
                 Text(
-                  b == 3 ? '尖峰招牌 Boss' : '章内第 ${b + 1} 位',
+                  b == 3 ? l.signatureBoss : l.bossSlotOrder(b + 1),
                   style: const TextStyle(color: AppColors.ink3, fontSize: 12),
                 ),
                 const SizedBox(height: 14),
@@ -558,7 +560,7 @@ class _BossBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final caption = spec.epithet ?? '第 ${chapterIdx + 1} 章';
+    final caption = spec.epithetLabel ?? L10n.value.chapterOnly(chapterIdx + 1);
     return Pressable(
       onTap: onTap,
       child: Container(

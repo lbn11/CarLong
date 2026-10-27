@@ -30,7 +30,7 @@ LevelDefinition _level({
 }) {
   return LevelDefinition(
     id: id,
-    name: '结算测试 #$id',
+    zhName: '结算测试 #$id',
     cols: 5,
     rows: 5,
     stockSize: stockSize,

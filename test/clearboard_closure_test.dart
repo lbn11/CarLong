@@ -9,7 +9,7 @@ import 'package:merge_fleet/models/vehicle.dart';
 void main() {
   LevelDefinition clearLevel({int? limit}) => LevelDefinition(
         id: 6,
-        name: 't',
+        zhName: 't',
         cols: 5,
         rows: 5,
         stockSize: 30,
@@ -39,7 +39,7 @@ void main() {
     test('produce 关不受影响：目标下方窗口分布', () {
       final w = LevelDefinition(
         id: 1,
-        name: 't',
+        zhName: 't',
         cols: 4,
         rows: 4,
         stockSize: 20,

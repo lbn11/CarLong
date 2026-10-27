@@ -1109,4 +1109,474 @@ class AppLocalizationsEn extends AppLocalizations {
   String bonusFog(int n) {
     return '🌫 Fog×$n';
   }
+
+  @override
+  String get levelEndlessName => 'Endless';
+
+  @override
+  String get dailyChallengeName => 'Daily Challenge';
+
+  @override
+  String bossLevelName(String chapter) {
+    return '👑 Boss · $chapter';
+  }
+
+  @override
+  String get lv01 => 'Morning Run';
+
+  @override
+  String get lv02 => 'Rush Hour';
+
+  @override
+  String get lv03 => 'Ring Express';
+
+  @override
+  String get lv04 => 'Freight Hub';
+
+  @override
+  String get lv05 => 'Steel Trunk Line';
+
+  @override
+  String get lv06 => 'Starlight Sweeper';
+
+  @override
+  String get lv07 => 'Midnight Dash';
+
+  @override
+  String get lv08 => 'City Freeway';
+
+  @override
+  String get lv09 => 'Timed Sweeper';
+
+  @override
+  String get lv10 => 'Final Sprint';
+
+  @override
+  String get lv11 => 'Street Opener';
+
+  @override
+  String get lv12 => 'Loop Shuttle';
+
+  @override
+  String get lv13 => 'Ice Delivery';
+
+  @override
+  String get lv14 => 'Timed Freight';
+
+  @override
+  String get lv15 => 'Sweeper\'s Peak';
+
+  @override
+  String get lv16 => 'Rails Extended';
+
+  @override
+  String get lv17 => 'Rocket Launch';
+
+  @override
+  String get lv18 => 'Timed Clear II';
+
+  @override
+  String get lv19 => 'Heavy Muster';
+
+  @override
+  String get lv20 => 'Ultimate Hub';
+
+  @override
+  String get lv21 => 'Rapid Rail';
+
+  @override
+  String get lv22 => 'Tanker Run';
+
+  @override
+  String get lv23 => 'Sweeper III';
+
+  @override
+  String get lv24 => 'High-Speed Push';
+
+  @override
+  String get lv25 => 'Metro Peak';
+
+  @override
+  String get lv26 => 'Airport Runway';
+
+  @override
+  String get lv27 => 'Timed Clear III';
+
+  @override
+  String get lv28 => 'Sky Corridor';
+
+  @override
+  String get lv29 => 'Rail-Sea Hub';
+
+  @override
+  String get lv30 => 'Close Call';
+
+  @override
+  String get lv31 => 'Six-Rail Interchange';
+
+  @override
+  String get lv32 => 'Fighter Launch';
+
+  @override
+  String get lv33 => 'Clear Limit';
+
+  @override
+  String get lv34 => 'Sky Overlord';
+
+  @override
+  String get lv35 => 'Storm Deadline';
+
+  @override
+  String get lv36 => 'Stellar Rehearsal';
+
+  @override
+  String get lv37 => 'Layered Blockade';
+
+  @override
+  String get lv38 => 'Timed Clear IV';
+
+  @override
+  String get lv39 => 'Heavy Peak';
+
+  @override
+  String get lv40 => 'Final Rehearsal';
+
+  @override
+  String get lv41 => 'Road of Stars';
+
+  @override
+  String get lv42 => 'Ultimate Clear';
+
+  @override
+  String get lv43 => 'Deep-Space Fleet';
+
+  @override
+  String get lv44 => 'Gate of Time';
+
+  @override
+  String get lv45 => 'Star Convergence';
+
+  @override
+  String get lv46 => 'Fate Crossing';
+
+  @override
+  String get lv47 => 'Chaos Clear';
+
+  @override
+  String get lv48 => 'Star Fleet';
+
+  @override
+  String get lv49 => 'Dawnlight';
+
+  @override
+  String get lv50 => 'Starport Prime';
+
+  @override
+  String get lv51 => 'Starport Showdown';
+
+  @override
+  String get lv52 => 'Maglev Maiden Run';
+
+  @override
+  String get lv53 => 'Rail Transit';
+
+  @override
+  String get lv54 => 'Comet Chase';
+
+  @override
+  String get lv55 => 'Move-Limited Logistics';
+
+  @override
+  String get lv56 => 'Move-Limited Rail';
+
+  @override
+  String get lv57 => 'Move-Limited Clear';
+
+  @override
+  String get lv58 => 'Ultimate Clear';
+
+  @override
+  String get lv59 => 'Nebula Fog';
+
+  @override
+  String get lv60 => 'Portal Hub';
+
+  @override
+  String get lv61 => 'Wildcard Trial';
+
+  @override
+  String get lv62 => 'Demolition';
+
+  @override
+  String get lv63 => 'Fog Train';
+
+  @override
+  String get lv64 => 'Double Portal';
+
+  @override
+  String get lv65 => 'Wildcard Rocket';
+
+  @override
+  String get lv66 => 'Bomb Frenzy';
+
+  @override
+  String get lv67 => 'Portal Clear';
+
+  @override
+  String get lv68 => 'Fogged Starport';
+
+  @override
+  String get lv69 => 'Combo Hell';
+
+  @override
+  String get lv70 => 'Ultimate Portal';
+
+  @override
+  String get ch01Title => 'Chapter 1 · Street Start';
+
+  @override
+  String get ch01Name => 'Street Start';
+
+  @override
+  String get ch01Sub => 'Your fleet starts with a single bicycle';
+
+  @override
+  String get ch02Title => 'Chapter 2 · City Arteries';
+
+  @override
+  String get ch02Name => 'City Arteries';
+
+  @override
+  String get ch02Sub => 'Traffic thickens, freight picks up';
+
+  @override
+  String get ch03Title => 'Chapter 3 · Rail Age';
+
+  @override
+  String get ch03Name => 'Rail Age';
+
+  @override
+  String get ch03Sub => 'High-speed rail and metro, everywhere';
+
+  @override
+  String get ch04Title => 'Chapter 4 · Skybound';
+
+  @override
+  String get ch04Name => 'Skybound';
+
+  @override
+  String get ch04Sub => 'Airliners and fighters reach for the clouds';
+
+  @override
+  String get ch05Title => 'Chapter 5 · Star Trek';
+
+  @override
+  String get ch05Name => 'Star Trek';
+
+  @override
+  String get ch05Sub => 'Threading through the sea of stars';
+
+  @override
+  String get ch06Title => 'Chapter 6 · Starport Trial';
+
+  @override
+  String get ch06Name => 'Starport Trial';
+
+  @override
+  String get ch06Sub => 'The test of the ultimate hub';
+
+  @override
+  String get ch07Title => 'Chapter 7 · Mechanism Limit';
+
+  @override
+  String get ch07Name => 'Mechanism Limit';
+
+  @override
+  String get ch07Sub => 'Limited moves and portals — master ranks';
+
+  @override
+  String get ch08Title => 'Chapter 8 · Underground Grid';
+
+  @override
+  String get ch08Name => 'Underground Grid';
+
+  @override
+  String get ch08Sub => 'The first line beneath the streets';
+
+  @override
+  String get ch09Title => 'Chapter 9 · Maglev Mainline';
+
+  @override
+  String get ch09Name => 'Maglev Mainline';
+
+  @override
+  String get ch09Sub => 'Full speed, one centimetre above ground';
+
+  @override
+  String get ch10Title => 'Chapter 10 · Rail Legacy';
+
+  @override
+  String get ch10Name => 'Rail Legacy';
+
+  @override
+  String get ch10Sub => 'Steam meets hyperloop';
+
+  @override
+  String get ch11Title => 'Chapter 11 · Harbour Waters';
+
+  @override
+  String get ch11Name => 'Harbour Waters';
+
+  @override
+  String get ch11Sub => 'Off the rails, onto the water';
+
+  @override
+  String get ch12Title => 'Chapter 12 · Coastal Routes';
+
+  @override
+  String get ch12Name => 'Coastal Routes';
+
+  @override
+  String get ch12Sub => 'The age of sails and speedboats';
+
+  @override
+  String get ch13Title => 'Chapter 13 · Ocean Fleet';
+
+  @override
+  String get ch13Name => 'Ocean Fleet';
+
+  @override
+  String get ch13Sub => 'Berths for giants and carriers';
+
+  @override
+  String get ch14Title => 'Chapter 14 · Low Altitude';
+
+  @override
+  String get ch14Name => 'Low Altitude';
+
+  @override
+  String get ch14Sub => 'Off the ground and climbing';
+
+  @override
+  String get ch15Title => 'Chapter 15 · Cloud Lanes';
+
+  @override
+  String get ch15Name => 'Cloud Lanes';
+
+  @override
+  String get ch15Sub => 'Cruising altitude for airliners';
+
+  @override
+  String get ch16Title => 'Chapter 16 · Upper Airspace';
+
+  @override
+  String get ch16Name => 'Upper Airspace';
+
+  @override
+  String get ch16Sub => 'Fighters and heavy haulers';
+
+  @override
+  String get ch17Title => 'Chapter 17 · Near Space';
+
+  @override
+  String get ch17Name => 'Near Space';
+
+  @override
+  String get ch17Sub => 'The edge of the atmosphere';
+
+  @override
+  String get ch18Title => 'Chapter 18 · Spaceport';
+
+  @override
+  String get ch18Name => 'Spaceport';
+
+  @override
+  String get ch18Sub => 'Rockets and space shuttles';
+
+  @override
+  String get ch19Title => 'Chapter 19 · Orbital Station';
+
+  @override
+  String get ch19Name => 'Orbital Station';
+
+  @override
+  String get ch19Sub => 'Assembled in orbit';
+
+  @override
+  String get ch20Title => 'Chapter 20 · Lunar Base';
+
+  @override
+  String get ch20Name => 'Lunar Base';
+
+  @override
+  String get ch20Sub => 'The first car in the Sea of Tranquility';
+
+  @override
+  String get ch21Title => 'Chapter 21 · Warp Era';
+
+  @override
+  String get ch21Name => 'Warp Era';
+
+  @override
+  String get ch21Sub => 'The last leap past light speed';
+
+  @override
+  String get bossEp01 => 'Rubble King';
+
+  @override
+  String get bossEp02 => 'The Scrapyard';
+
+  @override
+  String get bossEp03 => 'Degrade Ray';
+
+  @override
+  String get bossEp04 => 'Double Freeze';
+
+  @override
+  String get bossEp05 => 'Toxic Pool';
+
+  @override
+  String get bossEp06 => 'Demolition Crew';
+
+  @override
+  String get bossEp07 => 'Frostheart';
+
+  @override
+  String get bossEp08 => 'The Banker';
+
+  @override
+  String get bossEp09 => 'Collapse Beast';
+
+  @override
+  String get bossEp10 => 'Corrosion Works';
+
+  @override
+  String get bossEp11 => 'Final Insurance';
+
+  @override
+  String get bossEp12 => 'Rot Vortex';
+
+  @override
+  String get bossEp13 => 'Rust Monarch';
+
+  @override
+  String get bossEp14 => 'Final Car King';
+
+  @override
+  String bossGuardian(int chapter, int slot) {
+    return 'Chapter $chapter · Guardian $slot';
+  }
+
+  @override
+  String bossSlotOrder(int slot) {
+    return 'Slot $slot of this chapter';
+  }
+
+  @override
+  String get signatureBoss => 'Signature boss';
+
+  @override
+  String chapterOnly(int n) {
+    return 'Chapter $n';
+  }
 }

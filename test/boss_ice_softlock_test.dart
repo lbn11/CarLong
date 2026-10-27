@@ -28,7 +28,7 @@ LevelDefinition _lv({
 }) =>
     LevelDefinition(
       id: 9401,
-      name: '冰块软锁测试',
+      zhName: '冰块软锁测试',
       cols: cols,
       rows: rows,
       stockSize: stock,

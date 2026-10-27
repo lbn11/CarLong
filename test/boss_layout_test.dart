@@ -21,7 +21,7 @@ import 'package:merge_fleet/screens/game_screen.dart';
 LevelDefinition _bossLevel({int cols = 5, int rows = 5, int hp = 3}) {
   return LevelDefinition(
     id: 9001,
-    name: '👑 Boss · 测试关',
+    zhName: '👑 Boss · 测试关',
     cols: cols,
     rows: rows,
     stockSize: 90,

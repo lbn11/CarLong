@@ -40,7 +40,7 @@ LevelDefinition _bossLevel({
 }) {
   return LevelDefinition(
     id: id,
-    name: '👑 Boss · 测试关',
+    zhName: '👑 Boss · 测试关',
     cols: 4,
     rows: 4,
     stockSize: stock,

@@ -5,7 +5,7 @@ import 'package:merge_fleet/models/level.dart';
 
 const testLevel = LevelDefinition(
   id: 1,
-  name: 'test',
+  zhName: 'test',
   cols: 3,
   rows: 3,
   stockSize: 12,
@@ -16,7 +16,7 @@ const testLevel = LevelDefinition(
 /// 8 格棋盘，用于死局测试（死局需要每级卡片 < 2 张，最多 8 格）。
 const deadLevel = LevelDefinition(
   id: 2,
-  name: 'dead',
+  zhName: 'dead',
   cols: 4,
   rows: 2,
   stockSize: 12,

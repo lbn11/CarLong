@@ -32,7 +32,7 @@ LevelDefinition _skillLevel({
 }) {
   return LevelDefinition(
     id: id,
-    name: '👑 Boss · 技能测试关',
+    zhName: '👑 Boss · 技能测试关',
     cols: 4,
     rows: 4,
     stockSize: 90,
@@ -676,7 +676,7 @@ void main() {
 /// 第二批技能的纯逻辑棋盘（4x4 无障碍）。
 BoardLogic _board() => BoardLogic(LevelDefinition(
       id: 9990,
-      name: '逻辑测试关',
+      zhName: '逻辑测试关',
       cols: 4,
       rows: 4,
       stockSize: 10,

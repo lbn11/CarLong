@@ -41,7 +41,7 @@ class DailyChallenge {
 
     return LevelDefinition(
       id: levelId,
-      name: '每日挑战',
+      zhName: '每日挑战',
       cols: 5,
       rows: 5,
       stockSize: 40,

@@ -3,6 +3,7 @@ import 'dart:ui';
 import '../l10n/l10n.dart';
 
 /// 交通工具大类
+// i18n-data-block：VehicleCategory 分类名为落盘/导出用的稳定中文，显示走 displayLabel
 enum VehicleCategory {
   land('陆地'),
   heavy('重工'),
@@ -26,6 +27,7 @@ enum VehicleCategory {
         VehicleCategory.space => L10n.current?.catSpace ?? label,
       };
 }
+// i18n-data-end
 
 /// 地形类型
 enum TerrainType {
@@ -36,6 +38,7 @@ enum TerrainType {
 }
 
 /// 稀有度
+// i18n-data-block：Rarity 稀有度为落盘/导出用的稳定中文，显示走 displayLabel
 enum Rarity {
   common('普通', Color(0xFF9E9E9E)),
   rare('稀有', Color(0xFF2196F3)),
@@ -54,8 +57,10 @@ enum Rarity {
         Rarity.legendary => L10n.current?.rarityLegendary ?? label,
       };
 }
+// i18n-data-end
 
 /// 特殊能力（精简版）
+// i18n-data-block：SpecialAbility 能力名为落盘/导出用的稳定中文，显示走 displayLabel
 enum SpecialAbility {
   none,
   turn,
@@ -113,6 +118,7 @@ enum SpecialAbility {
         SpecialAbility.warp => L10n.current?.abilityWarp ?? label,
       };
 }
+// i18n-data-end
 
 /// 交通工具属性
 class VehicleStats {
@@ -130,6 +136,7 @@ class VehicleStats {
 }
 
 /// 交通工具等级（50种）
+// i18n-data-block：VehicleType 50 档车名为落盘/导出用的稳定中文，显示走 displayLabel
 enum VehicleType {
   // ── 陆地 (0-11) ──
   bicycle(0, '自行车', '🚲', Color(0xFF4CAF50), VehicleCategory.land,
@@ -403,6 +410,7 @@ enum VehicleType {
       ? (L10n.current?.noAbility ?? '无特殊能力')
       : stats.ability.displayLabel;
 }
+// i18n-data-end
 
 /// 棋盘上的一叠卡片（合并游戏用，兼容旧逻辑）
 class StackData {

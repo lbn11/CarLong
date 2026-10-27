@@ -41,7 +41,7 @@ void main() {
   test('parSeconds：无尽模式为 0（不适用）', () {
     final endless = LevelDefinition(
       id: 9999,
-      name: '无尽',
+      zhName: '无尽',
       cols: 6,
       rows: 6,
       stockSize: 90,
@@ -172,7 +172,7 @@ void main() {
         reason: '负时间防御');
     final endless = LevelDefinition(
       id: 9998,
-      name: '无尽',
+      zhName: '无尽',
       cols: 6,
       rows: 6,
       stockSize: 90,
@@ -295,7 +295,7 @@ void main() {
   LevelDefinition parLevel({int id = 9301}) {
     return LevelDefinition(
       id: id,
-      name: '👑 Boss · par 测试关',
+      zhName: '👑 Boss · par 测试关',
       cols: 4,
       rows: 4,
       stockSize: 90,
@@ -347,7 +347,7 @@ void main() {
         key: const ValueKey(9302),
         level: LevelDefinition(
           id: 9302,
-          name: '限时测试关',
+          zhName: '限时测试关',
           cols: 4,
           rows: 4,
           stockSize: 60,

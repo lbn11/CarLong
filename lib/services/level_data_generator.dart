@@ -86,20 +86,20 @@ class LevelDataGenerator {
 
   /// 生成段章节表（衔接手写段 7 章，供 [levelChapters] 拼接）。
   static const List<LevelChapter> generatedChapters = [
-    LevelChapter('第八章 · 地下铁网', '城市地下的第一条线', 71),
-    LevelChapter('第九章 · 磁浮干线', '离地一厘米的极速', 116),
-    LevelChapter('第十章 · 轨道遗产', '蒸汽与超回路的交响', 161),
-    LevelChapter('第十一章 · 港区水道', '从铁轨转向水面', 206),
-    LevelChapter('第十二章 · 近海航线', '风帆与快艇的时代', 251),
-    LevelChapter('第十三章 · 远洋舰队', '巨轮与航母的泊位', 296),
-    LevelChapter('第十四章 · 低空航线', '离开地面，扶摇直上', 341),
-    LevelChapter('第十五章 · 云端航道', '客机巡航的高度', 386),
-    LevelChapter('第十六章 · 高空领域', '战斗机与运输机', 431),
-    LevelChapter('第十七章 · 临近空间', '大气层的边缘', 476),
-    LevelChapter('第十八章 · 航天港', '火箭与航天飞机', 521),
-    LevelChapter('第十九章 · 轨道空间站', '在轨道上组装', 566),
-    LevelChapter('第二十章 · 月球基地', '静海的第一辆车', 611),
-    LevelChapter('第二十一章 · 曲速纪元', '跨越光速的最后一跃', 656),
+    LevelChapter('第八章 · 地下铁网', '城市地下的第一条线', 71),  // i18n-data
+    LevelChapter('第九章 · 磁浮干线', '离地一厘米的极速', 116),  // i18n-data
+    LevelChapter('第十章 · 轨道遗产', '蒸汽与超回路的交响', 161),  // i18n-data
+    LevelChapter('第十一章 · 港区水道', '从铁轨转向水面', 206),  // i18n-data
+    LevelChapter('第十二章 · 近海航线', '风帆与快艇的时代', 251),  // i18n-data
+    LevelChapter('第十三章 · 远洋舰队', '巨轮与航母的泊位', 296),  // i18n-data
+    LevelChapter('第十四章 · 低空航线', '离开地面，扶摇直上', 341),  // i18n-data
+    LevelChapter('第十五章 · 云端航道', '客机巡航的高度', 386),  // i18n-data
+    LevelChapter('第十六章 · 高空领域', '战斗机与运输机', 431),  // i18n-data
+    LevelChapter('第十七章 · 临近空间', '大气层的边缘', 476),  // i18n-data
+    LevelChapter('第十八章 · 航天港', '火箭与航天飞机', 521),  // i18n-data
+    LevelChapter('第十九章 · 轨道空间站', '在轨道上组装', 566),  // i18n-data
+    LevelChapter('第二十章 · 月球基地', '静海的第一辆车', 611),  // i18n-data
+    LevelChapter('第二十一章 · 曲速纪元', '跨越光速的最后一跃', 656),  // i18n-data
   ];
 
   // ─────────────────────────────────────────────────────────────
@@ -443,7 +443,7 @@ class LevelDataGenerator {
     } else {
       final draft = LevelDefinition(
         id: id,
-        name: '',
+        zhName: '',
         cols: size,
         rows: size,
         stockSize: 0,
@@ -483,7 +483,8 @@ class LevelDataGenerator {
 
     return LevelDefinition(
       id: id,
-      name: boss ? '👑 Boss · ${_chapterName(id)}' : _chapterName(id),
+      // 关名存中文原文（导出用）；本地化版本由 LevelDefinition.name 组装。
+      zhName: boss ? '👑 Boss · ${_chapterName(id)}' : _chapterName(id),
       cols: size,
       rows: size,
       stockSize: stock,
@@ -535,9 +536,11 @@ class LevelDataGenerator {
     return out;
   }
 
+  /// 生成关的关名取章节短名。**必须用 zhShortTitle**——`title` 是本地化
+  /// 版本，拿它当落盘关名会让同一台机器换个系统语言就产出不同的关卡数据。
   static String _chapterName(int id) {
     for (final ch in generatedChapters.reversed) {
-      if (id >= ch.startId) return ch.title.split(' · ').last;
+      if (id >= ch.startId) return ch.zhShortTitle;
     }
     return '街区';
   }

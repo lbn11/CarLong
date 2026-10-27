@@ -17,7 +17,7 @@ import 'package:merge_fleet/screens/game_screen.dart';
 void main() {
   const testLevel = LevelDefinition(
     id: 1,
-    name: 't',
+    zhName: 't',
     cols: 3,
     rows: 3,
     stockSize: 12,
@@ -147,7 +147,7 @@ void main() {
         tester,
         level: const LevelDefinition(
           id: 2,
-          name: 't6',
+          zhName: 't6',
           cols: 6,
           rows: 6,
           stockSize: 12,

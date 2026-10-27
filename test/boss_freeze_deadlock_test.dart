@@ -26,7 +26,7 @@ LevelDefinition _lv({
 }) =>
     LevelDefinition(
       id: 9301,
-      name: '冰封死局测试',
+      zhName: '冰封死局测试',
       cols: cols,
       rows: rows,
       stockSize: stock,

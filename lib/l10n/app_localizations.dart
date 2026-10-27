@@ -1999,6 +1999,930 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'🌫 Fog×{n}'**
   String bonusFog(int n);
+
+  /// 无尽模式这一关的名字（关卡标题栏用）
+  ///
+  /// In en, this message translates to:
+  /// **'Endless'**
+  String get levelEndlessName;
+
+  /// 每日挑战关卡的名字
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Challenge'**
+  String get dailyChallengeName;
+
+  /// 生成关卡里 Boss 关的名字模板，chapter = 章节短名
+  ///
+  /// In en, this message translates to:
+  /// **'👑 Boss · {chapter}'**
+  String bossLevelName(String chapter);
+
+  /// 第 1 关的名字：清晨路段
+  ///
+  /// In en, this message translates to:
+  /// **'Morning Run'**
+  String get lv01;
+
+  /// 第 2 关的名字：早高峰
+  ///
+  /// In en, this message translates to:
+  /// **'Rush Hour'**
+  String get lv02;
+
+  /// 第 3 关的名字：环城快线
+  ///
+  /// In en, this message translates to:
+  /// **'Ring Express'**
+  String get lv03;
+
+  /// 第 4 关的名字：货运枢纽
+  ///
+  /// In en, this message translates to:
+  /// **'Freight Hub'**
+  String get lv04;
+
+  /// 第 5 关的名字：钢铁干线
+  ///
+  /// In en, this message translates to:
+  /// **'Steel Trunk Line'**
+  String get lv05;
+
+  /// 第 6 关的名字：星光清道夫
+  ///
+  /// In en, this message translates to:
+  /// **'Starlight Sweeper'**
+  String get lv06;
+
+  /// 第 7 关的名字：午夜冲刺
+  ///
+  /// In en, this message translates to:
+  /// **'Midnight Dash'**
+  String get lv07;
+
+  /// 第 8 关的名字：都市高速
+  ///
+  /// In en, this message translates to:
+  /// **'City Freeway'**
+  String get lv08;
+
+  /// 第 9 关的名字：限时清道夫
+  ///
+  /// In en, this message translates to:
+  /// **'Timed Sweeper'**
+  String get lv09;
+
+  /// 第 10 关的名字：终局冲刺
+  ///
+  /// In en, this message translates to:
+  /// **'Final Sprint'**
+  String get lv10;
+
+  /// 第 11 关的名字：街头初段
+  ///
+  /// In en, this message translates to:
+  /// **'Street Opener'**
+  String get lv11;
+
+  /// 第 12 关的名字：环城小巴
+  ///
+  /// In en, this message translates to:
+  /// **'Loop Shuttle'**
+  String get lv12;
+
+  /// 第 13 关的名字：冰雪送货
+  ///
+  /// In en, this message translates to:
+  /// **'Ice Delivery'**
+  String get lv13;
+
+  /// 第 14 关的名字：限时货运
+  ///
+  /// In en, this message translates to:
+  /// **'Timed Freight'**
+  String get lv14;
+
+  /// 第 15 关的名字：清道夫之巅
+  ///
+  /// In en, this message translates to:
+  /// **'Sweeper\'s Peak'**
+  String get lv15;
+
+  /// 第 16 关的名字：轨道延伸
+  ///
+  /// In en, this message translates to:
+  /// **'Rails Extended'**
+  String get lv16;
+
+  /// 第 17 关的名字：火箭升空
+  ///
+  /// In en, this message translates to:
+  /// **'Rocket Launch'**
+  String get lv17;
+
+  /// 第 18 关的名字：限时清盘 II
+  ///
+  /// In en, this message translates to:
+  /// **'Timed Clear II'**
+  String get lv18;
+
+  /// 第 19 关的名字：重装集结
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy Muster'**
+  String get lv19;
+
+  /// 第 20 关的名字：终极枢纽
+  ///
+  /// In en, this message translates to:
+  /// **'Ultimate Hub'**
+  String get lv20;
+
+  /// 第 21 关的名字：快速轨道
+  ///
+  /// In en, this message translates to:
+  /// **'Rapid Rail'**
+  String get lv21;
+
+  /// 第 22 关的名字：油罐运输
+  ///
+  /// In en, this message translates to:
+  /// **'Tanker Run'**
+  String get lv22;
+
+  /// 第 23 关的名字：清道夫 III
+  ///
+  /// In en, this message translates to:
+  /// **'Sweeper III'**
+  String get lv23;
+
+  /// 第 24 关的名字：高铁提速
+  ///
+  /// In en, this message translates to:
+  /// **'High-Speed Push'**
+  String get lv24;
+
+  /// 第 25 关的名字：地铁高峰
+  ///
+  /// In en, this message translates to:
+  /// **'Metro Peak'**
+  String get lv25;
+
+  /// 第 26 关的名字：机场跑道
+  ///
+  /// In en, this message translates to:
+  /// **'Airport Runway'**
+  String get lv26;
+
+  /// 第 27 关的名字：限时清盘 III
+  ///
+  /// In en, this message translates to:
+  /// **'Timed Clear III'**
+  String get lv27;
+
+  /// 第 28 关的名字：空中走廊
+  ///
+  /// In en, this message translates to:
+  /// **'Sky Corridor'**
+  String get lv28;
+
+  /// 第 29 关的名字：港铁枢纽
+  ///
+  /// In en, this message translates to:
+  /// **'Rail-Sea Hub'**
+  String get lv29;
+
+  /// 第 30 关的名字：千钧一发
+  ///
+  /// In en, this message translates to:
+  /// **'Close Call'**
+  String get lv30;
+
+  /// 第 31 关的名字：六轨立交
+  ///
+  /// In en, this message translates to:
+  /// **'Six-Rail Interchange'**
+  String get lv31;
+
+  /// 第 32 关的名字：战机升空
+  ///
+  /// In en, this message translates to:
+  /// **'Fighter Launch'**
+  String get lv32;
+
+  /// 第 33 关的名字：清盘极限
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Limit'**
+  String get lv33;
+
+  /// 第 34 关的名字：空中霸主
+  ///
+  /// In en, this message translates to:
+  /// **'Sky Overlord'**
+  String get lv34;
+
+  /// 第 35 关的名字：暴风限时
+  ///
+  /// In en, this message translates to:
+  /// **'Storm Deadline'**
+  String get lv35;
+
+  /// 第 36 关的名字：星际预演
+  ///
+  /// In en, this message translates to:
+  /// **'Stellar Rehearsal'**
+  String get lv36;
+
+  /// 第 37 关的名字：多重拦截
+  ///
+  /// In en, this message translates to:
+  /// **'Layered Blockade'**
+  String get lv37;
+
+  /// 第 38 关的名字：限时清盘 IV
+  ///
+  /// In en, this message translates to:
+  /// **'Timed Clear IV'**
+  String get lv38;
+
+  /// 第 39 关的名字：重装巅峰
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy Peak'**
+  String get lv39;
+
+  /// 第 40 关的名字：终局预演
+  ///
+  /// In en, this message translates to:
+  /// **'Final Rehearsal'**
+  String get lv40;
+
+  /// 第 41 关的名字：星辰之路
+  ///
+  /// In en, this message translates to:
+  /// **'Road of Stars'**
+  String get lv41;
+
+  /// 第 42 关的名字：极限清盘
+  ///
+  /// In en, this message translates to:
+  /// **'Ultimate Clear'**
+  String get lv42;
+
+  /// 第 43 关的名字：深空舰队
+  ///
+  /// In en, this message translates to:
+  /// **'Deep-Space Fleet'**
+  String get lv43;
+
+  /// 第 44 关的名字：时空之门
+  ///
+  /// In en, this message translates to:
+  /// **'Gate of Time'**
+  String get lv44;
+
+  /// 第 45 关的名字：群星汇聚
+  ///
+  /// In en, this message translates to:
+  /// **'Star Convergence'**
+  String get lv45;
+
+  /// 第 46 关的名字：命运交叉
+  ///
+  /// In en, this message translates to:
+  /// **'Fate Crossing'**
+  String get lv46;
+
+  /// 第 47 关的名字：混沌清盘
+  ///
+  /// In en, this message translates to:
+  /// **'Chaos Clear'**
+  String get lv47;
+
+  /// 第 48 关的名字：星际舰队
+  ///
+  /// In en, this message translates to:
+  /// **'Star Fleet'**
+  String get lv48;
+
+  /// 第 49 关的名字：破晓之辉
+  ///
+  /// In en, this message translates to:
+  /// **'Dawnlight'**
+  String get lv49;
+
+  /// 第 50 关的名字：终极星港
+  ///
+  /// In en, this message translates to:
+  /// **'Starport Prime'**
+  String get lv50;
+
+  /// 第 51 关的名字：星港终战
+  ///
+  /// In en, this message translates to:
+  /// **'Starport Showdown'**
+  String get lv51;
+
+  /// 第 52 关的名字：磁浮首航
+  ///
+  /// In en, this message translates to:
+  /// **'Maglev Maiden Run'**
+  String get lv52;
+
+  /// 第 53 关的名字：轨道穿越
+  ///
+  /// In en, this message translates to:
+  /// **'Rail Transit'**
+  String get lv53;
+
+  /// 第 54 关的名字：彗星追迹
+  ///
+  /// In en, this message translates to:
+  /// **'Comet Chase'**
+  String get lv54;
+
+  /// 第 55 关的名字：限步物流
+  ///
+  /// In en, this message translates to:
+  /// **'Move-Limited Logistics'**
+  String get lv55;
+
+  /// 第 56 关的名字：限步高铁
+  ///
+  /// In en, this message translates to:
+  /// **'Move-Limited Rail'**
+  String get lv56;
+
+  /// 第 57 关的名字：限步清盘
+  ///
+  /// In en, this message translates to:
+  /// **'Move-Limited Clear'**
+  String get lv57;
+
+  /// 第 58 关的名字：极限清盘
+  ///
+  /// In en, this message translates to:
+  /// **'Ultimate Clear'**
+  String get lv58;
+
+  /// 第 59 关的名字：星云迷雾
+  ///
+  /// In en, this message translates to:
+  /// **'Nebula Fog'**
+  String get lv59;
+
+  /// 第 60 关的名字：传送枢纽
+  ///
+  /// In en, this message translates to:
+  /// **'Portal Hub'**
+  String get lv60;
+
+  /// 第 61 关的名字：万能试炼
+  ///
+  /// In en, this message translates to:
+  /// **'Wildcard Trial'**
+  String get lv61;
+
+  /// 第 62 关的名字：爆破拆除
+  ///
+  /// In en, this message translates to:
+  /// **'Demolition'**
+  String get lv62;
+
+  /// 第 63 关的名字：迷雾列车
+  ///
+  /// In en, this message translates to:
+  /// **'Fog Train'**
+  String get lv63;
+
+  /// 第 64 关的名字：双重传送
+  ///
+  /// In en, this message translates to:
+  /// **'Double Portal'**
+  String get lv64;
+
+  /// 第 65 关的名字：万能火箭
+  ///
+  /// In en, this message translates to:
+  /// **'Wildcard Rocket'**
+  String get lv65;
+
+  /// 第 66 关的名字：炸弹狂潮
+  ///
+  /// In en, this message translates to:
+  /// **'Bomb Frenzy'**
+  String get lv66;
+
+  /// 第 67 关的名字：传送清盘
+  ///
+  /// In en, this message translates to:
+  /// **'Portal Clear'**
+  String get lv67;
+
+  /// 第 68 关的名字：迷雾星港
+  ///
+  /// In en, this message translates to:
+  /// **'Fogged Starport'**
+  String get lv68;
+
+  /// 第 69 关的名字：组合地狱
+  ///
+  /// In en, this message translates to:
+  /// **'Combo Hell'**
+  String get lv69;
+
+  /// 第 70 关的名字：终极传送
+  ///
+  /// In en, this message translates to:
+  /// **'Ultimate Portal'**
+  String get lv70;
+
+  /// 第 1 章标题（含章序号）：第一章 · 街区起步
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter 1 · Street Start'**
+  String get ch01Title;
+
+  /// 第 1 章短名（生成关卡名用）：街区起步
+  ///
+  /// In en, this message translates to:
+  /// **'Street Start'**
+  String get ch01Name;
+
+  /// 第 1 章副标题：从一辆自行车开始你的车队
+  ///
+  /// In en, this message translates to:
+  /// **'Your fleet starts with a single bicycle'**
+  String get ch01Sub;
+
+  /// 第 2 章标题（含章序号）：第二章 · 城市干线
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter 2 · City Arteries'**
+  String get ch02Title;
+
+  /// 第 2 章短名（生成关卡名用）：城市干线
+  ///
+  /// In en, this message translates to:
+  /// **'City Arteries'**
+  String get ch02Name;
+
+  /// 第 2 章副标题：车流渐密，货运繁忙
+  ///
+  /// In en, this message translates to:
+  /// **'Traffic thickens, freight picks up'**
+  String get ch02Sub;
+
+  /// 第 3 章标题（含章序号）：第三章 · 轨道时代
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter 3 · Rail Age'**
+  String get ch03Title;
+
+  /// 第 3 章短名（生成关卡名用）：轨道时代
+  ///
+  /// In en, this message translates to:
+  /// **'Rail Age'**
+  String get ch03Name;
+
+  /// 第 3 章副标题：高铁地铁，四通八达
+  ///
+  /// In en, this message translates to:
+  /// **'High-speed rail and metro, everywhere'**
+  String get ch03Sub;
+
+  /// 第 4 章标题（含章序号）：第四章 · 天空征途
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter 4 · Skybound'**
+  String get ch04Title;
+
+  /// 第 4 章短名（生成关卡名用）：天空征途
+  ///
+  /// In en, this message translates to:
+  /// **'Skybound'**
+  String get ch04Name;
+
+  /// 第 4 章副标题：客机战机，冲向云端
+  ///
+  /// In en, this message translates to:
+  /// **'Airliners and fighters reach for the clouds'**
+  String get ch04Sub;
+
+  /// 第 5 章标题（含章序号）：第五章 · 星际探索
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter 5 · Star Trek'**
+  String get ch05Title;
+
+  /// 第 5 章短名（生成关卡名用）：星际探索
+  ///
+  /// In en, this message translates to:
+  /// **'Star Trek'**
+  String get ch05Name;
+
+  /// 第 5 章副标题：穿梭星辰大海
+  ///
+  /// In en, this message translates to:
+  /// **'Threading through the sea of stars'**
+  String get ch05Sub;
+
+  /// 第 6 章标题（含章序号）：第六章 · 星港试炼
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter 6 · Starport Trial'**
+  String get ch06Title;
+
+  /// 第 6 章短名（生成关卡名用）：星港试炼
+  ///
+  /// In en, this message translates to:
+  /// **'Starport Trial'**
+  String get ch06Name;
+
+  /// 第 6 章副标题：终极枢纽的考验
+  ///
+  /// In en, this message translates to:
+  /// **'The test of the ultimate hub'**
+  String get ch06Sub;
+
+  /// 第 7 章标题（含章序号）：第七章 · 机关极限
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter 7 · Mechanism Limit'**
+  String get ch07Title;
+
+  /// 第 7 章短名（生成关卡名用）：机关极限
+  ///
+  /// In en, this message translates to:
+  /// **'Mechanism Limit'**
+  String get ch07Name;
+
+  /// 第 7 章副标题：限步传送，大师关卡
+  ///
+  /// In en, this message translates to:
+  /// **'Limited moves and portals — master ranks'**
+  String get ch07Sub;
+
+  /// 第 8 章标题（含章序号）：第八章 · 地下铁网
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter 8 · Underground Grid'**
+  String get ch08Title;
+
+  /// 第 8 章短名（生成关卡名用）：地下铁网
+  ///
+  /// In en, this message translates to:
+  /// **'Underground Grid'**
+  String get ch08Name;
+
+  /// 第 8 章副标题：城市地下的第一条线
+  ///
+  /// In en, this message translates to:
+  /// **'The first line beneath the streets'**
+  String get ch08Sub;
+
+  /// 第 9 章标题（含章序号）：第九章 · 磁浮干线
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter 9 · Maglev Mainline'**
+  String get ch09Title;
+
+  /// 第 9 章短名（生成关卡名用）：磁浮干线
+  ///
+  /// In en, this message translates to:
+  /// **'Maglev Mainline'**
+  String get ch09Name;
+
+  /// 第 9 章副标题：离地一厘米的极速
+  ///
+  /// In en, this message translates to:
+  /// **'Full speed, one centimetre above ground'**
+  String get ch09Sub;
+
+  /// 第 10 章标题（含章序号）：第十章 · 轨道遗产
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter 10 · Rail Legacy'**
+  String get ch10Title;
+
+  /// 第 10 章短名（生成关卡名用）：轨道遗产
+  ///
+  /// In en, this message translates to:
+  /// **'Rail Legacy'**
+  String get ch10Name;
+
+  /// 第 10 章副标题：蒸汽与超回路的交响
+  ///
+  /// In en, this message translates to:
+  /// **'Steam meets hyperloop'**
+  String get ch10Sub;
+
+  /// 第 11 章标题（含章序号）：第十一章 · 港区水道
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter 11 · Harbour Waters'**
+  String get ch11Title;
+
+  /// 第 11 章短名（生成关卡名用）：港区水道
+  ///
+  /// In en, this message translates to:
+  /// **'Harbour Waters'**
+  String get ch11Name;
+
+  /// 第 11 章副标题：从铁轨转向水面
+  ///
+  /// In en, this message translates to:
+  /// **'Off the rails, onto the water'**
+  String get ch11Sub;
+
+  /// 第 12 章标题（含章序号）：第十二章 · 近海航线
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter 12 · Coastal Routes'**
+  String get ch12Title;
+
+  /// 第 12 章短名（生成关卡名用）：近海航线
+  ///
+  /// In en, this message translates to:
+  /// **'Coastal Routes'**
+  String get ch12Name;
+
+  /// 第 12 章副标题：风帆与快艇的时代
+  ///
+  /// In en, this message translates to:
+  /// **'The age of sails and speedboats'**
+  String get ch12Sub;
+
+  /// 第 13 章标题（含章序号）：第十三章 · 远洋舰队
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter 13 · Ocean Fleet'**
+  String get ch13Title;
+
+  /// 第 13 章短名（生成关卡名用）：远洋舰队
+  ///
+  /// In en, this message translates to:
+  /// **'Ocean Fleet'**
+  String get ch13Name;
+
+  /// 第 13 章副标题：巨轮与航母的泊位
+  ///
+  /// In en, this message translates to:
+  /// **'Berths for giants and carriers'**
+  String get ch13Sub;
+
+  /// 第 14 章标题（含章序号）：第十四章 · 低空航线
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter 14 · Low Altitude'**
+  String get ch14Title;
+
+  /// 第 14 章短名（生成关卡名用）：低空航线
+  ///
+  /// In en, this message translates to:
+  /// **'Low Altitude'**
+  String get ch14Name;
+
+  /// 第 14 章副标题：离开地面，扶摇直上
+  ///
+  /// In en, this message translates to:
+  /// **'Off the ground and climbing'**
+  String get ch14Sub;
+
+  /// 第 15 章标题（含章序号）：第十五章 · 云端航道
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter 15 · Cloud Lanes'**
+  String get ch15Title;
+
+  /// 第 15 章短名（生成关卡名用）：云端航道
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud Lanes'**
+  String get ch15Name;
+
+  /// 第 15 章副标题：客机巡航的高度
+  ///
+  /// In en, this message translates to:
+  /// **'Cruising altitude for airliners'**
+  String get ch15Sub;
+
+  /// 第 16 章标题（含章序号）：第十六章 · 高空领域
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter 16 · Upper Airspace'**
+  String get ch16Title;
+
+  /// 第 16 章短名（生成关卡名用）：高空领域
+  ///
+  /// In en, this message translates to:
+  /// **'Upper Airspace'**
+  String get ch16Name;
+
+  /// 第 16 章副标题：战斗机与运输机
+  ///
+  /// In en, this message translates to:
+  /// **'Fighters and heavy haulers'**
+  String get ch16Sub;
+
+  /// 第 17 章标题（含章序号）：第十七章 · 临近空间
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter 17 · Near Space'**
+  String get ch17Title;
+
+  /// 第 17 章短名（生成关卡名用）：临近空间
+  ///
+  /// In en, this message translates to:
+  /// **'Near Space'**
+  String get ch17Name;
+
+  /// 第 17 章副标题：大气层的边缘
+  ///
+  /// In en, this message translates to:
+  /// **'The edge of the atmosphere'**
+  String get ch17Sub;
+
+  /// 第 18 章标题（含章序号）：第十八章 · 航天港
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter 18 · Spaceport'**
+  String get ch18Title;
+
+  /// 第 18 章短名（生成关卡名用）：航天港
+  ///
+  /// In en, this message translates to:
+  /// **'Spaceport'**
+  String get ch18Name;
+
+  /// 第 18 章副标题：火箭与航天飞机
+  ///
+  /// In en, this message translates to:
+  /// **'Rockets and space shuttles'**
+  String get ch18Sub;
+
+  /// 第 19 章标题（含章序号）：第十九章 · 轨道空间站
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter 19 · Orbital Station'**
+  String get ch19Title;
+
+  /// 第 19 章短名（生成关卡名用）：轨道空间站
+  ///
+  /// In en, this message translates to:
+  /// **'Orbital Station'**
+  String get ch19Name;
+
+  /// 第 19 章副标题：在轨道上组装
+  ///
+  /// In en, this message translates to:
+  /// **'Assembled in orbit'**
+  String get ch19Sub;
+
+  /// 第 20 章标题（含章序号）：第二十章 · 月球基地
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter 20 · Lunar Base'**
+  String get ch20Title;
+
+  /// 第 20 章短名（生成关卡名用）：月球基地
+  ///
+  /// In en, this message translates to:
+  /// **'Lunar Base'**
+  String get ch20Name;
+
+  /// 第 20 章副标题：静海的第一辆车
+  ///
+  /// In en, this message translates to:
+  /// **'The first car in the Sea of Tranquility'**
+  String get ch20Sub;
+
+  /// 第 21 章标题（含章序号）：第二十一章 · 曲速纪元
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter 21 · Warp Era'**
+  String get ch21Title;
+
+  /// 第 21 章短名（生成关卡名用）：曲速纪元
+  ///
+  /// In en, this message translates to:
+  /// **'Warp Era'**
+  String get ch21Name;
+
+  /// 第 21 章副标题：跨越光速的最后一跃
+  ///
+  /// In en, this message translates to:
+  /// **'The last leap past light speed'**
+  String get ch21Sub;
+
+  /// 招牌 Boss 绰号（第 1 章尖峰战）：碎石王
+  ///
+  /// In en, this message translates to:
+  /// **'Rubble King'**
+  String get bossEp01;
+
+  /// 招牌 Boss 绰号（第 2 章尖峰战）：回收站
+  ///
+  /// In en, this message translates to:
+  /// **'The Scrapyard'**
+  String get bossEp02;
+
+  /// 招牌 Boss 绰号（第 3 章尖峰战）：退化射线
+  ///
+  /// In en, this message translates to:
+  /// **'Degrade Ray'**
+  String get bossEp03;
+
+  /// 招牌 Boss 绰号（第 4 章尖峰战）：双重冻气
+  ///
+  /// In en, this message translates to:
+  /// **'Double Freeze'**
+  String get bossEp04;
+
+  /// 招牌 Boss 绰号（第 5 章尖峰战）：毒池
+  ///
+  /// In en, this message translates to:
+  /// **'Toxic Pool'**
+  String get bossEp05;
+
+  /// 招牌 Boss 绰号（第 6 章尖峰战）：拆迁队
+  ///
+  /// In en, this message translates to:
+  /// **'Demolition Crew'**
+  String get bossEp06;
+
+  /// 招牌 Boss 绰号（第 7 章尖峰战）：霜寒之心
+  ///
+  /// In en, this message translates to:
+  /// **'Frostheart'**
+  String get bossEp07;
+
+  /// 招牌 Boss 绰号（第 8 章尖峰战）：银行家
+  ///
+  /// In en, this message translates to:
+  /// **'The Banker'**
+  String get bossEp08;
+
+  /// 招牌 Boss 绰号（第 9 章尖峰战）：崩落巨兽
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse Beast'**
+  String get bossEp09;
+
+  /// 招牌 Boss 绰号（第 10 章尖峰战）：蚀变工场
+  ///
+  /// In en, this message translates to:
+  /// **'Corrosion Works'**
+  String get bossEp10;
+
+  /// 招牌 Boss 绰号（第 11 章尖峰战）：终焉保险
+  ///
+  /// In en, this message translates to:
+  /// **'Final Insurance'**
+  String get bossEp11;
+
+  /// 招牌 Boss 绰号（第 12 章尖峰战）：腐败漩涡
+  ///
+  /// In en, this message translates to:
+  /// **'Rot Vortex'**
+  String get bossEp12;
+
+  /// 招牌 Boss 绰号（第 13 章尖峰战）：铁锈君王
+  ///
+  /// In en, this message translates to:
+  /// **'Rust Monarch'**
+  String get bossEp13;
+
+  /// 招牌 Boss 绰号（第 14 章尖峰战）：终局车王
+  ///
+  /// In en, this message translates to:
+  /// **'Final Car King'**
+  String get bossEp14;
+
+  /// Boss 关详情标题：普通（非招牌）Boss 的兜底名
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter {chapter} · Guardian {slot}'**
+  String bossGuardian(int chapter, int slot);
+
+  /// Boss 关详情副标题：这是本章第几个 Boss
+  ///
+  /// In en, this message translates to:
+  /// **'Slot {slot} of this chapter'**
+  String bossSlotOrder(int slot);
+
+  /// 章内第 4 个 Boss 的身份标签
+  ///
+  /// In en, this message translates to:
+  /// **'Signature boss'**
+  String get signatureBoss;
+
+  /// 只有章序号、没有章名的短标签（Boss 徽章墙用）
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter {n}'**
+  String chapterOnly(int n);
 }
 
 class _AppLocalizationsDelegate

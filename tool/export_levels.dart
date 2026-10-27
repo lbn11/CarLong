@@ -94,7 +94,8 @@ Map<String, dynamic> bossToJson(BossSpec b) => _compact({
 
 Map<String, dynamic> mergeLevelToJson(LevelDefinition l) => _compact({
       'id': l.id,
-      'name': l.name,
+      // 必须 zhName：name 是本地化后的显示名，导出数据不能随系统语言变。
+      'name': l.zhName,
       'cols': l.cols,
       'rows': l.rows,
       'stock': l.stockSize,

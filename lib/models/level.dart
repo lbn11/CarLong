@@ -1,27 +1,53 @@
 import 'dart:math';
 
 import '../l10n/l10n.dart';
+import '../l10n/level_names.dart';
 import 'vehicle.dart';
 import '../services/level_data_generator.dart';
 
-/// 章节（叙事包装）：按关卡 id 每 10 关一章，共 7 章。
+/// 章节（叙事包装）：手写段每 10 关一章，生成段每 45 关一章。
+///
+/// `zhTitle` / `zhSubtitle` 是**原文**：导出 `shared/levels` 与生成关卡名
+/// 都读它们，必须与 locale 无关。`title` / `subtitle` 才是上界面的本地化
+/// 版本（拿不到文案表时回落原文）。
 class LevelChapter {
-  final String title;
-  final String subtitle;
+  final String zhTitle;
+  final String zhSubtitle;
   final int startId;
 
-  const LevelChapter(this.title, this.subtitle, this.startId);
+  const LevelChapter(this.zhTitle, this.zhSubtitle, this.startId);
+
+  /// 去掉「第 X 章 ·」前缀的纯地名，生成关卡拿它当默认关名。
+  String get zhShortTitle => zhTitle.split(' · ').last;
+
+  String get title {
+    final l = L10n.current;
+    if (l == null) return zhTitle;
+    return chapterTitleByStartId(l, startId) ?? zhTitle;
+  }
+
+  String get shortTitle {
+    final l = L10n.current;
+    if (l == null) return zhShortTitle;
+    return chapterNameByStartId(l, startId) ?? zhShortTitle;
+  }
+
+  String get subtitle {
+    final l = L10n.current;
+    if (l == null) return zhSubtitle;
+    return chapterSubtitleByStartId(l, startId) ?? zhSubtitle;
+  }
 }
 
 /// 手写段章节表（L1-70，7 章）。
 const List<LevelChapter> _handChapters = [
-  LevelChapter('第一章 · 街区起步', '从一辆自行车开始你的车队', 1),
-  LevelChapter('第二章 · 城市干线', '车流渐密，货运繁忙', 11),
-  LevelChapter('第三章 · 轨道时代', '高铁地铁，四通八达', 21),
-  LevelChapter('第四章 · 天空征途', '客机战机，冲向云端', 31),
-  LevelChapter('第五章 · 星际探索', '穿梭星辰大海', 41),
-  LevelChapter('第六章 · 星港试炼', '终极枢纽的考验', 51),
-  LevelChapter('第七章 · 机关极限', '限步传送，大师关卡', 61),
+  LevelChapter('第一章 · 街区起步', '从一辆自行车开始你的车队', 1),  // i18n-data
+  LevelChapter('第二章 · 城市干线', '车流渐密，货运繁忙', 11),  // i18n-data
+  LevelChapter('第三章 · 轨道时代', '高铁地铁，四通八达', 21),  // i18n-data
+  LevelChapter('第四章 · 天空征途', '客机战机，冲向云端', 31),  // i18n-data
+  LevelChapter('第五章 · 星际探索', '穿梭星辰大海', 41),  // i18n-data
+  LevelChapter('第六章 · 星港试炼', '终极枢纽的考验', 51),  // i18n-data
+  LevelChapter('第七章 · 机关极限', '限步传送，大师关卡', 61),  // i18n-data
 ];
 
 /// 合成模式章节表（L1-700 分 21 章：手写 7 章 + 生成 14 章，按 id 区间）。
@@ -171,8 +197,20 @@ class BossSpec {
   /// 辅技能：与主技轮换上场（null = 单技能 Boss）。
   final BossAttackKind? secondary;
 
-  /// 招牌绰号（尖峰 Boss 独有，如「碎石王」；普通卡组 Boss 为 null）。
+  /// 招牌绰号中文原文（尖峰 Boss 独有，如「碎石王」；普通卡组 Boss 为 null）。
+  /// 上界面请用 [epithetLabel]。
   final String? epithet;
+
+  /// 该 Boss 所属章序号（0 起），本地化 [epithet] 用；非招牌 Boss 为 null。
+  final int? epithetChapter;
+
+  /// 上界面的绰号（null = 普通卡组 Boss，由调用方决定兜底文案）。
+  String? get epithetLabel {
+    if (epithet == null) return null;
+    final l = L10n.current;
+    if (l == null || epithetChapter == null) return epithet;
+    return bossEpithetByChapter(l, epithetChapter!) ?? epithet;
+  }
 
   /// 每次冰封攻击波及几张最高档原料车（狂怒时 +1）。
   final int freezeCount;
@@ -227,6 +265,7 @@ class BossSpec {
     this.primary = BossAttackKind.freeze,
     this.secondary,
     this.epithet,
+    this.epithetChapter,
     this.freezeCount = 1,
     this.freezeLayers = 2,
     this.stealTopTier = false,
@@ -316,6 +355,7 @@ class BossSpec {
       primary: primary,
       secondary: secondary,
       epithet: epithet,
+      epithetChapter: epithet == null ? null : c,
       attackInterval: 9,
       firstDelay: 6,
       // 含冰封的卡组从章 3 起就冻两张（「双重冻气」提前登场）。
@@ -353,20 +393,20 @@ class BossSpec {
   static (BossAttackKind, BossAttackKind?, String, bool) _signatureDeck(
       int c) {
     const decks = <(BossAttackKind, BossAttackKind?, String, bool)>[
-      (BossAttackKind.rubble, BossAttackKind.freeze, '碎石王', false),
-      (BossAttackKind.impound, BossAttackKind.steal, '回收站', false),
-      (BossAttackKind.devolve, BossAttackKind.freeze, '退化射线', false),
-      (BossAttackKind.freeze, BossAttackKind.rubble, '双重冻气', false),
-      (BossAttackKind.taint, BossAttackKind.lock, '毒池', false),
-      (BossAttackKind.impound, BossAttackKind.devolve, '拆迁队', false),
-      (BossAttackKind.freeze, BossAttackKind.taint, '霜寒之心', false),
-      (BossAttackKind.lock, BossAttackKind.taint, '银行家', true),
-      (BossAttackKind.rubble, BossAttackKind.impound, '崩落巨兽', false),
-      (BossAttackKind.devolve, BossAttackKind.taint, '蚀变工场', true),
-      (BossAttackKind.lock, BossAttackKind.ban, '终焉保险', true),
-      (BossAttackKind.taint, BossAttackKind.fog, '腐败漩涡', true),
-      (BossAttackKind.devolve, BossAttackKind.glue, '铁锈君王', true),
-      (BossAttackKind.freeze, BossAttackKind.impound, '终局车王', true),
+      (BossAttackKind.rubble, BossAttackKind.freeze, '碎石王', false),  // i18n-data
+      (BossAttackKind.impound, BossAttackKind.steal, '回收站', false),  // i18n-data
+      (BossAttackKind.devolve, BossAttackKind.freeze, '退化射线', false),  // i18n-data
+      (BossAttackKind.freeze, BossAttackKind.rubble, '双重冻气', false),  // i18n-data
+      (BossAttackKind.taint, BossAttackKind.lock, '毒池', false),  // i18n-data
+      (BossAttackKind.impound, BossAttackKind.devolve, '拆迁队', false),  // i18n-data
+      (BossAttackKind.freeze, BossAttackKind.taint, '霜寒之心', false),  // i18n-data
+      (BossAttackKind.lock, BossAttackKind.taint, '银行家', true),  // i18n-data
+      (BossAttackKind.rubble, BossAttackKind.impound, '崩落巨兽', false),  // i18n-data
+      (BossAttackKind.devolve, BossAttackKind.taint, '蚀变工场', true),  // i18n-data
+      (BossAttackKind.lock, BossAttackKind.ban, '终焉保险', true),  // i18n-data
+      (BossAttackKind.taint, BossAttackKind.fog, '腐败漩涡', true),  // i18n-data
+      (BossAttackKind.devolve, BossAttackKind.glue, '铁锈君王', true),  // i18n-data
+      (BossAttackKind.freeze, BossAttackKind.impound, '终局车王', true),  // i18n-data
     ];
     return decks[c.clamp(0, decks.length - 1)];
   }
@@ -375,7 +415,11 @@ class BossSpec {
 /// 一次关卡的定义。
 class LevelDefinition {
   final int id;
-  final String name;
+
+  /// 中文关名原文。**导出 `shared/levels` 只准读它**——`name` 会随
+  /// 系统语言变，写进数据文件等于每台机器产出不同关卡表。
+  final String zhName;
+
   final int cols;
   final int rows;
 
@@ -434,7 +478,7 @@ class LevelDefinition {
 
   const LevelDefinition({
     required this.id,
-    required this.name,
+    required this.zhName,
     required this.cols,
     required this.rows,
     required this.stockSize,
@@ -454,6 +498,27 @@ class LevelDefinition {
     this.bossKey,
     this.obstacles = const [],
   });
+
+  /// 上界面的关名（随 locale 变）。拿不到文案表时回落 [zhName]。
+  ///
+  /// 三段分流：每日挑战 / 无尽 / 主线。主线再按 id 分界——1..70 是手写关
+  /// （关名逐关不同，查 [levelNameById]），71..700 由生成器产出（关名
+  /// 就是章节名，Boss 关再套一层 `👑 Boss ·`）。超出这两段的自造关卡
+  /// （测试、活动）直接用 [zhName]。
+  String get name {
+    final l = L10n.current;
+    if (l == null) return zhName;
+    if (daily) return l.dailyChallengeName;
+    if (endless) return l.levelEndlessName;
+    if (id >= 1 && id <= 70) {
+      return levelNameById(l, id) ?? zhName;
+    }
+    if (id > 70 && id <= 700) {
+      final ch = chapterForId(id);
+      return boss != null ? l.bossLevelName(ch.shortTitle) : ch.shortTitle;
+    }
+    return zhName;
+  }
 
   /// 出生权重：窗口式分布，出牌集中在目标下方 3 档内。
   /// produce 目标只生成【低于】目标等级的卡片——目标车必须靠合成产出，
@@ -545,7 +610,7 @@ class LevelDefinition {
 /// 无尽模式关卡定义（不进关卡列表，主页单独入口）。
 const endlessLevel = LevelDefinition(
   id: 999,
-  name: '无尽模式',
+  zhName: '无尽模式',
   cols: 5,
   rows: 5,
   stockSize: 999,
@@ -558,7 +623,7 @@ const endlessLevel = LevelDefinition(
 const _handLevels = <LevelDefinition>[
   LevelDefinition(
     id: 1,
-    name: '清晨路段',
+    zhName: '清晨路段',
     cols: 4,
     rows: 3,
     stockSize: 18,
@@ -567,7 +632,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 2,
-    name: '早高峰',
+    zhName: '早高峰',
     cols: 4,
     rows: 4,
     stockSize: 24,
@@ -579,7 +644,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 3,
-    name: '环城快线',
+    zhName: '环城快线',
     cols: 5,
     rows: 4,
     stockSize: 30,
@@ -589,7 +654,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 4,
-    name: '货运枢纽',
+    zhName: '货运枢纽',
     cols: 5,
     rows: 4,
     stockSize: 38,
@@ -599,7 +664,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 5,
-    name: '钢铁干线',
+    zhName: '钢铁干线',
     cols: 5,
     rows: 5,
     stockSize: 34,
@@ -609,7 +674,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 6,
-    name: '星光清道夫',
+    zhName: '星光清道夫',
     cols: 5,
     rows: 5,
     stockSize: 30,
@@ -624,7 +689,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 7,
-    name: '午夜冲刺',
+    zhName: '午夜冲刺',
     cols: 4,
     rows: 4,
     // 数值校准：原 stock=20 时预算占用率 0.70（全表最紧，第 7 关就要榨干牌堆，
@@ -637,7 +702,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 8,
-    name: '都市高速',
+    zhName: '都市高速',
     cols: 5,
     rows: 4,
     stockSize: 34,
@@ -651,7 +716,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 9,
-    name: '限时清道夫',
+    zhName: '限时清道夫',
     cols: 5,
     rows: 5,
     stockSize: 30,
@@ -668,7 +733,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 10,
-    name: '终局冲刺',
+    zhName: '终局冲刺',
     cols: 5,
     rows: 5,
     stockSize: 40,
@@ -685,7 +750,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 11,
-    name: '街头初段',
+    zhName: '街头初段',
     cols: 4,
     rows: 4,
     stockSize: 22,
@@ -695,7 +760,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 12,
-    name: '环城小巴',
+    zhName: '环城小巴',
     cols: 4,
     rows: 4,
     stockSize: 26,
@@ -709,7 +774,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 13,
-    name: '冰雪送货',
+    zhName: '冰雪送货',
     cols: 4,
     rows: 5,
     stockSize: 30,
@@ -723,7 +788,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 14,
-    name: '限时货运',
+    zhName: '限时货运',
     cols: 4,
     rows: 4,
     stockSize: 24,
@@ -737,7 +802,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 15,
-    name: '清道夫之巅',
+    zhName: '清道夫之巅',
     cols: 5,
     rows: 5,
     stockSize: 34,
@@ -752,7 +817,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 16,
-    name: '轨道延伸',
+    zhName: '轨道延伸',
     cols: 4,
     rows: 5,
     stockSize: 32,
@@ -767,7 +832,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 17,
-    name: '火箭升空',
+    zhName: '火箭升空',
     cols: 5,
     rows: 5,
     stockSize: 38,
@@ -781,7 +846,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 18,
-    name: '限时清盘 II',
+    zhName: '限时清盘 II',
     cols: 5,
     rows: 5,
     stockSize: 32,
@@ -798,7 +863,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 19,
-    name: '重装集结',
+    zhName: '重装集结',
     cols: 5,
     rows: 5,
     stockSize: 40,
@@ -814,7 +879,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 20,
-    name: '终极枢纽',
+    zhName: '终极枢纽',
     cols: 5,
     rows: 6,
     stockSize: 44,
@@ -830,7 +895,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 21,
-    name: '快速轨道',
+    zhName: '快速轨道',
     cols: 5,
     rows: 5,
     stockSize: 36,
@@ -844,7 +909,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 22,
-    name: '油罐运输',
+    zhName: '油罐运输',
     cols: 5,
     rows: 5,
     stockSize: 36,
@@ -858,7 +923,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 23,
-    name: '清道夫 III',
+    zhName: '清道夫 III',
     cols: 5,
     rows: 5,
     stockSize: 32,
@@ -875,7 +940,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 24,
-    name: '高铁提速',
+    zhName: '高铁提速',
     cols: 5,
     rows: 6,
     stockSize: 42,
@@ -889,7 +954,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 25,
-    name: '地铁高峰',
+    zhName: '地铁高峰',
     cols: 5,
     rows: 6,
     stockSize: 44,
@@ -903,7 +968,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 26,
-    name: '机场跑道',
+    zhName: '机场跑道',
     cols: 5,
     rows: 6,
     stockSize: 44,
@@ -917,7 +982,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 27,
-    name: '限时清盘 III',
+    zhName: '限时清盘 III',
     cols: 5,
     rows: 6,
     stockSize: 36,
@@ -934,7 +999,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 28,
-    name: '空中走廊',
+    zhName: '空中走廊',
     cols: 5,
     rows: 6,
     stockSize: 46,
@@ -950,7 +1015,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 29,
-    name: '港铁枢纽',
+    zhName: '港铁枢纽',
     cols: 5,
     rows: 6,
     stockSize: 48,
@@ -965,7 +1030,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 30,
-    name: '千钧一发',
+    zhName: '千钧一发',
     cols: 5,
     rows: 6,
     stockSize: 40,
@@ -981,7 +1046,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 31,
-    name: '六轨立交',
+    zhName: '六轨立交',
     cols: 6,
     rows: 6,
     stockSize: 46,
@@ -995,7 +1060,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 32,
-    name: '战机升空',
+    zhName: '战机升空',
     cols: 6,
     rows: 6,
     stockSize: 50,
@@ -1009,7 +1074,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 33,
-    name: '清盘极限',
+    zhName: '清盘极限',
     cols: 6,
     rows: 6,
     stockSize: 42,
@@ -1026,7 +1091,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 34,
-    name: '空中霸主',
+    zhName: '空中霸主',
     cols: 6,
     rows: 6,
     stockSize: 52,
@@ -1041,7 +1106,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 35,
-    name: '暴风限时',
+    zhName: '暴风限时',
     cols: 6,
     rows: 6,
     stockSize: 44,
@@ -1057,7 +1122,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 36,
-    name: '星际预演',
+    zhName: '星际预演',
     cols: 6,
     rows: 6,
     stockSize: 54,
@@ -1072,7 +1137,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 37,
-    name: '多重拦截',
+    zhName: '多重拦截',
     cols: 6,
     rows: 6,
     stockSize: 56,
@@ -1088,7 +1153,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 38,
-    name: '限时清盘 IV',
+    zhName: '限时清盘 IV',
     cols: 6,
     rows: 6,
     stockSize: 48,
@@ -1106,7 +1171,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 39,
-    name: '重装巅峰',
+    zhName: '重装巅峰',
     cols: 6,
     rows: 6,
     stockSize: 58,
@@ -1122,7 +1187,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 40,
-    name: '终局预演',
+    zhName: '终局预演',
     cols: 6,
     rows: 6,
     stockSize: 56,
@@ -1139,7 +1204,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 41,
-    name: '星辰之路',
+    zhName: '星辰之路',
     cols: 6,
     rows: 6,
     stockSize: 58,
@@ -1154,7 +1219,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 42,
-    name: '极限清盘',
+    zhName: '极限清盘',
     cols: 6,
     rows: 6,
     stockSize: 50,
@@ -1171,7 +1236,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 43,
-    name: '深空舰队',
+    zhName: '深空舰队',
     cols: 6,
     rows: 6,
     stockSize: 60,
@@ -1187,7 +1252,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 44,
-    name: '时空之门',
+    zhName: '时空之门',
     cols: 6,
     rows: 6,
     stockSize: 58,
@@ -1204,7 +1269,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 45,
-    name: '群星汇聚',
+    zhName: '群星汇聚',
     cols: 6,
     rows: 6,
     stockSize: 60,
@@ -1220,7 +1285,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 46,
-    name: '命运交叉',
+    zhName: '命运交叉',
     cols: 6,
     rows: 6,
     stockSize: 62,
@@ -1237,7 +1302,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 47,
-    name: '混沌清盘',
+    zhName: '混沌清盘',
     cols: 6,
     rows: 6,
     stockSize: 54,
@@ -1255,7 +1320,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 48,
-    name: '星际舰队',
+    zhName: '星际舰队',
     cols: 6,
     rows: 6,
     stockSize: 62,
@@ -1271,7 +1336,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 49,
-    name: '破晓之辉',
+    zhName: '破晓之辉',
     cols: 6,
     rows: 6,
     stockSize: 64,
@@ -1288,7 +1353,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 50,
-    name: '终极星港',
+    zhName: '终极星港',
     cols: 6,
     rows: 6,
     // 数值校准：原 stock=66 时预算占用率 0.62（偏紧）。放宽到 78 → 0.53。
@@ -1307,7 +1372,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 51,
-    name: '星港终战',
+    zhName: '星港终战',
     cols: 6,
     rows: 6,
     stockSize: 70,
@@ -1325,7 +1390,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 52,
-    name: '磁浮首航',
+    zhName: '磁浮首航',
     cols: 6,
     rows: 6,
     stockSize: 70,
@@ -1339,7 +1404,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 53,
-    name: '轨道穿越',
+    zhName: '轨道穿越',
     cols: 6,
     rows: 6,
     stockSize: 74,
@@ -1354,7 +1419,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 54,
-    name: '彗星追迹',
+    zhName: '彗星追迹',
     cols: 6,
     rows: 6,
     stockSize: 78,
@@ -1370,7 +1435,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 55,
-    name: '限步物流',
+    zhName: '限步物流',
     cols: 5,
     rows: 6,
     stockSize: 42,
@@ -1385,7 +1450,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 56,
-    name: '限步高铁',
+    zhName: '限步高铁',
     cols: 6,
     rows: 6,
     stockSize: 46,
@@ -1401,7 +1466,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 57,
-    name: '限步清盘',
+    zhName: '限步清盘',
     cols: 6,
     rows: 6,
     stockSize: 54,
@@ -1419,7 +1484,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 58,
-    name: '极限清盘',
+    zhName: '极限清盘',
     cols: 6,
     rows: 6,
     stockSize: 56,
@@ -1439,7 +1504,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 59,
-    name: '星云迷雾',
+    zhName: '星云迷雾',
     cols: 5,
     rows: 5,
     stockSize: 52,
@@ -1452,7 +1517,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 60,
-    name: '传送枢纽',
+    zhName: '传送枢纽',
     cols: 5,
     rows: 6,
     stockSize: 58,
@@ -1470,7 +1535,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 61,
-    name: '万能试炼',
+    zhName: '万能试炼',
     cols: 5,
     rows: 5,
     stockSize: 50,
@@ -1483,7 +1548,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 62,
-    name: '爆破拆除',
+    zhName: '爆破拆除',
     cols: 5,
     rows: 5,
     stockSize: 48,
@@ -1501,7 +1566,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 63,
-    name: '迷雾列车',
+    zhName: '迷雾列车',
     cols: 6,
     rows: 6,
     stockSize: 62,
@@ -1517,7 +1582,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 64,
-    name: '双重传送',
+    zhName: '双重传送',
     cols: 6,
     rows: 6,
     stockSize: 66,
@@ -1535,7 +1600,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 65,
-    name: '万能火箭',
+    zhName: '万能火箭',
     cols: 6,
     rows: 6,
     stockSize: 68,
@@ -1550,7 +1615,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 66,
-    name: '炸弹狂潮',
+    zhName: '炸弹狂潮',
     cols: 6,
     rows: 6,
     stockSize: 64,
@@ -1566,7 +1631,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 67,
-    name: '传送清盘',
+    zhName: '传送清盘',
     cols: 6,
     rows: 6,
     stockSize: 60,
@@ -1585,7 +1650,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 68,
-    name: '迷雾星港',
+    zhName: '迷雾星港',
     cols: 6,
     rows: 6,
     stockSize: 70,
@@ -1600,7 +1665,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 69,
-    name: '组合地狱',
+    zhName: '组合地狱',
     cols: 6,
     rows: 6,
     stockSize: 72,
@@ -1618,7 +1683,7 @@ const _handLevels = <LevelDefinition>[
   ),
   LevelDefinition(
     id: 70,
-    name: '终极传送',
+    zhName: '终极传送',
     cols: 6,
     rows: 6,
     stockSize: 64,

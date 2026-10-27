@@ -27,7 +27,7 @@ void main() {
   LevelDefinition bossLevel() {
     return LevelDefinition(
       id: 9001,
-      name: 'test',
+      zhName: 'test',
       cols: 5,
       rows: 5,
       stockSize: 0, // 牌堆直接空
@@ -118,7 +118,7 @@ void main() {
     // 在这里合规（相邻对 BFS 能找到），本测试把不变量钉在游戏层。
     final level = LevelDefinition(
       id: 9002,
-      name: 'L81 终局复盘',
+      zhName: 'L81 终局复盘',
       cols: 5,
       rows: 5,
       stockSize: 0,

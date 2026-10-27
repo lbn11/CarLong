@@ -31,6 +31,17 @@ GLOSSARY = ROOT / "docs" / "i18n_glossary.md"
 CJK = re.compile(r"[\u4e00-\u9fff]")
 STR_LIT = re.compile(r"'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\"")
 
+# 「数据原文」而不是界面文案：这些中文**必须留着**——
+#   zhName / zhTitle / zhSubtitle / label  是导出 shared/levels 与存档用的
+#   稳定值（见 docs 里的「落盘 ≠ 显示」），本地化版本另有 getter。
+DATA_FIELD = re.compile(r"^\s*(zhName|zhTitle|zhSubtitle|label):\s*['\"]")
+DATA_MARK = "// i18n-data"  # 位置式数据（LevelChapter(...) / Boss 绰号元组）的显式标记
+BLOCK_BEGIN = "// i18n-data-block"  # 整段数据表（枚举体、名字池）的区间标记
+BLOCK_END = "// i18n-data-end"
+# `?? '中文'` 是拿不到文案表时的兜底，线上永不触发（builder 一定先同步），
+# 和「界面漏翻」不是一回事，单独归到数据栏。
+DATA_FALLBACK = re.compile(r"\?\?\s*['\"]")
+
 # 这些目录/文件里的中文是数据或调试用，不算 UI 文案。
 IGNORE_FILES = {
     "lib/l10n/app_localizations.dart",
@@ -54,15 +65,22 @@ def strip_comments(line: str) -> str:
     return line.split("//")[0] if "//" in line else line
 
 
-def scan_dart_cjk() -> tuple[int, dict[str, int]]:
-    """统计 lib/ 下仍硬编码在字符串字面量里的中文条数。"""
+def scan_dart_cjk() -> tuple[int, dict[str, int], int]:
+    """统计 lib/ 下仍硬编码在字符串字面量里的中文。
+
+    返回 (界面文案条数, 按文件分布, 数据原文条数)。两栏必须分开：
+    数据原文（zhName 等）本来就是中文，混在一起算会让指标永远回不到 0，
+    也就失去了「还剩多少没搬」的意义。
+    """
     per_file: dict[str, int] = {}
     total = 0
+    data_total = 0
     for f in sorted((ROOT / "lib").rglob("*.dart")):
         rel = f.relative_to(ROOT).as_posix()
         if rel in IGNORE_FILES:
             continue
         in_block = False
+        in_data_block = False
         count = 0
         for line in f.read_text(encoding="utf-8").splitlines():
             s = line.strip()
@@ -73,16 +91,27 @@ def scan_dart_cjk() -> tuple[int, dict[str, int]]:
             if s.startswith("/*"):
                 in_block = "*/" not in s
                 continue
+            if BLOCK_BEGIN in line:
+                in_data_block = True
+                continue
+            if BLOCK_END in line:
+                in_data_block = False
+                continue
             code = strip_comments(line)
             if not CJK.search(code):
                 continue
-            for m in STR_LIT.finditer(code):
-                if CJK.search(m.group(0)):
-                    count += 1
+            n = sum(1 for m in STR_LIT.finditer(code) if CJK.search(m.group(0)))
+            if not n:
+                continue
+            if (in_data_block or DATA_FIELD.match(code) or DATA_MARK in line
+                    or DATA_FALLBACK.search(code)):
+                data_total += n
+                continue
+            count += n
         if count:
             per_file[rel] = count
             total += count
-    return total, per_file
+    return total, per_file, data_total
 
 
 def main() -> int:
@@ -125,11 +154,12 @@ def main() -> int:
     if bad:
         fails.append(f"arb key 撞 Dart 关键字: {', '.join(bad)}")
 
-    print("\n=== dart 残留中文（字符串字面量）===")
-    total, per_file = scan_dart_cjk()
-    print(f"  共 {total} 条")
+    print("\n=== dart 残留中文 ===")
+    total, per_file, data_total = scan_dart_cjk()
+    print(f"  界面文案  {total} 条")
     for rel, n in sorted(per_file.items(), key=lambda x: -x[1])[:10]:
         print(f"  {n:5d}  {rel}")
+    print(f"  数据原文  {data_total} 条（zhName / zhTitle / label，故意保留中文，不用搬）")
 
     if args.glossary:
         write_glossary(en, en_meta)

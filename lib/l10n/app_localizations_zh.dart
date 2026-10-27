@@ -1093,4 +1093,474 @@ class AppLocalizationsZh extends AppLocalizations {
   String bonusFog(int n) {
     return '🌫 迷雾×$n';
   }
+
+  @override
+  String get levelEndlessName => '无尽模式';
+
+  @override
+  String get dailyChallengeName => '每日挑战';
+
+  @override
+  String bossLevelName(String chapter) {
+    return '👑 Boss · $chapter';
+  }
+
+  @override
+  String get lv01 => '清晨路段';
+
+  @override
+  String get lv02 => '早高峰';
+
+  @override
+  String get lv03 => '环城快线';
+
+  @override
+  String get lv04 => '货运枢纽';
+
+  @override
+  String get lv05 => '钢铁干线';
+
+  @override
+  String get lv06 => '星光清道夫';
+
+  @override
+  String get lv07 => '午夜冲刺';
+
+  @override
+  String get lv08 => '都市高速';
+
+  @override
+  String get lv09 => '限时清道夫';
+
+  @override
+  String get lv10 => '终局冲刺';
+
+  @override
+  String get lv11 => '街头初段';
+
+  @override
+  String get lv12 => '环城小巴';
+
+  @override
+  String get lv13 => '冰雪送货';
+
+  @override
+  String get lv14 => '限时货运';
+
+  @override
+  String get lv15 => '清道夫之巅';
+
+  @override
+  String get lv16 => '轨道延伸';
+
+  @override
+  String get lv17 => '火箭升空';
+
+  @override
+  String get lv18 => '限时清盘 II';
+
+  @override
+  String get lv19 => '重装集结';
+
+  @override
+  String get lv20 => '终极枢纽';
+
+  @override
+  String get lv21 => '快速轨道';
+
+  @override
+  String get lv22 => '油罐运输';
+
+  @override
+  String get lv23 => '清道夫 III';
+
+  @override
+  String get lv24 => '高铁提速';
+
+  @override
+  String get lv25 => '地铁高峰';
+
+  @override
+  String get lv26 => '机场跑道';
+
+  @override
+  String get lv27 => '限时清盘 III';
+
+  @override
+  String get lv28 => '空中走廊';
+
+  @override
+  String get lv29 => '港铁枢纽';
+
+  @override
+  String get lv30 => '千钧一发';
+
+  @override
+  String get lv31 => '六轨立交';
+
+  @override
+  String get lv32 => '战机升空';
+
+  @override
+  String get lv33 => '清盘极限';
+
+  @override
+  String get lv34 => '空中霸主';
+
+  @override
+  String get lv35 => '暴风限时';
+
+  @override
+  String get lv36 => '星际预演';
+
+  @override
+  String get lv37 => '多重拦截';
+
+  @override
+  String get lv38 => '限时清盘 IV';
+
+  @override
+  String get lv39 => '重装巅峰';
+
+  @override
+  String get lv40 => '终局预演';
+
+  @override
+  String get lv41 => '星辰之路';
+
+  @override
+  String get lv42 => '极限清盘';
+
+  @override
+  String get lv43 => '深空舰队';
+
+  @override
+  String get lv44 => '时空之门';
+
+  @override
+  String get lv45 => '群星汇聚';
+
+  @override
+  String get lv46 => '命运交叉';
+
+  @override
+  String get lv47 => '混沌清盘';
+
+  @override
+  String get lv48 => '星际舰队';
+
+  @override
+  String get lv49 => '破晓之辉';
+
+  @override
+  String get lv50 => '终极星港';
+
+  @override
+  String get lv51 => '星港终战';
+
+  @override
+  String get lv52 => '磁浮首航';
+
+  @override
+  String get lv53 => '轨道穿越';
+
+  @override
+  String get lv54 => '彗星追迹';
+
+  @override
+  String get lv55 => '限步物流';
+
+  @override
+  String get lv56 => '限步高铁';
+
+  @override
+  String get lv57 => '限步清盘';
+
+  @override
+  String get lv58 => '极限清盘';
+
+  @override
+  String get lv59 => '星云迷雾';
+
+  @override
+  String get lv60 => '传送枢纽';
+
+  @override
+  String get lv61 => '万能试炼';
+
+  @override
+  String get lv62 => '爆破拆除';
+
+  @override
+  String get lv63 => '迷雾列车';
+
+  @override
+  String get lv64 => '双重传送';
+
+  @override
+  String get lv65 => '万能火箭';
+
+  @override
+  String get lv66 => '炸弹狂潮';
+
+  @override
+  String get lv67 => '传送清盘';
+
+  @override
+  String get lv68 => '迷雾星港';
+
+  @override
+  String get lv69 => '组合地狱';
+
+  @override
+  String get lv70 => '终极传送';
+
+  @override
+  String get ch01Title => '第一章 · 街区起步';
+
+  @override
+  String get ch01Name => '街区起步';
+
+  @override
+  String get ch01Sub => '从一辆自行车开始你的车队';
+
+  @override
+  String get ch02Title => '第二章 · 城市干线';
+
+  @override
+  String get ch02Name => '城市干线';
+
+  @override
+  String get ch02Sub => '车流渐密，货运繁忙';
+
+  @override
+  String get ch03Title => '第三章 · 轨道时代';
+
+  @override
+  String get ch03Name => '轨道时代';
+
+  @override
+  String get ch03Sub => '高铁地铁，四通八达';
+
+  @override
+  String get ch04Title => '第四章 · 天空征途';
+
+  @override
+  String get ch04Name => '天空征途';
+
+  @override
+  String get ch04Sub => '客机战机，冲向云端';
+
+  @override
+  String get ch05Title => '第五章 · 星际探索';
+
+  @override
+  String get ch05Name => '星际探索';
+
+  @override
+  String get ch05Sub => '穿梭星辰大海';
+
+  @override
+  String get ch06Title => '第六章 · 星港试炼';
+
+  @override
+  String get ch06Name => '星港试炼';
+
+  @override
+  String get ch06Sub => '终极枢纽的考验';
+
+  @override
+  String get ch07Title => '第七章 · 机关极限';
+
+  @override
+  String get ch07Name => '机关极限';
+
+  @override
+  String get ch07Sub => '限步传送，大师关卡';
+
+  @override
+  String get ch08Title => '第八章 · 地下铁网';
+
+  @override
+  String get ch08Name => '地下铁网';
+
+  @override
+  String get ch08Sub => '城市地下的第一条线';
+
+  @override
+  String get ch09Title => '第九章 · 磁浮干线';
+
+  @override
+  String get ch09Name => '磁浮干线';
+
+  @override
+  String get ch09Sub => '离地一厘米的极速';
+
+  @override
+  String get ch10Title => '第十章 · 轨道遗产';
+
+  @override
+  String get ch10Name => '轨道遗产';
+
+  @override
+  String get ch10Sub => '蒸汽与超回路的交响';
+
+  @override
+  String get ch11Title => '第十一章 · 港区水道';
+
+  @override
+  String get ch11Name => '港区水道';
+
+  @override
+  String get ch11Sub => '从铁轨转向水面';
+
+  @override
+  String get ch12Title => '第十二章 · 近海航线';
+
+  @override
+  String get ch12Name => '近海航线';
+
+  @override
+  String get ch12Sub => '风帆与快艇的时代';
+
+  @override
+  String get ch13Title => '第十三章 · 远洋舰队';
+
+  @override
+  String get ch13Name => '远洋舰队';
+
+  @override
+  String get ch13Sub => '巨轮与航母的泊位';
+
+  @override
+  String get ch14Title => '第十四章 · 低空航线';
+
+  @override
+  String get ch14Name => '低空航线';
+
+  @override
+  String get ch14Sub => '离开地面，扶摇直上';
+
+  @override
+  String get ch15Title => '第十五章 · 云端航道';
+
+  @override
+  String get ch15Name => '云端航道';
+
+  @override
+  String get ch15Sub => '客机巡航的高度';
+
+  @override
+  String get ch16Title => '第十六章 · 高空领域';
+
+  @override
+  String get ch16Name => '高空领域';
+
+  @override
+  String get ch16Sub => '战斗机与运输机';
+
+  @override
+  String get ch17Title => '第十七章 · 临近空间';
+
+  @override
+  String get ch17Name => '临近空间';
+
+  @override
+  String get ch17Sub => '大气层的边缘';
+
+  @override
+  String get ch18Title => '第十八章 · 航天港';
+
+  @override
+  String get ch18Name => '航天港';
+
+  @override
+  String get ch18Sub => '火箭与航天飞机';
+
+  @override
+  String get ch19Title => '第十九章 · 轨道空间站';
+
+  @override
+  String get ch19Name => '轨道空间站';
+
+  @override
+  String get ch19Sub => '在轨道上组装';
+
+  @override
+  String get ch20Title => '第二十章 · 月球基地';
+
+  @override
+  String get ch20Name => '月球基地';
+
+  @override
+  String get ch20Sub => '静海的第一辆车';
+
+  @override
+  String get ch21Title => '第二十一章 · 曲速纪元';
+
+  @override
+  String get ch21Name => '曲速纪元';
+
+  @override
+  String get ch21Sub => '跨越光速的最后一跃';
+
+  @override
+  String get bossEp01 => '碎石王';
+
+  @override
+  String get bossEp02 => '回收站';
+
+  @override
+  String get bossEp03 => '退化射线';
+
+  @override
+  String get bossEp04 => '双重冻气';
+
+  @override
+  String get bossEp05 => '毒池';
+
+  @override
+  String get bossEp06 => '拆迁队';
+
+  @override
+  String get bossEp07 => '霜寒之心';
+
+  @override
+  String get bossEp08 => '银行家';
+
+  @override
+  String get bossEp09 => '崩落巨兽';
+
+  @override
+  String get bossEp10 => '蚀变工场';
+
+  @override
+  String get bossEp11 => '终焉保险';
+
+  @override
+  String get bossEp12 => '腐败漩涡';
+
+  @override
+  String get bossEp13 => '铁锈君王';
+
+  @override
+  String get bossEp14 => '终局车王';
+
+  @override
+  String bossGuardian(int chapter, int slot) {
+    return '第 $chapter 章 · 守关者 $slot';
+  }
+
+  @override
+  String bossSlotOrder(int slot) {
+    return '章内第 $slot 位';
+  }
+
+  @override
+  String get signatureBoss => '尖峰招牌 Boss';
+
+  @override
+  String chapterOnly(int n) {
+    return '第 $n 章';
+  }
 }

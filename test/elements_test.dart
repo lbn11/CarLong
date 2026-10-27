@@ -10,7 +10,7 @@ void main() {
   test('万能卡与任意卡片合并', () {
     final level = LevelDefinition(
       id: 1,
-      name: 't',
+      zhName: 't',
       cols: 4,
       rows: 4,
       stockSize: 10,
@@ -35,7 +35,7 @@ void main() {
   test('普通卡移到万能卡上会先变级再合并', () {
     final level = LevelDefinition(
       id: 1,
-      name: 't',
+      zhName: 't',
       cols: 4,
       rows: 4,
       stockSize: 10,
@@ -58,7 +58,7 @@ void main() {
   test('炸弹集满 3 引爆清空 3x3', () {
     final level = LevelDefinition(
       id: 1,
-      name: 't',
+      zhName: 't',
       cols: 4,
       rows: 4,
       stockSize: 10,
@@ -87,7 +87,7 @@ void main() {
   test('炸弹与普通卡交换', () {
     final level = LevelDefinition(
       id: 1,
-      name: 't',
+      zhName: 't',
       cols: 4,
       rows: 4,
       stockSize: 10,
@@ -108,7 +108,7 @@ void main() {
   test('传送门改道到配对格', () {
     final level = LevelDefinition(
       id: 1,
-      name: 't',
+      zhName: 't',
       cols: 5,
       rows: 5,
       stockSize: 10,
@@ -135,7 +135,7 @@ void main() {
   test('迷雾揭开：落子 revealNear 揭开周围', () {
     final level = LevelDefinition(
       id: 1,
-      name: 't',
+      zhName: 't',
       cols: 5,
       rows: 5,
       stockSize: 10,
@@ -178,7 +178,7 @@ void main() {
   test('快照恢复包含迷雾', () {
     final level = LevelDefinition(
       id: 1,
-      name: 't',
+      zhName: 't',
       cols: 5,
       rows: 5,
       stockSize: 10,
@@ -203,7 +203,7 @@ void main() {
   test('hasPossibleMove 识别万能卡与炸弹', () {
     final level = LevelDefinition(
       id: 1,
-      name: 't',
+      zhName: 't',
       cols: 4,
       rows: 4,
       stockSize: 10,

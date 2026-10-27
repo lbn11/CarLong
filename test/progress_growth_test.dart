@@ -108,7 +108,7 @@ void main() {
     // scooter 目标关：出牌全是 bicycle，两辆自行车必合出踏板车（新车）。
     final level = LevelDefinition(
       id: 9100,
-      name: '新车特写测试关',
+      zhName: '新车特写测试关',
       cols: 4,
       rows: 4,
       stockSize: 20,
