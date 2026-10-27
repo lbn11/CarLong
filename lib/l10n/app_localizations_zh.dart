@@ -1952,4 +1952,297 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get achClaimBtn => '领取';
+
+  @override
+  String endlessGoalFloat(String icon, String name) {
+    return '🎯 目标升级！下一档 $icon $name';
+  }
+
+  @override
+  String endlessGoalHint(String icon, String name) {
+    return '达成目标！目标升级为 $icon $name';
+  }
+
+  @override
+  String get hintStockUnlocked => '🔓 牌堆解锁了';
+
+  @override
+  String get hintGlueDry => '🍯 胶水干了，车可以动了！';
+
+  @override
+  String get hintHoleClosed => '🌀 黑洞闭合了，格子能用了！';
+
+  @override
+  String get hintBanLifted => '🚫 禁合解除，可以正常合成了！';
+
+  @override
+  String get hintShieldUp => '🛡 Boss 张开护盾，攒不住劲了，先布局！';
+
+  @override
+  String get hintShieldDown => '🛡 护盾消失，全力进攻！';
+
+  @override
+  String hintBoardClearedDeckLeft(int left, int limit) {
+    return '✨ 棋盘清空了！还剩 $left 张牌没打完，继续出牌，最后场上剩 ≤$limit 组就赢';
+  }
+
+  @override
+  String get hintMovesOut => '⏹ 步数用尽！';
+
+  @override
+  String get hintTimeUp => '⏰ 时间到！';
+
+  @override
+  String hintIceThinning(int layers) {
+    return '☃️ 无路可走了…冰层在减弱（还剩 $layers 层）';
+  }
+
+  @override
+  String get hintIceMeltedAll => '☀️ 冰层全部融化！';
+
+  @override
+  String hintIceCracking(int layers) {
+    return '🧊 冰封棋盘…冰块在裂开（还剩 $layers 层）';
+  }
+
+  @override
+  String get hintIceBrokenAll => '💧 冰块全部融化！';
+
+  @override
+  String hintGlueWaiting(int seconds) {
+    return '🍯 无路可走了…胶水还有 $seconds 秒干掉，等一下';
+  }
+
+  @override
+  String get hintBossLockedStock => '🔒 Boss 锁住了牌堆，等一下！';
+
+  @override
+  String get hintBoardFull => '棋盘满了，先合成腾出位置';
+
+  @override
+  String get hintHoleBlocking => '🌀 黑洞堵着，落不下牌——喂它一张或等它闭合';
+
+  @override
+  String hintAutoCleared(String icon, String name) {
+    return '自动清理了一辆 $icon $name，腾出位置';
+  }
+
+  @override
+  String get floatBlocked => '🛡 格挡';
+
+  @override
+  String get hintShieldBlocked => '🛡 护盾挡下了这一击，等盾消失再进攻！';
+
+  @override
+  String get hintBossEnraged => '👑 Boss 狂怒了！攻击变快了！';
+
+  @override
+  String get hintBossDown => '👑 Boss 倒下了！';
+
+  @override
+  String hintBossFrozeMany(int count) {
+    return '🧊 Boss 冰封了 $count 张原料车，在旁边合成来救它们！';
+  }
+
+  @override
+  String get hintBossFrozeOne => '🧊 Boss 冻住了你的原料车，在旁边合成来救它！';
+
+  @override
+  String hintBossStole(String icon, String name) {
+    return '😈 Boss 拖走了你的 $icon $name！';
+  }
+
+  @override
+  String hintBossLockSeconds(int seconds) {
+    return '🔒 Boss 锁住了牌堆 $seconds 秒！';
+  }
+
+  @override
+  String get hintBossIceDrop => '🧊 Boss 扔出冰块，占了一个格子！';
+
+  @override
+  String hintBossImpound(String icon, String name, int seconds) {
+    return '🚗 Boss 把 $icon $name 扣押进了车库，$seconds 秒后放回！';
+  }
+
+  @override
+  String hintImpoundReturn(String icon) {
+    return '✨ 被扣押的 $icon 放回来了！';
+  }
+
+  @override
+  String hintBossDemolished(String icon, String name) {
+    return '💥 Boss 拆掉了你的 $icon $name！';
+  }
+
+  @override
+  String hintBossDevolve(
+    String fromIcon,
+    String fromName,
+    String toIcon,
+    String toName,
+  ) {
+    return '📉 Boss 施了退化射线：$fromIcon $fromName → $toIcon $toName！';
+  }
+
+  @override
+  String hintBossTaint(int count) {
+    return '☠️ Boss 污染了牌堆！接下来 $count 张会降一档！';
+  }
+
+  @override
+  String hintBossGlue(String icon, String name, int seconds) {
+    return '🍯 Boss 泼了胶水：$icon $name $seconds 秒内动不了，等它干！';
+  }
+
+  @override
+  String get hintBossHole => '🌀 Boss 撕开一个黑洞！落子要避开，也可以把废牌喂给它';
+
+  @override
+  String get hintBossShuffleBlocked => '🌀 Boss 想洗牌，但你的车都被冻住/粘住了，没得洗！';
+
+  @override
+  String hintBossShuffle(int count) {
+    return '🌀 Boss 洗牌！$count 辆车被打乱了，重新找组合！';
+  }
+
+  @override
+  String hintBossBan(String icon, String name, int seconds) {
+    return '🚫 禁合：$icon $name $seconds 秒内不能合并，先合别的！';
+  }
+
+  @override
+  String get hintBossStoleTarget => '🏆 Boss 抢走了你一个目标车，回了 1 点血！';
+
+  @override
+  String hintBossFogMany(int count) {
+    return '🌫 Boss 放出迷雾，盖住了 $count 辆车！';
+  }
+
+  @override
+  String get hintBossFogOne => '🌫 Boss 放出一团迷雾，盖住了 1 辆车！';
+
+  @override
+  String get hintNoChainHere => '这里没有锁链，点击有 🔒 的格子';
+
+  @override
+  String get hintChainCleared => '🔓 锁链已清除';
+
+  @override
+  String get hintReshuffleStuck => '😵 重排后仍是死局，换个思路或再试一次';
+
+  @override
+  String get hintReshuffled => '🔀 棋盘已重排，寻找新组合！';
+
+  @override
+  String get hintReviveTime => '▶️ 续命成功：+30 秒，冲！';
+
+  @override
+  String get hintReviveMoves => '▶️ 续命成功：+10 步，冲！';
+
+  @override
+  String get hintReviveCards => '▶️ 续命成功：牌堆 +2 并重排棋盘';
+
+  @override
+  String get hintReviveClear => '▶️ 续命成功：清理了 3 组车，继续冲档！';
+
+  @override
+  String get hintNothingToMergeNoDeck => '😅 没有可合并的了，试试洗牌或加牌';
+
+  @override
+  String get hintNothingToMergeDeck => '😅 场上没得合，点牌堆出新卡试试';
+
+  @override
+  String hintDragTiers(String fromIcon, String toIcon) {
+    return '💡 把 $fromIcon 拖到 $toIcon 上合并！';
+  }
+
+  @override
+  String hintDragWildcard(String icon) {
+    return '💡 把 $icon 拖到万能卡上！';
+  }
+
+  @override
+  String get hintDragBombs => '💡 把炸弹拖到一起，集满 3 颗引爆！';
+
+  @override
+  String get hintDragGeneric => '💡 把这张卡拖到那张卡上！';
+
+  @override
+  String hintBanned(String icon, String name, int seconds) {
+    return '🚫 禁合中：$icon $name 还不能合并（还剩 $seconds 秒）';
+  }
+
+  @override
+  String hintHoleAte(String icon, String name) {
+    return '🌀 黑洞吞掉了你的 $icon $name！';
+  }
+
+  @override
+  String get floatDetonate => '💥 引爆 +300';
+
+  @override
+  String get hintIceMelted => '❄ 冰块融化，格子空出来了';
+
+  @override
+  String get floatBreakIce => '🔥 破冰！';
+
+  @override
+  String get floatUnlock => '🔓 解锁！';
+
+  @override
+  String get floatRubble => '💥 碎石！';
+
+  @override
+  String get floatFlyOver => '✈️ 飞越！';
+
+  @override
+  String get floatTeleport => '⚡ 传送！';
+
+  @override
+  String get floatWarp => '🌀 曲速！';
+
+  @override
+  String get floatSonar => '📡 侦察！';
+
+  @override
+  String floatCombo(int combo) {
+    return '🔥 连消 x$combo';
+  }
+
+  @override
+  String floatBossLandslide(int count) {
+    return '🪨 Boss 掀起塌方，$count 块碎石堵住了格子！';
+  }
+
+  @override
+  String get floatBossRubbleOne => '🪨 Boss 抡下一块碎石，占了一个格子！';
+
+  @override
+  String get hintBossRubbleDodged => '🪨 Boss 抡起碎石，但你都提前挪开了！';
+
+  @override
+  String get hintBossFogDodged => '🌫 Boss 放出迷雾，但你已经把车都挪开了！';
+
+  @override
+  String get floatCellCleared => '+300 清掉一格!';
+
+  @override
+  String get floatGoalHit => '+300 目标达成!';
+
+  @override
+  String floatGoalProgress(int done, int total) {
+    return '+300 目标车 $done/$total';
+  }
+
+  @override
+  String get floatTopTierLaunch => '🚀 顶级车升空，清掉 3 堆！';
+
+  @override
+  String floatDelivered(String name) {
+    return '🚀 $name已交付';
+  }
+
+  @override
+  String get floatTopTierGeneric => '顶级车';
 }

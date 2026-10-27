@@ -9,6 +9,7 @@ import 'package:flutter/widgets.dart' hide View;
 
 import '../logic/board_logic.dart';
 import '../models/vehicle.dart';
+import '../l10n/l10n.dart';
 import '../models/level.dart';
 import '../services/level_data_generator.dart';
 import '../theme/app_theme.dart';
@@ -345,7 +346,7 @@ class MergeGame extends FlameGame {
     _spawnFloat(
       level.cols ~/ 2,
       level.rows ~/ 2,
-      '🎯 目标升级！下一档 ${_endlessTarget.icon} ${_endlessTarget.name}',
+      L10n.value.endlessGoalFloat(_endlessTarget.icon, _endlessTarget.name),
       color: const Color(0xFFFFCA28),
       fontSize: 18,
       dy: -_cellSize * 0.8,
@@ -358,7 +359,8 @@ class MergeGame extends FlameGame {
       fontSize: 22,
       dy: -_cellSize * 1.4,
     );
-    hint.value = '达成目标！目标升级为 ${_endlessTarget.icon} ${_endlessTarget.name}';
+    hint.value = L10n.value
+        .endlessGoalHint(_endlessTarget.icon, _endlessTarget.name);
     feedback.play(Sfx.bonus);
   }
 
@@ -540,21 +542,21 @@ class MergeGame extends FlameGame {
       if (_stockLockT <= 0) {
         _stockLockT = 0;
         stockLocked.value = false;
-        hint.value = '🔓 牌堆解锁了';
+        hint.value = L10n.value.hintStockUnlocked;
       }
     }
 
     // 胶水倒计时：到点自动干掉（不像冰封要邻格合并救）。
     final glueDried = board.tickGlue(dt);
     if (glueDried > 0) {
-      hint.value = '🍯 胶水干了，车可以动了！';
+      hint.value = L10n.value.hintGlueDry;
       feedback.play(Sfx.bonus);
     }
 
     // 黑洞倒计时：到点闭合。
     final holesGone = board.tickHoles(dt);
     if (holesGone > 0) {
-      hint.value = '🌀 黑洞闭合了，格子能用了！';
+      hint.value = L10n.value.hintHoleClosed;
       feedback.play(Sfx.bonus);
     }
 
@@ -564,7 +566,7 @@ class MergeGame extends FlameGame {
       if (_banT <= 0) {
         _banT = 0;
         _banTier = null;
-        hint.value = '🚫 禁合解除，可以正常合成了！';
+        hint.value = L10n.value.hintBanLifted;
         feedback.play(Sfx.bonus);
       }
     }
@@ -584,10 +586,10 @@ class MergeGame extends FlameGame {
         _shieldUp = up;
         bossShielded.value = up;
         if (up) {
-          hint.value = '🛡 Boss 张开护盾，攒不住劲了，先布局！';
+          hint.value = L10n.value.hintShieldUp;
           feedback.play(Sfx.bonus);
         } else {
-          hint.value = '🛡 护盾消失，全力进攻！';
+          hint.value = L10n.value.hintShieldDown;
         }
       }
     } else if (_shieldUp) {
@@ -633,9 +635,8 @@ class MergeGame extends FlameGame {
       if (board.tileCount == 0 && _deck.isNotEmpty) {
         if (!_emptyBoardHinted) {
           _emptyBoardHinted = true;
-          hint.value =
-              '✨ 棋盘清空了！还剩 ${_deck.length} 张牌没打完，'
-              '继续出牌，最后场上剩 ≤${level.clearLimit ?? 0} 组就赢';
+          hint.value = L10n.value.hintBoardClearedDeckLeft(
+              _deck.length, level.clearLimit ?? 0);
         }
       } else if (board.tileCount > 0) {
         _emptyBoardHinted = false;
@@ -643,7 +644,7 @@ class MergeGame extends FlameGame {
     }
     // 限步倒扣。
     if (level.movesLimit != null && movesLeft.value <= 0) {
-      hint.value = '⏹ 步数用尽！';
+      hint.value = L10n.value.hintMovesOut;
       _end(false, failReason: MergeFailReason.movesOut);
       return;
     }
@@ -660,7 +661,7 @@ class MergeGame extends FlameGame {
         }
       }
       if (_timeLeftSec <= 0) {
-        hint.value = '⏰ 时间到！';
+        hint.value = L10n.value.hintTimeUp;
         _end(false, failReason: MergeFailReason.timeOut);
         return;
       }
@@ -686,8 +687,8 @@ class MergeGame extends FlameGame {
           if (melted > 0) {
             final left = board.frozenLayers;
             hint.value = left > 0
-                ? '☃️ 无路可走了…冰层在减弱（还剩 $left 层）'
-                : '☀️ 冰层全部融化！';
+                ? L10n.value.hintIceThinning(left)
+                : L10n.value.hintIceMeltedAll;
             feedback.play(Sfx.bonus);
           }
         }
@@ -699,8 +700,8 @@ class MergeGame extends FlameGame {
           if (melted > 0) {
             final left = board.iceLayers;
             hint.value = left > 0
-                ? '🧊 冰封棋盘…冰块在裂开（还剩 $left 层）'
-                : '💧 冰块全部融化！';
+                ? L10n.value.hintIceCracking(left)
+                : L10n.value.hintIceBrokenAll;
             feedback.play(Sfx.bonus);
           }
         }
@@ -708,7 +709,7 @@ class MergeGame extends FlameGame {
         // 只有胶水：等它自己干（最多几秒，不做额外动作）。
         _meltT = 0;
         final left = board.glueLeft.ceil();
-        hint.value = '🍯 无路可走了…胶水还有 $left 秒干掉，等一下';
+        hint.value = L10n.value.hintGlueWaiting(left.toInt());
       }
       return;
     }
@@ -735,14 +736,14 @@ class MergeGame extends FlameGame {
     if (_ended) return;
     // Boss 锁牌堆：整段读条时间牌堆点不动（打断抽牌节奏）。
     if (stockLocked.value) {
-      hint.value = '🔒 Boss 锁住了牌堆，等一下！';
+      hint.value = L10n.value.hintBossLockedStock;
       feedback.play(Sfx.error);
       return;
     }
     final source = level.endless ? _upcoming : _deck;
     if (source.isEmpty) return;
     if (board.isFull) {
-      hint.value = '棋盘满了，先合成腾出位置';
+      hint.value = L10n.value.hintBoardFull;
       feedback.play(Sfx.error);
       return;
     }
@@ -763,7 +764,7 @@ class MergeGame extends FlameGame {
       onPlayerAction?.call('draw', tier);
     } else if (board.hasHoles) {
       // 有黑洞占着格导致落不下牌：说破，别让玩家以为 bug。
-      hint.value = '🌀 黑洞堵着，落不下牌——喂它一张或等它闭合';
+      hint.value = L10n.value.hintHoleBlocking;
       feedback.play(Sfx.error);
     }
   }
@@ -788,7 +789,8 @@ class MergeGame extends FlameGame {
       _stackSprites.remove(sprite);
       sprite.removePuff();
     }
-    hint.value = '自动清理了一辆 ${removed.tier.icon} ${removed.tier.name}，腾出位置';
+    hint.value =
+        L10n.value.hintAutoCleared(removed.tier.icon, removed.tier.name);
     feedback.play(Sfx.error);
     _refreshGoal();
   }
@@ -821,9 +823,9 @@ class MergeGame extends FlameGame {
     // 只播受击反馈——玩家要等盾间隙再爆发。
     if (_shieldUp) {
       boss.hit(blocked: true);
-      _spawnFloat(col, row, '🛡 格挡',
+      _spawnFloat(col, row, L10n.value.floatBlocked,
           color: const Color(0xFFFFD54F), fontSize: 20);
-      hint.value = '🛡 护盾挡下了这一击，等盾消失再进攻！';
+      hint.value = L10n.value.hintShieldBlocked;
       feedback.play(Sfx.error);
       return;
     }
@@ -843,13 +845,13 @@ class MergeGame extends FlameGame {
         boss.hp <= spec.hp / 2) {
       boss.enrage();
       bossEnraged.value = true;
-      hint.value = '👑 Boss 狂怒了！攻击变快了！';
+      hint.value = L10n.value.hintBossEnraged;
       feedback.play(Sfx.bonus);
       shake(6, 0.3);
     }
     if (boss.hp <= 0) {
       _bossDeathT = 1.15;
-      hint.value = '👑 Boss 倒下了！';
+      hint.value = L10n.value.hintBossDown;
       add(BurstParticles(boss.position.clone(), const Color(0xFFFF7043),
           count: 30, speed: 200));
       add(BurstParticles(boss.position.clone(), const Color(0xFFFFD54F),
@@ -900,8 +902,8 @@ class MergeGame extends FlameGame {
     }
     shake(4, 0.2);
     hint.value = froze > 1
-        ? '🧊 Boss 冰封了 $froze 张原料车，在旁边合成来救它们！'
-        : '🧊 Boss 冻住了你的原料车，在旁边合成来救它！';
+        ? L10n.value.hintBossFrozeMany(froze)
+        : L10n.value.hintBossFrozeOne;
     feedback.play(Sfx.place);
     return froze;
   }
@@ -923,7 +925,8 @@ class MergeGame extends FlameGame {
       count: 14,
       speed: 90,
     ));
-    hint.value = '😈 Boss 拖走了你的 ${data.tier.icon} ${data.tier.name}！';
+    hint.value =
+        L10n.value.hintBossStole(data.tier.icon, data.tier.name);
     feedback.play(Sfx.error);
     _refreshGoal();
   }
@@ -933,7 +936,7 @@ class MergeGame extends FlameGame {
     if (seconds <= 0) return;
     _stockLockT = seconds;
     stockLocked.value = true;
-    hint.value = '🔒 Boss 锁住了牌堆 ${seconds.round()} 秒！';
+    hint.value = L10n.value.hintBossLockSeconds(seconds.round());
     feedback.play(Sfx.error);
     shake(5, 0.25);
   }
@@ -955,7 +958,7 @@ class MergeGame extends FlameGame {
       maxRadius: _cellSize * 0.7,
     ));
     shake(4, 0.2);
-    hint.value = '🧊 Boss 扔出冰块，占了一个格子！';
+    hint.value = L10n.value.hintBossIceDrop;
     feedback.play(Sfx.place);
   }
 
@@ -1010,9 +1013,11 @@ class MergeGame extends FlameGame {
       color: const Color(0xFFEC407A),
       maxRadius: _cellSize * 0.6,
     ));
-    hint.value =
-        '🚗 Boss 把 ${data.tier.icon} ${data.tier.name} 扣押进了车库，'
-        '${level.boss?.impoundSeconds ?? 3} 秒后放回！';
+    hint.value = L10n.value.hintBossImpound(
+        data.tier.icon,
+        data.tier.name,
+        level.boss?.impoundSeconds ?? 3,
+    );
     feedback.play(Sfx.error);
     _refreshGoal();
   }
@@ -1033,7 +1038,7 @@ class MergeGame extends FlameGame {
         count: 12,
         speed: 90,
       ));
-      hint.value = '✨ 被扣押的 ${item.data.tier.icon} 放回来了！';
+      hint.value = L10n.value.hintImpoundReturn(item.data.tier.icon);
     }
   }
 
@@ -1055,11 +1060,11 @@ class MergeGame extends FlameGame {
         _stackSprites.remove(sprite);
         sprite.removePuff();
       }
-      hint.value = '💥 Boss 拆掉了你的 ${old.icon} ${old.name}！';
+      hint.value = L10n.value.hintBossDemolished(old.icon, old.name);
     } else {
       d.tier = VehicleType.values[newIdx];
-      hint.value = '📉 Boss 施了退化射线：${old.icon} ${old.name} '
-          '→ ${d.tier.icon} ${d.tier.name}！';
+      hint.value = L10n.value.hintBossDevolve(
+          old.icon, old.name, d.tier.icon, d.tier.name);
     }
     add(BurstParticles(
       _cellCenter(col, row),
@@ -1085,7 +1090,7 @@ class MergeGame extends FlameGame {
     if (source.isEmpty) return;
     _taintCards = level.boss?.taintCards ?? 2;
     taintCards.value = _taintCards;
-    hint.value = '☠️ Boss 污染了牌堆！接下来 $_taintCards 张会降一档！';
+    hint.value = L10n.value.hintBossTaint(_taintCards);
     feedback.play(Sfx.error);
     shake(4, 0.2);
   }
@@ -1129,8 +1134,8 @@ class MergeGame extends FlameGame {
       maxRadius: _cellSize * 0.6,
     ));
     shake(4, 0.2);
-    hint.value = '🍯 Boss 泼了胶水：${d.tier.icon} ${d.tier.name} '
-        '${seconds.round()} 秒内动不了，等它干！';
+    hint.value = L10n.value.hintBossGlue(
+        d.tier.icon, d.tier.name, seconds.round());
     feedback.play(Sfx.error);
     _refreshGoal();
   }
@@ -1164,7 +1169,7 @@ class MergeGame extends FlameGame {
       maxRadius: _cellSize * 0.7,
     ));
     shake(5, 0.25);
-    hint.value = '🌀 Boss 撕开一个黑洞！落子要避开，也可以把废牌喂给它';
+    hint.value = L10n.value.hintBossHole;
     feedback.play(Sfx.error);
   }
 
@@ -1174,12 +1179,12 @@ class MergeGame extends FlameGame {
   void _bossShuffle() {
     final n = board.shuffleUnlocked();
     if (n == 0) {
-      hint.value = '🌀 Boss 想洗牌，但你的车都被冻住/粘住了，没得洗！';
+      hint.value = L10n.value.hintBossShuffleBlocked;
       return;
     }
     _syncSpritesFromBoard();
     shake(6, 0.3);
-    hint.value = '🌀 Boss 洗牌！$n 辆车被打乱了，重新找组合！';
+    hint.value = L10n.value.hintBossShuffle(n);
     feedback.play(Sfx.error);
     _refreshGoal();
   }
@@ -1190,8 +1195,8 @@ class MergeGame extends FlameGame {
     if (tier == null) return;
     _banTier = tier;
     _banT = seconds;
-    hint.value = '🚫 禁合：${tier.icon} ${tier.name} ${seconds.round()} '
-        '秒内不能合并，先合别的！';
+    hint.value =
+        L10n.value.hintBossBan(tier.icon, tier.name, seconds.round());
     feedback.play(Sfx.error);
     shake(4, 0.2);
   }
@@ -1257,7 +1262,7 @@ class MergeGame extends FlameGame {
       count: 18,
       speed: 130,
     ));
-    hint.value = '🏆 Boss 抢走了你一个目标车，回了 1 点血！';
+    hint.value = L10n.value.hintBossStoleTarget;
     feedback.play(Sfx.error);
     shake(6, 0.3);
   }
@@ -1268,8 +1273,8 @@ class MergeGame extends FlameGame {
     if (cells.isEmpty) return;
     board.fogCellsAt(cells);
     hint.value = cells.length > 1
-        ? '🌫 Boss 放出迷雾，盖住了 ${cells.length} 辆车！'
-        : '🌫 Boss 放出一团迷雾，盖住了 1 辆车！';
+        ? L10n.value.hintBossFogMany(cells.length)
+        : L10n.value.hintBossFogOne;
     feedback.play(Sfx.error);
     shake(4, 0.2);
   }
@@ -1324,7 +1329,7 @@ class MergeGame extends FlameGame {
     if (_ended) return;
     final removed = board.removeObstacleAt(col, row);
     if (removed == null) {
-      hint.value = '这里没有锁链，点击有 🔒 的格子';
+      hint.value = L10n.value.hintNoChainHere;
       feedback.play(Sfx.error);
       return;
     }
@@ -1341,7 +1346,7 @@ class MergeGame extends FlameGame {
     ));
     feedback.play(Sfx.merge);
     feedback.tap();
-    hint.value = '🔓 锁链已清除';
+    hint.value = L10n.value.hintChainCleared;
     hammerArmed = false;
     onHammerUsed?.call();
   }
@@ -1370,8 +1375,8 @@ class MergeGame extends FlameGame {
     feedback.play(Sfx.merge);
     feedback.tap();
     hint.value = board.isDeadlocked
-        ? '😵 重排后仍是死局，换个思路或再试一次'
-        : '🔀 棋盘已重排，寻找新组合！';
+        ? L10n.value.hintReshuffleStuck
+        : L10n.value.hintReshuffled;
   }
 
   /// 看广告续命：解除结束状态，按失败原因补偿并继续本局。
@@ -1384,16 +1389,16 @@ class MergeGame extends FlameGame {
     switch (_failReason) {
       case MergeFailReason.timeOut:
         addTime(30);
-        hint.value = '▶️ 续命成功：+30 秒，冲！';
+        hint.value = L10n.value.hintReviveTime;
       case MergeFailReason.movesOut:
         movesLeft.value += 10;
-        hint.value = '▶️ 续命成功：+10 步，冲！';
+        hint.value = L10n.value.hintReviveMoves;
       case MergeFailReason.deadEnd:
         // 牌堆见底且无合成：补 2 张新料 + 重排棋盘打开局面。
         addCards(2);
         board.shuffleTiles();
         _syncSpritesFromBoard();
-        hint.value = '▶️ 续命成功：牌堆 +2 并重排棋盘';
+        hint.value = L10n.value.hintReviveCards;
       case MergeFailReason.endlessStuck:
         // 无尽死局：清掉最低的 3 组腾出空间（不走 _clearLowestAuto，避免报错音效）。
         for (var i = 0; i < 3; i++) {
@@ -1406,7 +1411,7 @@ class MergeGame extends FlameGame {
           }
         }
         _refreshGoal();
-        hint.value = '▶️ 续命成功：清理了 3 组车，继续冲档！';
+        hint.value = L10n.value.hintReviveClear;
       case null:
         // 理论不可达（胜利不会触发续命），保险起见恢复结束态。
         _ended = true;
@@ -1423,8 +1428,8 @@ class MergeGame extends FlameGame {
     final m = board.hintMove();
     if (m == null) {
       hint.value = _deck.isEmpty
-          ? '😅 没有可合并的了，试试洗牌或加牌'
-          : '😅 场上没得合，点牌堆出新卡试试';
+          ? L10n.value.hintNothingToMergeNoDeck
+          : L10n.value.hintNothingToMergeDeck;
       feedback.play(Sfx.error);
       return;
     }
@@ -1433,13 +1438,13 @@ class MergeGame extends FlameGame {
     final from = board.at(m.fc, m.fr);
     final to = board.at(m.tc, m.tr);
     if (from != null && to != null && from.tier == to.tier) {
-      hint.value = '💡 把 ${from.tier.icon} 拖到 ${to.tier.icon} 上合并！';
+      hint.value = L10n.value.hintDragTiers(from.tier.icon, to.tier.icon);
     } else if (to != null && to.isWildcard) {
-      hint.value = '💡 把 ${from!.tier.icon} 拖到万能卡上！';
+      hint.value = L10n.value.hintDragWildcard(from!.tier.icon);
     } else if (from != null && from.isBomb && to != null && to.isBomb) {
-      hint.value = '💡 把炸弹拖到一起，集满 3 颗引爆！';
+      hint.value = L10n.value.hintDragBombs;
     } else {
-      hint.value = '💡 把这张卡拖到那张卡上！';
+      hint.value = L10n.value.hintDragGeneric;
     }
     feedback.tap();
   }
@@ -1540,8 +1545,8 @@ class MergeGame extends FlameGame {
           (from.isWildcard || dst.isWildcard || from.tier == dst.tier)) {
         final mergedTier = from.isWildcard ? dst.tier : from.tier;
         if (mergedTier == _banTier) {
-          hint.value = '🚫 禁合中：${_banTier!.icon} ${_banTier!.name} '
-              '还不能合并（还剩 ${_banT.ceil()} 秒）';
+          hint.value = L10n.value.hintBanned(
+              _banTier!.icon, _banTier!.name, _banT.ceil());
           feedback.play(Sfx.error);
           feedback.reject();
           return false;
@@ -1576,7 +1581,7 @@ class MergeGame extends FlameGame {
           speed: 150));
       add(Shockwave(center,
           color: const Color(0xFF7B1FA2), maxRadius: _cellSize * 0.8));
-      hint.value = '🌀 黑洞吞掉了你的 ${from.tier.icon} ${from.tier.name}！';
+      hint.value = L10n.value.hintHoleAte(from.tier.icon, from.tier.name);
       feedback.play(Sfx.error);
       shake(5, 0.25);
       _refreshGoal();
@@ -1645,7 +1650,7 @@ class MergeGame extends FlameGame {
       ));
       shake(10, 0.35);
       _bonusScore += 300;
-      _spawnFloat(at.col, at.row, '💥 引爆 +300',
+      _spawnFloat(at.col, at.row, L10n.value.floatDetonate,
           color: const Color(0xFFFF7043), fontSize: 22);
       score.value = board.totalMerges * 5 + _bonusScore;
       _refreshGoal();
@@ -1669,33 +1674,33 @@ class MergeGame extends FlameGame {
           maxRadius: _cellSize * 0.65,
         ));
       }
-      hint.value = '❄ 冰块融化，格子空出来了';
+      hint.value = L10n.value.hintIceMelted;
     }
 
     // 特殊能力激活提示。
     final ability = moverTier.stats.ability;
     if (ability == SpecialAbility.breakIce && result.meltedIce.isNotEmpty) {
-      _spawnFloat(tc, tr, '🔥 破冰！',
+      _spawnFloat(tc, tr, L10n.value.floatBreakIce,
           color: const Color(0xFF81D4FA), fontSize: 16, dy: -_cellSize * 0.5);
     } else if (ability == SpecialAbility.breakChain) {
-      _spawnFloat(tc, tr, '🔓 解锁！',
+      _spawnFloat(tc, tr, L10n.value.floatUnlock,
           color: const Color(0xFFE8C86A), fontSize: 16, dy: -_cellSize * 0.5);
     } else if (ability == SpecialAbility.clearRock) {
-      _spawnFloat(tc, tr, '💥 碎石！',
+      _spawnFloat(tc, tr, L10n.value.floatRubble,
           color: const Color(0xFF90A4AE), fontSize: 16, dy: -_cellSize * 0.5);
     } else if (ability == SpecialAbility.flyOver) {
-      _spawnFloat(tc, tr, '✈️ 飞越！',
+      _spawnFloat(tc, tr, L10n.value.floatFlyOver,
           color: const Color(0xFF90CAF9), fontSize: 16, dy: -_cellSize * 0.5);
     } else if (ability == SpecialAbility.teleport) {
-      _spawnFloat(tc, tr, '⚡ 传送！',
+      _spawnFloat(tc, tr, L10n.value.floatTeleport,
           color: const Color(0xFFB39DDB), fontSize: 16, dy: -_cellSize * 0.5);
     } else if (ability == SpecialAbility.warp) {
-      _spawnFloat(tc, tr, '🌀 曲速！',
+      _spawnFloat(tc, tr, L10n.value.floatWarp,
           color: const Color(0xFF7E57C2), fontSize: 16, dy: -_cellSize * 0.5);
     }
 
     if (ability == SpecialAbility.sonar && sonarRange > 1) {
-      _spawnFloat(fc, fr, '📡 侦察！',
+      _spawnFloat(fc, fr, L10n.value.floatSonar,
           color: const Color(0xFF80CBC4), fontSize: 16, dy: -_cellSize * 0.5);
     }
 
@@ -1755,11 +1760,11 @@ class MergeGame extends FlameGame {
             // 「目标达成」，多目标关（×2/×3）打到第 1 辆就喊，玩家会以为
             // 关该结算了却没结算——这是"达到任务却不退出"的观感来源。
             level.goalType == GoalType.clearBoard
-                ? '+300 清掉一格!'
+                ? L10n.value.floatCellCleared
                 : (board.producedCount >= level.targetCount
-                    ? '+300 目标达成!'
-                    : '+300 目标车 '
-                        '${board.producedCount}/${level.targetCount}'),
+                    ? L10n.value.floatGoalHit
+                    : L10n.value.floatGoalProgress(
+                        board.producedCount, level.targetCount)),
             color: const Color(0xFFFFD54F),
             fontSize: 24);
         feedback.play(Sfx.bonus);
@@ -1787,8 +1792,9 @@ class MergeGame extends FlameGame {
           tc,
           tr,
           level.goalType == GoalType.clearBoard
-              ? '🚀 顶级车升空，清掉 3 堆！'
-              : '🚀 ${board.at(tc, tr)?.tier.name ?? "顶级车"}已交付',
+              ? L10n.value.floatTopTierLaunch
+              : L10n.value.floatDelivered(
+                  board.at(tc, tr)?.tier.name ?? L10n.value.floatTopTierGeneric),
           color: const Color(0xFFFFD54F),
           fontSize: 15,
           dy: -_cellSize * 0.95,
@@ -1823,7 +1829,7 @@ class MergeGame extends FlameGame {
     _spawnFloat(col, row, '+$points',
         color: const Color(0xFFFFFFFF), fontSize: 20);
     if (combo >= 2) {
-      _spawnFloat(col, row, '🔥 连消 x$combo',
+      _spawnFloat(col, row, L10n.value.floatCombo(combo),
           color: const Color(0xFFFFCA28), fontSize: 18, dy: -_cellSize * 0.6);
     }
   }
@@ -3771,10 +3777,10 @@ class BossSprite extends PositionComponent {
         }
         if (dropped > 0) {
           game.hint.value = dropped > 1
-              ? '🪨 Boss 掀起塌方，$dropped 块碎石堵住了格子！'
-              : '🪨 Boss 抡下一块碎石，占了一个格子！';
+              ? L10n.value.floatBossLandslide(dropped)
+              : L10n.value.floatBossRubbleOne;
         } else {
-          game.hint.value = '🪨 Boss 抡起碎石，但你都提前挪开了！';
+          game.hint.value = L10n.value.hintBossRubbleDodged;
         }
       case BossAttackKind.taint:
         game._bossTaint();
@@ -3809,7 +3815,7 @@ class BossSprite extends PositionComponent {
         if (fogNow.isNotEmpty) {
           game._bossFog(fogNow);
         } else {
-          game.hint.value = '🌫 Boss 放出迷雾，但你已经把车都挪开了！';
+          game.hint.value = L10n.value.hintBossFogDodged;
         }
       case BossAttackKind.stealGoal:
         game._bossStealGoal();

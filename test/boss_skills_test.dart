@@ -8,6 +8,8 @@ import 'package:merge_fleet/models/vehicle.dart';
 import 'package:merge_fleet/save/save_repository.dart';
 import 'package:merge_fleet/screens/game_screen.dart';
 
+import 'helpers/localized_app.dart';
+
 /// Boss 新技能回归测试（2026-10-17，卡组制扩容）：
 /// - 卡组工厂：确定性、同章不重样、招牌绰号、池子按章解锁
 /// - 塌方：落碎石占格（障碍物数增加）
@@ -56,6 +58,10 @@ LevelDefinition _skillLevel({
 }
 
 void main() {
+  // 这些用例直接 new MergeGame，没有 widget 树同步 locale，
+  // 断言里的中文 hint 需要先把文案表切成 zh。
+  setUp(useZhL10n);
+
   // ─────────────────────────────────────────────────────────────
   //  卡组工厂（纯函数）
   // ─────────────────────────────────────────────────────────────

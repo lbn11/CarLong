@@ -1969,4 +1969,312 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get achClaimBtn => 'Claim';
+
+  @override
+  String endlessGoalFloat(String icon, String name) {
+    return '🎯 Goal up! Next tier $icon $name';
+  }
+
+  @override
+  String endlessGoalHint(String icon, String name) {
+    return 'Goal reached! Now aiming for $icon $name';
+  }
+
+  @override
+  String get hintStockUnlocked => '🔓 Deck unlocked';
+
+  @override
+  String get hintGlueDry => '🍯 Glue dried — cars can move again!';
+
+  @override
+  String get hintHoleClosed =>
+      '🌀 The black hole closed — that cell is usable!';
+
+  @override
+  String get hintBanLifted => '🚫 Merge ban lifted — back to normal!';
+
+  @override
+  String get hintShieldUp =>
+      '🛡 Boss raised a shield — hold your merges and build up!';
+
+  @override
+  String get hintShieldDown => '🛡 Shield down — full attack!';
+
+  @override
+  String hintBoardClearedDeckLeft(int left, int limit) {
+    return '✨ Board cleared! $left cards left in the deck — keep drawing, finish with ≤$limit groups';
+  }
+
+  @override
+  String get hintMovesOut => '⏹ Out of moves!';
+
+  @override
+  String get hintTimeUp => '⏰ Time\'s up!';
+
+  @override
+  String hintIceThinning(int layers) {
+    return '☃️ No moves left… ice is thinning ($layers layers left)';
+  }
+
+  @override
+  String get hintIceMeltedAll => '☀️ All ice melted!';
+
+  @override
+  String hintIceCracking(int layers) {
+    return '🧊 Board frozen… ice is cracking ($layers layers left)';
+  }
+
+  @override
+  String get hintIceBrokenAll => '💧 All ice gone!';
+
+  @override
+  String hintGlueWaiting(int seconds) {
+    return '🍯 No moves left… glue dries in ${seconds}s, hang on';
+  }
+
+  @override
+  String get hintBossLockedStock => '🔒 Boss locked the deck — hang on!';
+
+  @override
+  String get hintBoardFull => 'Board\'s full — merge something to free a slot';
+
+  @override
+  String get hintHoleBlocking =>
+      '🌀 A black hole is in the way — feed it a card or wait for it to close';
+
+  @override
+  String hintAutoCleared(String icon, String name) {
+    return 'Auto-cleared a $icon $name to free a slot';
+  }
+
+  @override
+  String get floatBlocked => '🛡 Blocked';
+
+  @override
+  String get hintShieldBlocked =>
+      '🛡 The shield blocked that hit — attack once it drops!';
+
+  @override
+  String get hintBossEnraged => '👑 The Boss enraged! Attacks are faster!';
+
+  @override
+  String get hintBossDown => '👑 The Boss is down!';
+
+  @override
+  String hintBossFrozeMany(int count) {
+    return '🧊 The Boss froze $count ingredient cars — merge next to them to free them!';
+  }
+
+  @override
+  String get hintBossFrozeOne =>
+      '🧊 The Boss froze your ingredient car — merge next to it to free it!';
+
+  @override
+  String hintBossStole(String icon, String name) {
+    return '😈 The Boss towed away your $icon $name!';
+  }
+
+  @override
+  String hintBossLockSeconds(int seconds) {
+    return '🔒 The Boss locked the deck for ${seconds}s!';
+  }
+
+  @override
+  String get hintBossIceDrop =>
+      '🧊 The Boss dropped an ice block and took a cell!';
+
+  @override
+  String hintBossImpound(String icon, String name, int seconds) {
+    return '🚗 The Boss impounded your $icon $name — back in ${seconds}s!';
+  }
+
+  @override
+  String hintImpoundReturn(String icon) {
+    return '✨ Your impounded $icon is back!';
+  }
+
+  @override
+  String hintBossDemolished(String icon, String name) {
+    return '💥 The Boss tore down your $icon $name!';
+  }
+
+  @override
+  String hintBossDevolve(
+    String fromIcon,
+    String fromName,
+    String toIcon,
+    String toName,
+  ) {
+    return '📉 Degrade ray: $fromIcon $fromName → $toIcon $toName!';
+  }
+
+  @override
+  String hintBossTaint(int count) {
+    return '☠️ The Boss poisoned the deck! The next $count cards drop a tier!';
+  }
+
+  @override
+  String hintBossGlue(String icon, String name, int seconds) {
+    return '🍯 The Boss splashed glue: $icon $name stuck for ${seconds}s!';
+  }
+
+  @override
+  String get hintBossHole =>
+      '🌀 The Boss tore open a black hole! Avoid the cell — or feed it junk';
+
+  @override
+  String get hintBossShuffleBlocked =>
+      '🌀 The Boss wanted to shuffle, but your cars are all frozen/stuck — nothing to shuffle!';
+
+  @override
+  String hintBossShuffle(int count) {
+    return '🌀 The Boss shuffled! $count cars scrambled — find new matches!';
+  }
+
+  @override
+  String hintBossBan(String icon, String name, int seconds) {
+    return '🚫 Merge ban: $icon $name can\'t merge for ${seconds}s — merge something else!';
+  }
+
+  @override
+  String get hintBossStoleTarget =>
+      '🏆 The Boss stole a target car and healed 1 HP!';
+
+  @override
+  String hintBossFogMany(int count) {
+    return '🌫 The Boss dropped fog over $count cars!';
+  }
+
+  @override
+  String get hintBossFogOne => '🌫 The Boss dropped fog over a car!';
+
+  @override
+  String get hintNoChainHere => 'No chains here — tap the cells marked 🔒';
+
+  @override
+  String get hintChainCleared => '🔓 Chain cleared';
+
+  @override
+  String get hintReshuffleStuck =>
+      '😵 Still stuck after the reshuffle — try a different plan';
+
+  @override
+  String get hintReshuffled => '🔀 Board reshuffled — look for new matches!';
+
+  @override
+  String get hintReviveTime => '▶️ Back in! +30s — go!';
+
+  @override
+  String get hintReviveMoves => '▶️ Back in! +10 moves — go!';
+
+  @override
+  String get hintReviveCards => '▶️ Back in! +2 cards and a reshuffle';
+
+  @override
+  String get hintReviveClear => '▶️ Back in! Cleared 3 groups — keep climbing!';
+
+  @override
+  String get hintNothingToMergeNoDeck =>
+      '😅 Nothing to merge — try Shuffle or Add cards';
+
+  @override
+  String get hintNothingToMergeDeck =>
+      '😅 Nothing to merge — tap the deck for a new card';
+
+  @override
+  String hintDragTiers(String fromIcon, String toIcon) {
+    return '💡 Drag $fromIcon onto $toIcon to merge!';
+  }
+
+  @override
+  String hintDragWildcard(String icon) {
+    return '💡 Drag $icon onto the wildcard!';
+  }
+
+  @override
+  String get hintDragBombs => '💡 Drag the bombs together — 3 makes it blow!';
+
+  @override
+  String get hintDragGeneric => '💡 Drag this card onto that one!';
+
+  @override
+  String hintBanned(String icon, String name, int seconds) {
+    return '🚫 Banned: $icon $name can\'t merge yet (${seconds}s left)';
+  }
+
+  @override
+  String hintHoleAte(String icon, String name) {
+    return '🌀 The black hole ate your $icon $name!';
+  }
+
+  @override
+  String get floatDetonate => '💥 Boom +300';
+
+  @override
+  String get hintIceMelted => '❄ Ice melted — cell freed up';
+
+  @override
+  String get floatBreakIce => '🔥 Ice broken!';
+
+  @override
+  String get floatUnlock => '🔓 Unlocked!';
+
+  @override
+  String get floatRubble => '💥 Rubble crushed!';
+
+  @override
+  String get floatFlyOver => '✈️ Flew over!';
+
+  @override
+  String get floatTeleport => '⚡ Teleported!';
+
+  @override
+  String get floatWarp => '🌀 Warped!';
+
+  @override
+  String get floatSonar => '📡 Scouted!';
+
+  @override
+  String floatCombo(int combo) {
+    return '🔥 Combo x$combo';
+  }
+
+  @override
+  String floatBossLandslide(int count) {
+    return '🪨 The Boss caused a landslide — $count rocks blocked cells!';
+  }
+
+  @override
+  String get floatBossRubbleOne =>
+      '🪨 The Boss dropped a rock and took a cell!';
+
+  @override
+  String get hintBossRubbleDodged =>
+      '🪨 The Boss swung a rock, but you moved everyone clear!';
+
+  @override
+  String get hintBossFogDodged =>
+      '🌫 The Boss dropped fog, but you\'d already moved the cars!';
+
+  @override
+  String get floatCellCleared => '+300 cell cleared!';
+
+  @override
+  String get floatGoalHit => '+300 goal reached!';
+
+  @override
+  String floatGoalProgress(int done, int total) {
+    return '+300 target $done/$total';
+  }
+
+  @override
+  String get floatTopTierLaunch => '🚀 Top tier launched — cleared 3 piles!';
+
+  @override
+  String floatDelivered(String name) {
+    return '🚀 $name delivered';
+  }
+
+  @override
+  String get floatTopTierGeneric => 'top-tier car';
 }

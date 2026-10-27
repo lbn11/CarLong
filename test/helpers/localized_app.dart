@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'package:merge_fleet/l10n/app_localizations.dart';
+import 'package:merge_fleet/l10n/app_localizations_zh.dart';
 import 'package:merge_fleet/l10n/l10n.dart';
 
 /// 带本地化的测试宿主。所有会渲染带文案界面的测试都要用它包一层。
@@ -25,4 +27,15 @@ MaterialApp l10nHost(Widget child, {Locale? locale}) {
     },
     home: child,
   );
+}
+
+/// 给「直接 new MergeGame、不经过 widget 树」的测试用。
+///
+/// 这类测试没有 `MaterialApp.builder`，`L10n.current` 恒为 null，于是
+/// `L10n.value` 回落到英文兜底。断言里拿中文 hint 当定位器（「hint 必须
+/// 说破 Boss 干了什么」）的用例，先调它把文案表切到 zh——
+/// 顺带成了中文语言包的回归。
+void useZhL10n() {
+  L10n.sync(AppLocalizationsZh());
+  addTearDown(L10n.resetForTest);
 }

@@ -3637,6 +3637,479 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Claim'**
   String get achClaimBtn;
+
+  /// 无尽模式达标时棋盘中央的飘字
+  ///
+  /// In en, this message translates to:
+  /// **'🎯 Goal up! Next tier {icon} {name}'**
+  String endlessGoalFloat(String icon, String name);
+
+  /// 无尽模式达标时底部提示
+  ///
+  /// In en, this message translates to:
+  /// **'Goal reached! Now aiming for {icon} {name}'**
+  String endlessGoalHint(String icon, String name);
+
+  /// Boss 锁牌结束后恢复
+  ///
+  /// In en, this message translates to:
+  /// **'🔓 Deck unlocked'**
+  String get hintStockUnlocked;
+
+  /// 胶水到期
+  ///
+  /// In en, this message translates to:
+  /// **'🍯 Glue dried — cars can move again!'**
+  String get hintGlueDry;
+
+  /// 黑洞到期
+  ///
+  /// In en, this message translates to:
+  /// **'🌀 The black hole closed — that cell is usable!'**
+  String get hintHoleClosed;
+
+  /// 禁合到期
+  ///
+  /// In en, this message translates to:
+  /// **'🚫 Merge ban lifted — back to normal!'**
+  String get hintBanLifted;
+
+  /// Boss 开盾
+  ///
+  /// In en, this message translates to:
+  /// **'🛡 Boss raised a shield — hold your merges and build up!'**
+  String get hintShieldUp;
+
+  /// Boss 盾消失
+  ///
+  /// In en, this message translates to:
+  /// **'🛡 Shield down — full attack!'**
+  String get hintShieldDown;
+
+  /// 清盘关提前清空棋盘
+  ///
+  /// In en, this message translates to:
+  /// **'✨ Board cleared! {left} cards left in the deck — keep drawing, finish with ≤{limit} groups'**
+  String hintBoardClearedDeckLeft(int left, int limit);
+
+  /// 限步关判负
+  ///
+  /// In en, this message translates to:
+  /// **'⏹ Out of moves!'**
+  String get hintMovesOut;
+
+  /// 限时关判负
+  ///
+  /// In en, this message translates to:
+  /// **'⏰ Time\'s up!'**
+  String get hintTimeUp;
+
+  /// 冰封死局：安全阀在融冰
+  ///
+  /// In en, this message translates to:
+  /// **'☃️ No moves left… ice is thinning ({layers} layers left)'**
+  String hintIceThinning(int layers);
+
+  /// 冰封死局的冰已全融
+  ///
+  /// In en, this message translates to:
+  /// **'☀️ All ice melted!'**
+  String get hintIceMeltedAll;
+
+  /// 冰块死局：安全阀在融冰
+  ///
+  /// In en, this message translates to:
+  /// **'🧊 Board frozen… ice is cracking ({layers} layers left)'**
+  String hintIceCracking(int layers);
+
+  /// 冰块死局的冰已全融
+  ///
+  /// In en, this message translates to:
+  /// **'💧 All ice gone!'**
+  String get hintIceBrokenAll;
+
+  /// 胶水死局等待
+  ///
+  /// In en, this message translates to:
+  /// **'🍯 No moves left… glue dries in {seconds}s, hang on'**
+  String hintGlueWaiting(int seconds);
+
+  /// Boss 锁牌时的点击反馈
+  ///
+  /// In en, this message translates to:
+  /// **'🔒 Boss locked the deck — hang on!'**
+  String get hintBossLockedStock;
+
+  /// 棋盘满时点牌堆
+  ///
+  /// In en, this message translates to:
+  /// **'Board\'s full — merge something to free a slot'**
+  String get hintBoardFull;
+
+  /// 落子被黑洞挡住
+  ///
+  /// In en, this message translates to:
+  /// **'🌀 A black hole is in the way — feed it a card or wait for it to close'**
+  String get hintHoleBlocking;
+
+  /// 棋盘满时自动清掉最低档车
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-cleared a {icon} {name} to free a slot'**
+  String hintAutoCleared(String icon, String name);
+
+  /// 护盾挡伤的飘字
+  ///
+  /// In en, this message translates to:
+  /// **'🛡 Blocked'**
+  String get floatBlocked;
+
+  /// 护盾期间命中
+  ///
+  /// In en, this message translates to:
+  /// **'🛡 The shield blocked that hit — attack once it drops!'**
+  String get hintShieldBlocked;
+
+  /// Boss 残血狂怒
+  ///
+  /// In en, this message translates to:
+  /// **'👑 The Boss enraged! Attacks are faster!'**
+  String get hintBossEnraged;
+
+  /// Boss 血条打空
+  ///
+  /// In en, this message translates to:
+  /// **'👑 The Boss is down!'**
+  String get hintBossDown;
+
+  /// 冰封技能命中 2 张以上
+  ///
+  /// In en, this message translates to:
+  /// **'🧊 The Boss froze {count} ingredient cars — merge next to them to free them!'**
+  String hintBossFrozeMany(int count);
+
+  /// 冰封技能命中 1 张
+  ///
+  /// In en, this message translates to:
+  /// **'🧊 The Boss froze your ingredient car — merge next to it to free it!'**
+  String get hintBossFrozeOne;
+
+  /// 拖车技能
+  ///
+  /// In en, this message translates to:
+  /// **'😈 The Boss towed away your {icon} {name}!'**
+  String hintBossStole(String icon, String name);
+
+  /// 锁牌技能
+  ///
+  /// In en, this message translates to:
+  /// **'🔒 The Boss locked the deck for {seconds}s!'**
+  String hintBossLockSeconds(int seconds);
+
+  /// 落冰技能
+  ///
+  /// In en, this message translates to:
+  /// **'🧊 The Boss dropped an ice block and took a cell!'**
+  String get hintBossIceDrop;
+
+  /// 扣押技能
+  ///
+  /// In en, this message translates to:
+  /// **'🚗 The Boss impounded your {icon} {name} — back in {seconds}s!'**
+  String hintBossImpound(String icon, String name, int seconds);
+
+  /// 扣押到期放回
+  ///
+  /// In en, this message translates to:
+  /// **'✨ Your impounded {icon} is back!'**
+  String hintImpoundReturn(String icon);
+
+  /// 拆除技能
+  ///
+  /// In en, this message translates to:
+  /// **'💥 The Boss tore down your {icon} {name}!'**
+  String hintBossDemolished(String icon, String name);
+
+  /// 退化技能
+  ///
+  /// In en, this message translates to:
+  /// **'📉 Degrade ray: {fromIcon} {fromName} → {toIcon} {toName}!'**
+  String hintBossDevolve(
+    String fromIcon,
+    String fromName,
+    String toIcon,
+    String toName,
+  );
+
+  /// 污染技能
+  ///
+  /// In en, this message translates to:
+  /// **'☠️ The Boss poisoned the deck! The next {count} cards drop a tier!'**
+  String hintBossTaint(int count);
+
+  /// 胶水技能
+  ///
+  /// In en, this message translates to:
+  /// **'🍯 The Boss splashed glue: {icon} {name} stuck for {seconds}s!'**
+  String hintBossGlue(String icon, String name, int seconds);
+
+  /// 黑洞技能
+  ///
+  /// In en, this message translates to:
+  /// **'🌀 The Boss tore open a black hole! Avoid the cell — or feed it junk'**
+  String get hintBossHole;
+
+  /// 洗牌技能被冻住化解
+  ///
+  /// In en, this message translates to:
+  /// **'🌀 The Boss wanted to shuffle, but your cars are all frozen/stuck — nothing to shuffle!'**
+  String get hintBossShuffleBlocked;
+
+  /// 洗牌技能
+  ///
+  /// In en, this message translates to:
+  /// **'🌀 The Boss shuffled! {count} cars scrambled — find new matches!'**
+  String hintBossShuffle(int count);
+
+  /// 禁合技能
+  ///
+  /// In en, this message translates to:
+  /// **'🚫 Merge ban: {icon} {name} can\'t merge for {seconds}s — merge something else!'**
+  String hintBossBan(String icon, String name, int seconds);
+
+  /// 抢目标技能
+  ///
+  /// In en, this message translates to:
+  /// **'🏆 The Boss stole a target car and healed 1 HP!'**
+  String get hintBossStoleTarget;
+
+  /// 迷雾技能多张
+  ///
+  /// In en, this message translates to:
+  /// **'🌫 The Boss dropped fog over {count} cars!'**
+  String hintBossFogMany(int count);
+
+  /// 迷雾技能单张
+  ///
+  /// In en, this message translates to:
+  /// **'🌫 The Boss dropped fog over a car!'**
+  String get hintBossFogOne;
+
+  /// 锤子点错地方
+  ///
+  /// In en, this message translates to:
+  /// **'No chains here — tap the cells marked 🔒'**
+  String get hintNoChainHere;
+
+  /// 锤子清掉锁链
+  ///
+  /// In en, this message translates to:
+  /// **'🔓 Chain cleared'**
+  String get hintChainCleared;
+
+  /// 洗牌后仍死局
+  ///
+  /// In en, this message translates to:
+  /// **'😵 Still stuck after the reshuffle — try a different plan'**
+  String get hintReshuffleStuck;
+
+  /// 洗牌成功
+  ///
+  /// In en, this message translates to:
+  /// **'🔀 Board reshuffled — look for new matches!'**
+  String get hintReshuffled;
+
+  /// 看广告续命（限时）
+  ///
+  /// In en, this message translates to:
+  /// **'▶️ Back in! +30s — go!'**
+  String get hintReviveTime;
+
+  /// 看广告续命（限步）
+  ///
+  /// In en, this message translates to:
+  /// **'▶️ Back in! +10 moves — go!'**
+  String get hintReviveMoves;
+
+  /// 看广告续命（死局）
+  ///
+  /// In en, this message translates to:
+  /// **'▶️ Back in! +2 cards and a reshuffle'**
+  String get hintReviveCards;
+
+  /// 看广告续命（无尽死局）
+  ///
+  /// In en, this message translates to:
+  /// **'▶️ Back in! Cleared 3 groups — keep climbing!'**
+  String get hintReviveClear;
+
+  /// 死局提示（牌堆空）
+  ///
+  /// In en, this message translates to:
+  /// **'😅 Nothing to merge — try Shuffle or Add cards'**
+  String get hintNothingToMergeNoDeck;
+
+  /// 死局提示（牌堆还有）
+  ///
+  /// In en, this message translates to:
+  /// **'😅 Nothing to merge — tap the deck for a new card'**
+  String get hintNothingToMergeDeck;
+
+  /// 提示：两张同档车
+  ///
+  /// In en, this message translates to:
+  /// **'💡 Drag {fromIcon} onto {toIcon} to merge!'**
+  String hintDragTiers(String fromIcon, String toIcon);
+
+  /// 提示：万能卡
+  ///
+  /// In en, this message translates to:
+  /// **'💡 Drag {icon} onto the wildcard!'**
+  String hintDragWildcard(String icon);
+
+  /// 提示：炸弹
+  ///
+  /// In en, this message translates to:
+  /// **'💡 Drag the bombs together — 3 makes it blow!'**
+  String get hintDragBombs;
+
+  /// 提示：通用兜底
+  ///
+  /// In en, this message translates to:
+  /// **'💡 Drag this card onto that one!'**
+  String get hintDragGeneric;
+
+  /// 禁合期间尝试合并
+  ///
+  /// In en, this message translates to:
+  /// **'🚫 Banned: {icon} {name} can\'t merge yet ({seconds}s left)'**
+  String hintBanned(String icon, String name, int seconds);
+
+  /// 把车喂给黑洞
+  ///
+  /// In en, this message translates to:
+  /// **'🌀 The black hole ate your {icon} {name}!'**
+  String hintHoleAte(String icon, String name);
+
+  /// 炸弹引爆飘字
+  ///
+  /// In en, this message translates to:
+  /// **'💥 Boom +300'**
+  String get floatDetonate;
+
+  /// 冰块自然融化
+  ///
+  /// In en, this message translates to:
+  /// **'❄ Ice melted — cell freed up'**
+  String get hintIceMelted;
+
+  /// 破冰能力飘字
+  ///
+  /// In en, this message translates to:
+  /// **'🔥 Ice broken!'**
+  String get floatBreakIce;
+
+  /// 解锁能力飘字
+  ///
+  /// In en, this message translates to:
+  /// **'🔓 Unlocked!'**
+  String get floatUnlock;
+
+  /// 清石能力飘字
+  ///
+  /// In en, this message translates to:
+  /// **'💥 Rubble crushed!'**
+  String get floatRubble;
+
+  /// 飞越能力飘字
+  ///
+  /// In en, this message translates to:
+  /// **'✈️ Flew over!'**
+  String get floatFlyOver;
+
+  /// 传送能力飘字
+  ///
+  /// In en, this message translates to:
+  /// **'⚡ Teleported!'**
+  String get floatTeleport;
+
+  /// 曲速能力飘字
+  ///
+  /// In en, this message translates to:
+  /// **'🌀 Warped!'**
+  String get floatWarp;
+
+  /// 侦察能力飘字
+  ///
+  /// In en, this message translates to:
+  /// **'📡 Scouted!'**
+  String get floatSonar;
+
+  /// 连消飘字
+  ///
+  /// In en, this message translates to:
+  /// **'🔥 Combo x{combo}'**
+  String floatCombo(int combo);
+
+  /// 塌方技能
+  ///
+  /// In en, this message translates to:
+  /// **'🪨 The Boss caused a landslide — {count} rocks blocked cells!'**
+  String floatBossLandslide(int count);
+
+  /// 塌方技能单块
+  ///
+  /// In en, this message translates to:
+  /// **'🪨 The Boss dropped a rock and took a cell!'**
+  String get floatBossRubbleOne;
+
+  /// 塌方被清场化解
+  ///
+  /// In en, this message translates to:
+  /// **'🪨 The Boss swung a rock, but you moved everyone clear!'**
+  String get hintBossRubbleDodged;
+
+  /// 迷雾被规避
+  ///
+  /// In en, this message translates to:
+  /// **'🌫 The Boss dropped fog, but you\'d already moved the cars!'**
+  String get hintBossFogDodged;
+
+  /// 清盘关合出目标车的飘字
+  ///
+  /// In en, this message translates to:
+  /// **'+300 cell cleared!'**
+  String get floatCellCleared;
+
+  /// 目标达成时的飘字
+  ///
+  /// In en, this message translates to:
+  /// **'+300 goal reached!'**
+  String get floatGoalHit;
+
+  /// 目标进度飘字
+  ///
+  /// In en, this message translates to:
+  /// **'+300 target {done}/{total}'**
+  String floatGoalProgress(int done, int total);
+
+  /// 顶级车三合一升空
+  ///
+  /// In en, this message translates to:
+  /// **'🚀 Top tier launched — cleared 3 piles!'**
+  String get floatTopTierLaunch;
+
+  /// 目标车交付飘字
+  ///
+  /// In en, this message translates to:
+  /// **'🚀 {name} delivered'**
+  String floatDelivered(String name);
+
+  /// 顶级车升空飘字的兜底名（拿不到具体车型时）
+  ///
+  /// In en, this message translates to:
+  /// **'top-tier car'**
+  String get floatTopTierGeneric;
 }
 
 class _AppLocalizationsDelegate

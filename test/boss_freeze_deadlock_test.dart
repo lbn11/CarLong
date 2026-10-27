@@ -8,6 +8,8 @@ import 'package:merge_fleet/models/vehicle.dart';
 import 'package:merge_fleet/save/save_repository.dart';
 import 'package:merge_fleet/screens/game_screen.dart';
 
+import 'helpers/localized_app.dart';
+
 /// 冰封死局回归（2026-10-17，用户提问「Boss 把牌全冻住岂不是永远解冻不了」）：
 ///
 /// 修复一：hasPossibleMove / isDeadlocked / hintMove 原先**把冻车当成可合
@@ -44,6 +46,10 @@ BossSpec _dormantBoss() => const BossSpec(
     );
 
 void main() {
+  // 这些用例直接 new MergeGame，没有 widget 树同步 locale，
+  // 断言里的中文 hint 需要先把文案表切成 zh。
+  setUp(useZhL10n);
+
   // ─────────────────────────────────────────────────────────────
   //  BoardLogic 纯逻辑：检测必须跳过冻车
   // ─────────────────────────────────────────────────────────────
