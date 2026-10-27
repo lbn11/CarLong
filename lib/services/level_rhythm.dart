@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../l10n/l10n.dart';
 
 /// 难度心跳：合成与停车两个模式共用的**同一套节奏语言**，但周期不同。
 ///
@@ -42,6 +43,7 @@ class LevelRhythm {
   /// 停车：6 关一轮。
   static const int parkingPeriod = 6;
 
+  // i18n-data-block：相位名原文（显示走 displayNameOf）
   static const List<String> _mergeNames = ['轻松', '顺手', '动脑', '顺手', '硬仗'];
 
   static const List<String> _parkingNames = [
@@ -52,6 +54,7 @@ class LevelRhythm {
     '硬仗', // 4 第二波峰：更拥挤 + 更多能力车
     '尖峰', // 5 全压力：最挤 + 限时
   ];
+  // i18n-data-end
 
   /// 相位色：从冷到暖递进，玩家扫一眼选关页就能看出这一轮的起伏。
   static const List<Color> _mergeColors = [
@@ -101,6 +104,25 @@ class LevelRhythm {
 
   static String nameOf(RhythmMode mode, int phase) =>
       namesOf(mode)[phase % periodOf(mode)];
+
+  /// 上界面的相位名（HUD chip / 关卡卡徽标）。
+  ///
+  /// 名字是按**一轮内的第几个位置**定的，不是按字符串查表：合成一轮 5 档
+  /// （3 号位还是「顺手」），停车一轮 6 档（3 号位是「缓冲」波谷）。
+  /// 拿不到文案表时回落 [nameOf] 的中文。
+  static String displayNameOf(RhythmMode mode, int phase) {
+    final l = L10n.current;
+    if (l == null) return nameOf(mode, phase);
+    return switch (phase % periodOf(mode)) {
+      0 => l.phaseEasy,
+      1 => l.phaseSmooth,
+      2 => l.phaseThink,
+      3 => mode == RhythmMode.merge ? l.phaseSmooth : l.phaseBreather,
+      4 => l.phaseHard,
+      5 => l.phasePeak,
+      _ => nameOf(mode, phase),
+    };
+  }
 
   static Color colorOf(RhythmMode mode, int phase) =>
       (mode == RhythmMode.merge ? _mergeColors : _parkingColors)[

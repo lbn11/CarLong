@@ -11,6 +11,7 @@ import '../widgets/candy_ui.dart';
 import '../widgets/pressable.dart';
 import '../widgets/vehicle_image.dart';
 import 'game_screen.dart';
+import '../l10n/l10n.dart';
 
 /// 完整关卡选择页：从首页「全部关卡」进入。
 ///
@@ -289,8 +290,8 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
           child: Column(
             children: [
               CandyAppBar(
-                title: '关卡地图',
-                subtitle: '已完成 $completed/$total 关 · 慢慢来，一关一关开',
+                title: L10n.value.levelMapTitle,
+                subtitle: L10n.value.levelMapSubtitle(completed, total),
                 accent: AppColors.sky,
                 onBack: () => Navigator.of(context).pop(),
                 actions: [
@@ -360,7 +361,7 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
             // 魔王章：大阶段（3 章）末章的整章 +1 档。徽标说破身份，
             // 玩家才会把「这一章特别难」理解为阶段收官而不是数值出错。
             subtitle: LevelProgression.isMergeDemon(chapter.startId)
-                ? '👹 魔王章 · ${chapter.subtitle}'
+                ? L10n.value.demonChapter(chapter.subtitle)
                 : chapter.subtitle,
             accent: chapterColor,
             trailing: SoftChip(
@@ -440,7 +441,7 @@ class TotalProgressCard extends StatelessWidget {
                             fontSize: 18,
                             fontWeight: FontWeight.w900)),
                     const SizedBox(width: 4),
-                    Text('累计星星',
+                    Text(L10n.value.totalStars,
                         style: TextStyle(
                             color: AppColors.ink3,
                             fontSize: 12,
@@ -452,8 +453,8 @@ class TotalProgressCard extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   progress >= 1
-                      ? '全部关卡都已点亮，了不起！'
-                      : '再过 ${total - completed} 关就全部点亮啦',
+                      ? L10n.value.allLevelsUnlocked
+                      : L10n.value.levelsLeftToUnlock(total - completed),
                   style: const TextStyle(color: AppColors.ink2, fontSize: 11.5),
                 ),
               ],
@@ -505,7 +506,7 @@ class _AdGateChip extends StatelessWidget {
           const Text('🎬', style: TextStyle(fontSize: 9)),
           const SizedBox(width: 3),
           Text(
-            '挑战',
+            L10n.value.adChallengeBadge,
             style: TextStyle(
               color: AppTheme.deepen(c, 0.30),
               fontSize: 9.5,
@@ -581,7 +582,7 @@ class _RhythmChip extends StatelessWidget {
           ),
           const SizedBox(width: 3),
           Text(
-            LevelRhythm.nameOf(RhythmMode.merge, phase),
+            LevelRhythm.displayNameOf(RhythmMode.merge, phase),
             style: TextStyle(
               color: AppTheme.deepen(c, 0.30),
               fontSize: 9.5,
@@ -711,7 +712,7 @@ class LevelCard extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(9),
                                   ),
                                   child: Text(
-                                    '第 ${level.id} 关',
+                                    L10n.value.levelNumberChip(level.id),
                                     style: TextStyle(
                                         color: unlocked
                                             ? Colors.white
@@ -829,8 +830,10 @@ class LevelCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             best > 0
-                                ? '最佳 $best 分'
-                                : (unlocked ? '还没挑战过' : '通过前面关卡解锁'),
+                                ? L10n.value.bestScoreInline(best)
+                                : (unlocked
+                                    ? L10n.value.levelNotPlayed
+                                    : L10n.value.levelLockedHint),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(

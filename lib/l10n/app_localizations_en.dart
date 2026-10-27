@@ -2277,4 +2277,65 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get floatTopTierGeneric => 'top-tier car';
+
+  @override
+  String get levelMapTitle => 'Levels';
+
+  @override
+  String levelMapSubtitle(int done, int total) {
+    return '$done/$total cleared · no rush, one at a time';
+  }
+
+  @override
+  String demonChapter(String subtitle) {
+    return '👹 Demon chapter · $subtitle';
+  }
+
+  @override
+  String get totalStars => 'Stars';
+
+  @override
+  String get allLevelsUnlocked => 'Every level is lit up — impressive!';
+
+  @override
+  String levelsLeftToUnlock(int count) {
+    return '$count more levels to light up';
+  }
+
+  @override
+  String get adChallengeBadge => 'Event';
+
+  @override
+  String levelNumberChip(int id) {
+    return 'Lv $id';
+  }
+
+  @override
+  String bestScoreInline(int score) {
+    return 'Best $score';
+  }
+
+  @override
+  String get levelNotPlayed => 'Not played yet';
+
+  @override
+  String get levelLockedHint => 'Clear earlier levels first';
+
+  @override
+  String get phaseEasy => 'Easy';
+
+  @override
+  String get phaseSmooth => 'Steady';
+
+  @override
+  String get phaseThink => 'Think';
+
+  @override
+  String get phaseBreather => 'Breather';
+
+  @override
+  String get phaseHard => 'Hard';
+
+  @override
+  String get phasePeak => 'Peak';
 }

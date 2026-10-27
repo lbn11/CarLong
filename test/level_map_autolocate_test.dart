@@ -7,6 +7,8 @@ import 'package:merge_fleet/screens/level_select_screen.dart';
 import 'package:merge_fleet/screens/parking_level_select.dart';
 import 'package:merge_fleet/widgets/pressable.dart';
 
+import 'helpers/localized_app.dart';
+
 /// 关卡地图「进页自动定位到当前进度」的回归测试。
 ///
 /// 700 关分 14 章：地图如果每次都从顶部开始，玩家打完一关回来要往下翻
@@ -23,8 +25,10 @@ Future<void> _pumpMap(
   tester.view.physicalSize = size;
   addTearDown(tester.view.reset);
   final data = PlayerData(unlockedLevel: unlocked);
-  await tester.pumpWidget(MaterialApp(
-    home: LevelSelectScreen(data: data, repo: SaveRepository()),
+  // 固定 zh：下面的定位器是「第 N 关」这串中文，顺带当 zh 语言包回归。
+  await tester.pumpWidget(l10nHost(
+    LevelSelectScreen(data: data, repo: SaveRepository()),
+    locale: const Locale('zh'),
   ));
   // 定位链路跨好几帧：首帧量尺寸 → 落位 → 校正动画（220ms）。
   for (var i = 0; i < 8; i++) {
@@ -48,8 +52,9 @@ Future<void> _pumpParkingMap(
     parkingUnlocked: unlocked,
     collection: VehicleType.values.map((v) => v.id).toSet(),
   );
-  await tester.pumpWidget(MaterialApp(
-    home: ParkingLevelSelectScreen(data: data, repo: SaveRepository()),
+  await tester.pumpWidget(l10nHost(
+    ParkingLevelSelectScreen(data: data, repo: SaveRepository()),
+    locale: const Locale('zh'),
   ));
   // 定位是「跳 → 实测校正 → 再跳」的循环，每轮跨一帧。
   for (var i = 0; i < 10; i++) {

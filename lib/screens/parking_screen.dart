@@ -1105,7 +1105,7 @@ class _ParkingScreenState extends State<ParkingScreen>
                   // 看到「尖峰」会下意识认真一点，看到「轻松」则放松点两下 ——
                   // 节奏被说破了才真正起作用。
                   _buildInfoChip(
-                    '${LevelRhythm.nameOf(RhythmMode.parking, _phase)} '
+                    '${LevelRhythm.displayNameOf(RhythmMode.parking, _phase)} '
                     '${widget.level.minMoves ?? 0} 步起',
                     LevelRhythm.colorOf(RhythmMode.parking, _phase),
                   ),

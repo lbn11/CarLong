@@ -2245,4 +2245,65 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get floatTopTierGeneric => '顶级车';
+
+  @override
+  String get levelMapTitle => '关卡地图';
+
+  @override
+  String levelMapSubtitle(int done, int total) {
+    return '已完成 $done/$total 关 · 慢慢来，一关一关开';
+  }
+
+  @override
+  String demonChapter(String subtitle) {
+    return '👹 魔王章 · $subtitle';
+  }
+
+  @override
+  String get totalStars => '累计星星';
+
+  @override
+  String get allLevelsUnlocked => '全部关卡都已点亮，了不起！';
+
+  @override
+  String levelsLeftToUnlock(int count) {
+    return '再过 $count 关就全部点亮啦';
+  }
+
+  @override
+  String get adChallengeBadge => '挑战';
+
+  @override
+  String levelNumberChip(int id) {
+    return '第 $id 关';
+  }
+
+  @override
+  String bestScoreInline(int score) {
+    return '最佳 $score 分';
+  }
+
+  @override
+  String get levelNotPlayed => '还没挑战过';
+
+  @override
+  String get levelLockedHint => '通过前面关卡解锁';
+
+  @override
+  String get phaseEasy => '轻松';
+
+  @override
+  String get phaseSmooth => '顺手';
+
+  @override
+  String get phaseThink => '动脑';
+
+  @override
+  String get phaseBreather => '缓冲';
+
+  @override
+  String get phaseHard => '硬仗';
+
+  @override
+  String get phasePeak => '尖峰';
 }

@@ -4110,6 +4110,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'top-tier car'**
   String get floatTopTierGeneric;
+
+  /// 选关页标题
+  ///
+  /// In en, this message translates to:
+  /// **'Levels'**
+  String get levelMapTitle;
+
+  /// 选关页副标题
+  ///
+  /// In en, this message translates to:
+  /// **'{done}/{total} cleared · no rush, one at a time'**
+  String levelMapSubtitle(int done, int total);
+
+  /// 大阶段末章的徽标，subtitle = 章节副标题
+  ///
+  /// In en, this message translates to:
+  /// **'👹 Demon chapter · {subtitle}'**
+  String demonChapter(String subtitle);
+
+  /// 总星星数标签
+  ///
+  /// In en, this message translates to:
+  /// **'Stars'**
+  String get totalStars;
+
+  /// 全部通关后的鼓励语
+  ///
+  /// In en, this message translates to:
+  /// **'Every level is lit up — impressive!'**
+  String get allLevelsUnlocked;
+
+  /// 还差几关全部解锁
+  ///
+  /// In en, this message translates to:
+  /// **'{count} more levels to light up'**
+  String levelsLeftToUnlock(int count);
+
+  /// 广告挑战关的角标（很短，卡面放不下长词）
+  ///
+  /// In en, this message translates to:
+  /// **'Event'**
+  String get adChallengeBadge;
+
+  /// 关卡卡头的序号徽章
+  ///
+  /// In en, this message translates to:
+  /// **'Lv {id}'**
+  String levelNumberChip(int id);
+
+  /// 关卡卡头的最高分
+  ///
+  /// In en, this message translates to:
+  /// **'Best {score}'**
+  String bestScoreInline(int score);
+
+  /// 未通关的关卡卡头文案
+  ///
+  /// In en, this message translates to:
+  /// **'Not played yet'**
+  String get levelNotPlayed;
+
+  /// 未解锁的关卡卡头文案
+  ///
+  /// In en, this message translates to:
+  /// **'Clear earlier levels first'**
+  String get levelLockedHint;
+
+  /// 节奏相位：最轻的一档
+  ///
+  /// In en, this message translates to:
+  /// **'Easy'**
+  String get phaseEasy;
+
+  /// 节奏相位：轻度加压
+  ///
+  /// In en, this message translates to:
+  /// **'Steady'**
+  String get phaseSmooth;
+
+  /// 节奏相位：第一波峰
+  ///
+  /// In en, this message translates to:
+  /// **'Think'**
+  String get phaseThink;
+
+  /// 节奏相位：波谷（仅停车）
+  ///
+  /// In en, this message translates to:
+  /// **'Breather'**
+  String get phaseBreather;
+
+  /// 节奏相位：第二波峰
+  ///
+  /// In en, this message translates to:
+  /// **'Hard'**
+  String get phaseHard;
+
+  /// 节奏相位：全压力（仅停车）
+  ///
+  /// In en, this message translates to:
+  /// **'Peak'**
+  String get phasePeak;
 }
 
 class _AppLocalizationsDelegate
