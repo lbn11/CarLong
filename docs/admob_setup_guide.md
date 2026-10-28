@@ -754,6 +754,22 @@ AdMob → **Privacy & messaging** → 建三条消息并 **Publish**：
 三条都是 **Draft → Publish** 才算生效。没发布时 `canRequestAds()` 恒为 true，
 代码不会报错，只是欧盟用户永远看不到表单 —— 属于「代码没问题、合规不合格」。
 
+### 逐屏填法（所有"Privacy Policy URL"字段统一填 `https://carlong.pages.dev/privacy`）
+入口：Privacy & messaging → Messages 标签 → Create message。每条套路：
+`选类型 → 命名 → 选语言(English) → 选应用(两个都勾) → 编辑内容(填网址) → Publish`。
+
+- **GDPR / User Consent**
+  - Message name：`Merge Fleet EU Consent`；Apps 两个都勾；Language English
+  - 内容页 **Privacy Policy URL** 填 `https://carlong.pages.dev/privacy`
+  - ⚠️ 同意选项里 **「Consent」和「Do not consent」两个按钮都要开启**，只开同意 = 合规不合格
+- **US State / CCPA**
+  - Message name：`Merge Fleet US Privacy`；Apps 两个都勾；Language English
+  - "Do not sell or share" 链接背后的网址填 `https://carlong.pages.dev/privacy`
+- **IDFA（iOS）**
+  - Message name：`Merge Fleet IDFA`；Apps **只勾 iOS**；Language English
+  - 若也要 Privacy Policy URL 同样填 `https://carlong.pages.dev/privacy`；文案用默认
+- 收尾：Messages 列表里三条状态必须都是 **Published**（不是 Draft）
+
 ## 7. SKAdNetwork 的真相（省你一次白忙）
 
 `Info.plist` 里现在只有 `cstr6suwn9.skadnetwork`（Google 自家）。**单渠道 AdMob
