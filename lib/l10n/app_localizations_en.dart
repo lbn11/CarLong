@@ -621,7 +621,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String chestPerDraw(int cost) {
-    return '$cost 🪙 per chest · 60% coins / 40% boosters';
+    return '$cost 🪙 per chest · opens coins or a booster at random';
   }
 
   @override
@@ -654,7 +654,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noPurchaseNotice =>
-      'Coins come only from ads and clearing levels. There is no purchase option in the game.';
+      'All coins come from ads and clearing levels — earn as you play.';
 
   @override
   String get demoAdNotice =>

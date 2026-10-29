@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../analytics/analytics.dart';
@@ -399,8 +400,9 @@ class _ShopScreenState extends State<ShopScreen> {
                                 fontSize: 11,
                                 height: 1.4),
                           ),
-                          // 只在模拟 provider 下说破：接真实 SDK 后这行自动消失。
-                          if (AdService.usingMock) ...[
+                          // 只在「debug + 模拟 provider」下说破：给开发看，玩家
+                          // 在 profile / release 里永远看不到这行「演示版」字样。
+                          if (kDebugMode && AdService.usingMock) ...[
                             const SizedBox(height: 4),
                             Text(
                               l10n.demoAdNotice,

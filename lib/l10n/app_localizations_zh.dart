@@ -612,7 +612,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String chestPerDraw(int cost) {
-    return '$cost 🪙 抽一箱 · 60% 金币 / 40% 道具';
+    return '$cost 🪙 抽一箱 · 金币与道具随机开出';
   }
 
   @override
@@ -644,7 +644,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get noPurchaseNotice => '金币只靠看广告和通关获得，游戏内没有充值入口。';
+  String get noPurchaseNotice => '金币全部来自看广告和通关奖励，边玩边攒。';
 
   @override
   String get demoAdNotice => '演示版：广告为模拟播放（秒过即发奖）。';

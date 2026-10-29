@@ -43,11 +43,13 @@ class AdDiagRow {
 class AdDiagnostics {
   /// 是否在 App 内显示诊断区。
   ///
-  /// debug / profile 默认显示（真机联调、渠道演示都能看到）；
-  /// release 默认隐藏，避免玩家看到内部信息，但允许
-  /// `--dart-define=ADS_DIAGNOSTICS=true` 打开（给 QA 包用）。
+  /// **只给 debug / 显式 QA 包看**：默认只在 `kDebugMode` 下显示。
+  /// 早先用的是 `!kReleaseMode`，结果 profile 构建（真机联调最常用的模式）
+  /// 也会把「测试广告 · 真 SDK，测试 unit，零收入」这类内部信息摆在设置里，
+  /// 玩家一看就是没做完的半成品。profile / release 一律隐藏，避免泄漏内部
+  /// 状态；真机需要确认时用 `--dart-define=ADS_DIAGNOSTICS=true` 临时打开。
   static bool get enabled =>
-      const bool.fromEnvironment('ADS_DIAGNOSTICS') || !kReleaseMode;
+      const bool.fromEnvironment('ADS_DIAGNOSTICS') || kDebugMode;
 
   static AdDiagLevel levelOf({
     required bool isMock,

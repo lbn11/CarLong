@@ -1217,7 +1217,7 @@ abstract class AppLocalizations {
   /// No description provided for @chestPerDraw.
   ///
   /// In en, this message translates to:
-  /// **'{cost} 🪙 per chest · 60% coins / 40% boosters'**
+  /// **'{cost} 🪙 per chest · opens coins or a booster at random'**
   String chestPerDraw(int cost);
 
   /// No description provided for @chestBoosterHelp.
@@ -1265,7 +1265,7 @@ abstract class AppLocalizations {
   /// No description provided for @noPurchaseNotice.
   ///
   /// In en, this message translates to:
-  /// **'Coins come only from ads and clearing levels. There is no purchase option in the game.'**
+  /// **'All coins come from ads and clearing levels — earn as you play.'**
   String get noPurchaseNotice;
 
   /// No description provided for @demoAdNotice.
