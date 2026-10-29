@@ -41,6 +41,10 @@ flutter:
 
   assets:
     - assets/audio/
+    # BGM 单独声明：Flutter 的目录资源不递归，`assets/audio/` 不会自动
+    # 把子目录带进来。漏了这行的后果是 BGM 全部加载失败（静音），
+    # 音效却正常——很难第一时间定位。
+    - assets/audio/bgm/
     - assets/vehicles/
 
   fonts:

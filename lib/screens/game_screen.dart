@@ -146,8 +146,14 @@ class _GameScreenState extends State<GameScreen> {
     }
 
     // 合成场景 BGM（跟随音效开关；返回首页由 home 的 didPopNext 恢复）。
+    // Boss 关用专属紧张曲；其余按「章」轮换，换章才换歌，避免每关都重来。
     if (widget.data.soundOn) {
-      MusicPlayer.instance.play(MusicPlayer.merge);
+      final isBoss = widget.level.boss != null;
+      final track = isBoss
+          ? MusicPlayer.boss
+          : MusicPlayer.mergeTrackFor(
+              LevelProgression.mergeChapterIndex(widget.level.id));
+      MusicPlayer.instance.play(track);
     }
   }
 

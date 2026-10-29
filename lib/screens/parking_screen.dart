@@ -157,8 +157,10 @@ class _ParkingScreenState extends State<ParkingScreen>
       if (mounted) setState(() => _ghostPulse = !_ghostPulse);
     });
     // 停车场景 BGM（跟随音效开关；返回首页由 home 的 didPopNext 恢复）。
+    // 按章轮换两首，换章才换歌，长关卡链不至于从头到尾一首。
     if (widget.data.soundOn) {
-      MusicPlayer.instance.play(MusicPlayer.parking);
+      MusicPlayer.instance.play(MusicPlayer.parkingTrackFor(
+          LevelProgression.parkingChapterIndex(widget.level.id)));
     }
   }
 
