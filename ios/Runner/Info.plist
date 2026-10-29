@@ -4,25 +4,6 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
-	<!-- AdMob App ID（iOS 应用，由 tool/set_ads_ids.py 写入，勿手改）。
-	     历史值是 Google 官方测试 App ID ca-app-pub-3940256099942544~1458002511，现已换成正式值。
-	     与 AndroidManifest 的 APPLICATION_ID 必须属于同一个 AdMob 账号（publisher 段相同）。 -->
-	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-3751874625509987~6515229387</string>
-	<!-- iOS 14.5+ ATT 授权文案。缺这一项系统不会弹窗，IDFA 恒为零。 -->
-	<key>NSUserTrackingUsageDescription</key>
-	<string>允许跟踪可帮助我们为你展示更相关的广告，并让游戏保持免费。我们不会出售你的个人数据。</string>
-	<!-- SKAdNetwork：Google 归因必需。下面是 Google 自家标识；
-	     上线前请到 AdMob 后台「应用 → SKAdNetwork」或官方文档
-	     developers.google.com/admob/ios/quick-start 复制完整 partner 列表，
-	     否则聚合/中介渠道的安装归因会缺失。 -->
-	<key>SKAdNetworkItems</key>
-	<array>
-		<dict>
-			<key>SKAdNetworkIdentifier</key>
-			<string>cstr6suwn9.skadnetwork</string>
-		</dict>
-	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -43,8 +24,23 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<!-- AdMob App ID（iOS 应用）。由 tool/set_ads_ids.py 写入，勿手改；
+	     须与 AndroidManifest 的 APPLICATION_ID 同一 AdMob 账号（publisher 段一致）。 -->
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-3751874625509987~6515229387</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- iOS 14.5+ ATT 授权文案。缺这一项系统不会弹窗，IDFA 恒为零。 -->
+	<key>NSUserTrackingUsageDescription</key>
+	<string>允许跟踪可帮助我们为你展示更相关的广告，并让游戏保持免费。我们不会出售你的个人数据。</string>
+	<!-- SKAdNetwork：单渠道 AdMob 只需 Google 自家标识 cstr6suwn9。 -->
+	<key>SKAdNetworkItems</key>
+	<array>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>cstr6suwn9.skadnetwork</string>
+		</dict>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -72,9 +68,8 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
-	<!-- 本作锁定竖屏（main.dart 里 setPreferredOrientations 只开 portraitUp）。
-	     这里必须与代码一致：声明了横屏却不支持，审核实测会打回。
-	     iPad 用 UIRequiresFullScreen 换取「只支持竖屏」的许可。 -->
+	<key>UIRequiresFullScreen</key>
+	<true/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
@@ -83,7 +78,5 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
-	<key>UIRequiresFullScreen</key>
-	<true/>
 </dict>
 </plist>

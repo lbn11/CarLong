@@ -1,6 +1,6 @@
-# AdMob（google_mobile_ads 5.x / GMA iOS 11.x）要求 iOS 12+；
-# 项目本身最低 iOS 13，这里显式钉住，避免 Xcode 默认值变化导致 pod 解析漂移。
-platform :ios, '13.0'
+# 本地 Xcode 27 / SDK 27 硬性要求部署目标 ≥ 15.0，故钉到 15.0。
+# （AdMob 5.x / GMA iOS 11.x 要求仅 iOS 12+，15.0 满足）
+platform :ios, '15.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -40,5 +40,11 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+    end
+  end
+  installer.pods_project.build_configurations.each do |config|
+    config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
   end
 end
